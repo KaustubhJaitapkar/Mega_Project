@@ -1,0 +1,1 @@
+'use client';\nexport default function JudgingControl() {\n  return (\n    <div className="p-6">\n      <h2 className="text-2xl font-bold text-gray-900 mb-6">Judging Control</h2>\n      <div className="text-center py-12 text-gray-600">Rubric and judging management coming soon</div>\n    </div>\n  );\n}\n

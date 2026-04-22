@@ -1,0 +1,1 @@
+'use client';\nexport default function AnnouncementSystem() {\n  return (\n    <div className="p-6">\n      <h2 className="text-2xl font-bold text-gray-900 mb-6">Announcements</h2>\n      <div className="text-center py-12 text-gray-600">Announcement system coming soon</div>\n    </div>\n  );\n}\n
