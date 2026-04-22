@@ -2,6 +2,29 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import Groq from 'groq-sdk';
+
+const groq = new Groq({
+  apiKey: process.env.GROK_API_KEY,
+});
+
+interface TeamData {
+  id: string;
+  name: string;
+  skills: string[];
+}
+
+interface MentorData {
+  id: string;
+  name: string;
+  skills: string[];
+}
+
+interface GroqMatch {
+  teamId: string;
+  mentorId: string;
+  score?: number;
+}
 
 export async function POST(
   req: Request,
@@ -18,141 +41,173 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const groqApiKey = process.env.GROK_API_KEY;
-    if (!groqApiKey) {
-      return NextResponse.json({ error: 'GROK_API_KEY not configured' }, { status: 500 });
-    }
-
-    // Get unassigned teams
+    // Get unassigned teams with member skills and submission technologies
     const unassignedTeams = await prisma.team.findMany({
       where: {
         hackathonId: params.hackathonId,
-        status: 'COMPLETE', // Only complete teams
         teamMentors: { none: {} }
       },
-      select: {
-        id: true,
-        name: true,
+      include: {
         members: {
-          include: { user: { select: { id: true, name: true, profile: true } } },
+          include: {
+            user: {
+              include: { profile: true }
+            }
+          }
         },
-        submission: { select: { technologies: true } },
-      },
+        submission: {
+          select: { technologies: true }
+        }
+      }
     });
 
     if (unassignedTeams.length === 0) {
       return NextResponse.json({ message: 'No unassigned teams found' });
     }
 
-    // Get available mentors
+    // Get available mentors with skills
     const availableMentors = await prisma.user.findMany({
       where: {
         hackathonsMentoring: {
           some: { id: params.hackathonId }
         }
       },
-      select: { id: true, name: true, profile: true }
+      include: { profile: true }
     });
 
     if (availableMentors.length === 0) {
       return NextResponse.json({ error: 'No mentors available' }, { status: 400 });
     }
 
-    const teams = unassignedTeams.map((team) => {
-      const memberSkills = team.members
-        .flatMap((m) => m.user.profile?.skills || [])
-        .filter(Boolean);
-      const submissionSkills = team.submission?.technologies || [];
-      const skills = Array.from(new Set([...memberSkills, ...submissionSkills]));
-      return { id: team.id, name: team.name, skills };
-    });
-
-    const mentors = availableMentors.map((mentor) => ({
-      id: mentor.id,
-      name: mentor.name,
-      skills: mentor.profile?.skills || [],
+    // Build team data: combine member skills + submission technologies
+    const teamData: TeamData[] = unassignedTeams.map(team => ({
+      id: team.id,
+      name: team.name,
+      skills: [
+        ...new Set([
+          ...team.members.flatMap(m => m.user.profile?.skills || []),
+          ...(team.submission?.technologies || [])
+        ])
+      ]
     }));
 
-    const prompt = `You are matching mentors to hackathon teams based on skills.\n\nTeams (id, name, skills):\n${JSON.stringify(teams)}\n\nMentors (id, name, skills):\n${JSON.stringify(mentors)}\n\nRules:\n- Prefer mentors with the highest overlap in skills.\n- Do not reuse a mentor across multiple teams.\n- If a team has no clear skill match, still assign any remaining mentor.\n\nReturn ONLY valid JSON in this exact shape:\n{\n  "assignments": [\n    { "teamId": "...", "mentorId": "..." }\n  ]\n}`;
+    if (availableMentors.length === 1) {
+      const onlyMentorId = availableMentors[0].id;
+      const assignments = await prisma.$transaction(
+        teamData.map((team) =>
+          prisma.teamMentor.create({
+            data: {
+              teamId: team.id,
+              mentorId: onlyMentorId,
+            },
+          })
+        )
+      );
 
-    const groqRes = await fetch('https://api.groq.com/openai/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${groqApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-20b',
-        input: prompt,
-        temperature: 0.2,
-      }),
-    });
-
-    if (!groqRes.ok) {
-      const text = await groqRes.text();
-      console.error('Groq error:', text);
-      return NextResponse.json({ error: 'Groq request failed' }, { status: 500 });
+      return NextResponse.json({
+        message: `${assignments.length} teams assigned to the only available mentor`,
+        data: assignments,
+      });
     }
 
-    const groqData = await groqRes.json();
-    const outputText =
-      typeof groqData?.output_text === 'string'
-        ? groqData.output_text
-        : groqData?.output?.[0]?.content?.[0]?.text;
+    // Build mentor data
+    const mentorData: MentorData[] = availableMentors.map(mentor => ({
+      id: mentor.id,
+      name: mentor.name || mentor.email,
+      skills: mentor.profile?.skills || []
+    }));
 
-    let modelAssignments: Array<{ teamId: string; mentorId: string }> = [];
-    if (typeof outputText === 'string') {
-      try {
-        const parsed = JSON.parse(outputText);
-        if (Array.isArray(parsed?.assignments)) {
-          modelAssignments = parsed.assignments;
+    // Call Groq API for intelligent matching
+    const groqPrompt = `You are a hackathon mentor matching system. Your task is to match teams to mentors based on skill overlap.
+
+Teams:
+${teamData.map(t => `- ID: ${t.id}, Name: ${t.name}, Skills: [${t.skills.join(', ')}]`).join('\n')}
+
+Mentors:
+${mentorData.map(m => `- ID: ${m.id}, Name: ${m.name}, Skills: [${m.skills.join(', ')}]`).join('\n')}
+
+Match each team to exactly ONE mentor. Prioritize skill overlap. If multiple mentors have similar skills for a team, pick the one best suited.
+
+Return ONLY a JSON array of matches with no additional text:
+[
+  { "teamId": "team-uuid", "mentorId": "mentor-uuid" }
+]`;
+
+    const message = await groq.chat.completions.create({
+      model: 'mixtral-8x7b-32768',
+      messages: [
+        {
+          role: 'user',
+          content: groqPrompt
         }
-      } catch (error) {
-        console.error('Failed to parse Groq response:', error);
+      ],
+      temperature: 0.3,
+      max_tokens: 1024
+    });
+
+    let matches: GroqMatch[] = [];
+    if (message.choices[0]?.message?.content) {
+      try {
+        const jsonStr = message.choices[0].message.content
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim();
+        matches = JSON.parse(jsonStr);
+      } catch (e) {
+        console.warn('Failed to parse Groq response, falling back to random assignment', e);
+        matches = [];
       }
     }
 
-    const remainingMentors = new Map(mentors.map((m) => [m.id, m]));
-    const pickedMentorIds = new Set<string>();
-    const pickedTeamIds = new Set<string>();
+    const preferredMentorByTeam = new Map(
+      matches
+        .filter((match) => mentorData.some((m) => m.id === match.mentorId))
+        .map((match) => [match.teamId, match.mentorId])
+    );
 
-    const orderedTeams = teams.map((t) => t.id);
-    const chosenPairs: Array<{ teamId: string; mentorId: string }> = [];
+    const mentorCounts = new Map<string, number>(
+      mentorData.map((mentor) => [mentor.id, 0])
+    );
 
-    for (const assignment of modelAssignments) {
-      if (!remainingMentors.has(assignment.mentorId)) continue;
-      if (!orderedTeams.includes(assignment.teamId)) continue;
-      if (pickedMentorIds.has(assignment.mentorId) || pickedTeamIds.has(assignment.teamId)) continue;
-      pickedMentorIds.add(assignment.mentorId);
-      pickedTeamIds.add(assignment.teamId);
-      chosenPairs.push({ teamId: assignment.teamId, mentorId: assignment.mentorId });
-    }
-
-    const unassignedTeamIds = orderedTeams.filter((id) => !pickedTeamIds.has(id));
-    const leftoverMentors = Array.from(remainingMentors.keys()).filter((id) => !pickedMentorIds.has(id));
-    const shuffledMentors = leftoverMentors.sort(() => Math.random() - 0.5);
-
-    for (let i = 0; i < Math.min(unassignedTeamIds.length, shuffledMentors.length); i++) {
-      chosenPairs.push({ teamId: unassignedTeamIds[i], mentorId: shuffledMentors[i] });
-    }
+    // Shuffle mentors to avoid ordering bias for equal loads
+    const shuffledMentors = [...mentorData].sort(() => Math.random() - 0.5);
 
     const assignments = [];
-    for (const pair of chosenPairs) {
+
+    for (const team of teamData) {
+      const preferredMentorId = preferredMentorByTeam.get(team.id);
+      let minCount = Infinity;
+      for (const mentorId of mentorCounts.keys()) {
+        const count = mentorCounts.get(mentorId) || 0;
+        if (count < minCount) minCount = count;
+      }
+
+      let chosenMentor = shuffledMentors.find(
+        (mentor) => (mentorCounts.get(mentor.id) || 0) === minCount
+      );
+
+      if (preferredMentorId && (mentorCounts.get(preferredMentorId) || 0) === minCount) {
+        chosenMentor = mentorData.find((m) => m.id === preferredMentorId) || chosenMentor;
+      }
+
+      if (!chosenMentor) continue;
+
       const assignment = await prisma.teamMentor.create({
         data: {
-          teamId: pair.teamId,
-          mentorId: pair.mentorId,
-        },
+          teamId: team.id,
+          mentorId: chosenMentor.id
+        }
       });
       assignments.push(assignment);
+      mentorCounts.set(chosenMentor.id, (mentorCounts.get(chosenMentor.id) || 0) + 1);
     }
 
     return NextResponse.json({
-      message: `${assignments.length} mentors auto-assigned to teams`,
+      message: `${assignments.length} mentors auto-assigned evenly to teams`,
       data: assignments
     });
   } catch (error) {
     console.error('Auto-assign error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', details: String(error) }, { status: 500 });
   }
 }

@@ -1386,6 +1386,43 @@ export default function CommandCenterPage() {
                   </div>
                 </div>
 
+                <div className="card-cc">
+                  <p className="section-label">Mentors & Judges</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 9, border: '1.5px solid #f1f5f9' }}>
+                      <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#6366f1', letterSpacing: 1, marginBottom: 6 }}>JUDGES</p>
+                      {staff.judges.length === 0 ? (
+                        <p style={{ color: '#94a3b8', fontFamily: '"DM Mono", monospace', fontSize: 10 }}>NO JUDGES</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
+                          {staff.judges.map((judge) => (
+                            <div key={judge.id} style={{ padding: '6px 8px', borderRadius: 6, background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                              <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{judge.name}</p>
+                              <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#94a3b8' }}>{judge.email}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 9, border: '1.5px solid #f1f5f9' }}>
+                      <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#8b5cf6', letterSpacing: 1, marginBottom: 6 }}>MENTORS</p>
+                      {staff.mentors.length === 0 ? (
+                        <p style={{ color: '#94a3b8', fontFamily: '"DM Mono", monospace', fontSize: 10 }}>NO MENTORS</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
+                          {staff.mentors.map((mentor) => (
+                            <div key={mentor.id} style={{ padding: '6px 8px', borderRadius: 6, background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                              <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{mentor.name}</p>
+                              <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#94a3b8' }}>{mentor.email}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Judging */}
                 <div className="card-cc">
                   <p className="section-label">Judging Control</p>

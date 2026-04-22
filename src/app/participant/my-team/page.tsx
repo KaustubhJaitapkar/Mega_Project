@@ -63,6 +63,7 @@ export default function MyTeamPage() {
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [invitingId, setInvitingId] = useState('');
   const [inviteAutoProcessing, setInviteAutoProcessing] = useState(false);
+  const [assignedMentor, setAssignedMentor] = useState<{ id: string; name: string; email?: string } | null>(null);
 
   const isLead = myTeam && myTeam.members.some((m) => m.role === 'leader');
 
@@ -112,6 +113,10 @@ export default function MyTeamPage() {
       const stored = localStorage.getItem(`ghost-slots:${mine.id}`);
       setGhostSlots(stored ? JSON.parse(stored) : []);
       setInvites([]);
+
+      const mentorRes = await fetch(`/api/teams/${mine.id}/chat`);
+      const mentorData = await mentorRes.json();
+      setAssignedMentor(mentorRes.ok ? mentorData?.data?.mentors?.[0] || null : null);
     } else {
       const invitesRes = await fetch('/api/teams/invites');
       const invitesData = await invitesRes.json();
@@ -119,6 +124,7 @@ export default function MyTeamPage() {
       setIncoming([]);
       setOutgoing([]);
       setGhostSlots([]);
+      setAssignedMentor(null);
     }
   }, [hackathonId]);
 
@@ -377,10 +383,14 @@ export default function MyTeamPage() {
               <button
                 className="btn btn-primary"
                 onClick={() => router.push(`/participant/my-team/mentor-chat?teamId=${myTeam.id}&hackathonId=${hackathonId}`)}
+                disabled={!assignedMentor}
               >
-                Chat with Mentor
+                {assignedMentor ? 'Chat with Mentor' : 'Mentor not assigned'}
               </button>
             </div>
+            <p className="text-sm text-gray-600 mt-2">
+              {assignedMentor ? `Assigned mentor: ${assignedMentor.name}` : 'No mentor assigned yet'}
+            </p>
           </div>
           {isLead && (
             <div className="mt-4 pt-4 border-t space-y-2">

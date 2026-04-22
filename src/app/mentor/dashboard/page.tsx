@@ -1,9 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 export default function MentorDashboardPage() {
   const [tickets, setTickets] = useState<any[]>([]);
+  const [assignedTeams, setAssignedTeams] = useState<any[]>([]);
   const [category, setCategory] = useState('');
   const [fromMinutes, setFromMinutes] = useState('0');
   const [activeTicketId, setActiveTicketId] = useState('');
@@ -19,8 +21,15 @@ export default function MentorDashboardPage() {
     setTickets(data.data || []);
   }
 
+  async function loadAssignedTeams() {
+    const res = await fetch('/api/mentor/teams');
+    const data = await res.json();
+    setAssignedTeams(data.data || []);
+  }
+
   useEffect(() => {
     loadTickets();
+    loadAssignedTeams();
     const timer = setInterval(loadTickets, 3000);
     return () => clearInterval(timer);
   }, [category, fromMinutes]);
@@ -73,6 +82,28 @@ export default function MentorDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card">
+          <h2 className="text-xl font-semibold mb-3">My Assigned Teams</h2>
+          <div className="space-y-3 max-h-96 overflow-auto">
+            {assignedTeams.map((entry) => (
+              <div key={entry.team?.id} className="p-3 border rounded">
+                <p className="font-semibold">{entry.team?.name || 'Team'}</p>
+                <p className="text-sm text-gray-600">
+                  Hackathon: {entry.team?.hackathon?.title || 'Unknown'}
+                </p>
+                {entry.team?.description && (
+                  <p className="text-xs text-gray-500 mt-1">{entry.team.description}</p>
+                )}
+                <Link className="btn btn-primary mt-2" href={`/mentor/teams/${entry.team?.id}/chat`}>
+                  Open Team Chat
+                </Link>
+              </div>
+            ))}
+            {assignedTeams.length === 0 && (
+              <p className="text-sm text-gray-600">No teams assigned yet</p>
+            )}
+          </div>
+        </div>
         <div className="card">
           <h2 className="text-xl font-semibold mb-3">Help Queue (oldest first)</h2>
           <div className="space-y-3 max-h-96 overflow-auto">
