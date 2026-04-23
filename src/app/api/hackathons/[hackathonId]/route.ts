@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { mergeHackathonMeta, parseHackathonMeta } from '@/lib/hackathonMeta';
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: { hackathonId: string } }
 ) {
   try {

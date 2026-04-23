@@ -10,9 +10,8 @@ export async function generateCertificate(
   date: Date
 ): Promise<string> {
   const doc = new PDFDocument({
-    size: 'A4',
+    size: [842, 595], // A4 landscape
     margin: 50,
-    orientation: 'landscape',
   });
 
   const certificatesDir = join(process.cwd(), 'public', 'certificates');
@@ -38,7 +37,7 @@ export async function generateCertificate(
     // Title
     doc.fillColor('#6366f1');
     doc.fontSize(48);
-    doc.text('Certificate of Achievement', { align: 'center', y: 150 });
+    doc.text('Certificate of Achievement', 0, 150, { align: 'center' } as any);
 
     // Divider line
     doc.moveTo(150, 210).lineTo(doc.page.width - 150, 210).stroke();
@@ -46,20 +45,20 @@ export async function generateCertificate(
     // Achievement text
     doc.fillColor('#374151');
     doc.fontSize(24);
-    doc.text('This is to certify that', { align: 'center', y: 250 });
+    doc.text('This is to certify that', 0, 250, { align: 'center' } as any);
 
     // Name
     doc.fillColor('#6366f1');
     doc.fontSize(32);
     doc.font('Helvetica-Bold');
-    doc.text(name, { align: 'center', y: 310 });
+    doc.text(name, 0, 310, { align: 'center' } as any);
     doc.font('Helvetica');
 
     // Type and hackathon
     doc.fillColor('#374151');
     doc.fontSize(18);
     const typeText = getTypeText(type);
-    doc.text(`${typeText} in`, { align: 'center', y: 370 });
+    doc.text(`${typeText} in`, 0, 370, { align: 'center' } as any);
     
     doc.fillColor('#6366f1');
     doc.fontSize(20);
@@ -70,7 +69,7 @@ export async function generateCertificate(
     // Date
     doc.fillColor('#374151');
     doc.fontSize(14);
-    doc.text(`Date: ${date.toLocaleDateString()}`, { align: 'center', y: 480 });
+    doc.text(`Date: ${date.toLocaleDateString()}`, 0, 480, { align: 'center' } as any);
 
     // Signature line
     doc.moveTo(200, 560).lineTo(400, 560).stroke();

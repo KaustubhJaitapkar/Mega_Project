@@ -3,7 +3,10 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BarChart3, Users, FileText, Zap, TrendingUp, Lock, Settings, Trophy } from 'lucide-react';
+import {
+  BarChart3, Users, Zap, TrendingUp, Settings, Trophy,
+  Award, Megaphone, ChevronRight
+} from 'lucide-react';
 import HackathonManagement from '@/components/organiser/HackathonManagement';
 import StaffManagement from '@/components/organiser/StaffManagement';
 import AnalyticsDashboard from '@/components/organiser/AnalyticsDashboard';
@@ -12,16 +15,18 @@ import SubmissionMonitoring from '@/components/organiser/SubmissionMonitoring';
 import AnnouncementSystem from '@/components/organiser/AnnouncementSystem';
 import JudgingControl from '@/components/organiser/JudgingControl';
 import CertificateSystem from '@/components/organiser/CertificateSystem';
+import QuickActions from '@/components/organiser/QuickActions';
 
 const TABS = [
-  { id: 'hackathon', label: 'Hackathon', icon: Settings },
-  { id: 'staff', label: 'Staff', icon: Users },
+  { id: 'hackathon', label: 'Hackathons', icon: Settings },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'teams', label: 'Teams', icon: FileText },
+  { id: 'teams', label: 'Teams', icon: Users },
   { id: 'submissions', label: 'Submissions', icon: TrendingUp },
-  { id: 'announcements', label: 'Announcements', icon: Zap },
+  { id: 'staff', label: 'Staff', icon: Users },
+  { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'judging', label: 'Judging', icon: Trophy },
-  { id: 'certificates', label: 'Certificates', icon: Lock },
+  { id: 'certificates', label: 'Certificates', icon: Award },
+  { id: 'actions', label: 'Quick Actions', icon: Zap },
 ];
 
 export default function OrganiserDashboard() {
@@ -29,6 +34,7 @@ export default function OrganiserDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('hackathon');
   const [loading, setLoading] = useState(true);
+  const [selectedHackathonId, setSelectedHackathonId] = useState('');
 
   useEffect(() => {
     if (!session) {
@@ -43,49 +49,74 @@ export default function OrganiserDashboard() {
   if (loading || !session) return null;
 
   const renderContent = () => {
+    if (activeTab === 'hackathon') {
+      return (
+        <HackathonManagement
+          onSelect={(id) => setSelectedHackathonId(id)}
+          selectedId={selectedHackathonId}
+        />
+      );
+    }
+
+    if (!selectedHackathonId) {
+      return (
+        <div className="text-center py-16">
+          <Settings className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+          <p className="text-gray-400 mb-2">No hackathon selected</p>
+          <button
+            onClick={() => setActiveTab('hackathon')}
+            className="text-emerald-400 hover:text-emerald-300 text-sm font-medium flex items-center gap-1 mx-auto"
+          >
+            Go to Hackathons <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      );
+    }
+
     switch (activeTab) {
-      case 'hackathon':
-        return <HackathonManagement />;
       case 'staff':
-        return <StaffManagement />;
+        return <StaffManagement hackathonId={selectedHackathonId} />;
       case 'analytics':
-        return <AnalyticsDashboard />;
+        return <AnalyticsDashboard hackathonId={selectedHackathonId} />;
       case 'teams':
-        return <TeamMonitoring />;
+        return <TeamMonitoring hackathonId={selectedHackathonId} />;
       case 'submissions':
-        return <SubmissionMonitoring />;
+        return <SubmissionMonitoring hackathonId={selectedHackathonId} />;
       case 'announcements':
-        return <AnnouncementSystem />;
+        return <AnnouncementSystem hackathonId={selectedHackathonId} />;
       case 'judging':
-        return <JudgingControl />;
+        return <JudgingControl hackathonId={selectedHackathonId} />;
       case 'certificates':
-        return <CertificateSystem />;
+        return <CertificateSystem hackathonId={selectedHackathonId} />;
+      case 'actions':
+        return <QuickActions hackathonId={selectedHackathonId} />;
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="org-shell">
+      <div className="org-page">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Organiser Command Center</h1>
-          <p className="text-gray-600 mt-2">Manage your hackathon with complete control</p>
+          <h1 className="org-title">Command Center</h1>
+          <p className="org-subtitle mt-1">Manage your hackathons with full control</p>
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-white rounded-lg shadow mb-6 overflow-x-auto">
-          <div className="flex border-b border-gray-200">
+        <div className="mb-6 overflow-x-auto">
+          <div className="flex gap-1 org-panel p-1.5 min-w-max">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                     activeTab === tab.id
-                      ? 'text-indigo-600 border-indigo-600'
-                      : 'text-gray-700 border-transparent hover:text-gray-900'
+                      ? 'bg-[var(--accent)] text-[var(--text-inverse)]'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -97,7 +128,7 @@ export default function OrganiserDashboard() {
         </div>
 
         {/* Content */}
-        <div className="bg-white rounded-lg shadow">
+        <div className="org-panel">
           {renderContent()}
         </div>
       </div>

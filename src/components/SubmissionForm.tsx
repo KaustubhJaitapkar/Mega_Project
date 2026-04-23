@@ -17,6 +17,8 @@ export default function SubmissionForm({ teamId }: SubmissionFormProps) {
     technologies: [] as string[],
   });
   const [techInput, setTechInput] = useState('');
+  const [pitchFile, setPitchFile] = useState<File | null>(null);
+  const [uploadingPitch, setUploadingPitch] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -37,8 +39,19 @@ export default function SubmissionForm({ teamId }: SubmissionFormProps) {
       const data = await res.json();
 
       if (res.ok) {
+        if (pitchFile && data.data?.id) {
+          setUploadingPitch(true);
+          const uploadForm = new FormData();
+          uploadForm.append('file', pitchFile);
+          await fetch(`/api/submissions/${data.data.id}/upload`, {
+            method: 'POST',
+            body: uploadForm,
+          });
+          setUploadingPitch(false);
+        }
         setSuccess('Submission saved successfully!');
         setFormData({ githubUrl: '', liveUrl: '', description: '', technologies: [] });
+        setPitchFile(null);
       } else {
         setError(data.error || 'Failed to submit');
       }
@@ -155,12 +168,36 @@ export default function SubmissionForm({ teamId }: SubmissionFormProps) {
         </div>
       </div>
 
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Pitch Deck (PDF/PPT, max 10MB)
+        </label>
+        <input
+          type="file"
+          accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+          onChange={(e) => {
+            const file = e.target.files?.[0] || null;
+            if (file && file.size > 10 * 1024 * 1024) {
+              setError('File size must be under 10MB');
+              setPitchFile(null);
+              return;
+            }
+            setPitchFile(file);
+            setError('');
+          }}
+          className="input"
+        />
+        {pitchFile && (
+          <p className="text-xs text-gray-500 mt-1">{pitchFile.name} ({(pitchFile.size / 1024 / 1024).toFixed(1)}MB)</p>
+        )}
+      </div>
+
       <button
         type="submit"
         disabled={isLoading}
         className="btn btn-primary w-full"
       >
-        {isLoading ? 'Submitting...' : 'Submit Project'}
+        {isLoading ? 'Submitting...' : uploadingPitch ? 'Uploading pitch deck...' : 'Submit Project'}
       </button>
     </form>
   );

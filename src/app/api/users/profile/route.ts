@@ -73,6 +73,7 @@ export async function PUT(req: NextRequest) {
       sponsorVisible,
       college,
       yearOfStudy,
+      isLookingForTeam,
       ...profileData
     } = validatedData as any;
 
@@ -88,12 +89,14 @@ export async function PUT(req: NextRequest) {
               company: college || profileData.company,
               experience: yearOfStudy || profileData.experience,
               isPublic: sponsorVisible ?? true,
+              isLookingForTeam: isLookingForTeam ?? false,
             },
             update: {
               ...profileData,
               company: college || profileData.company,
               experience: yearOfStudy || profileData.experience,
               isPublic: sponsorVisible ?? true,
+              isLookingForTeam: isLookingForTeam ?? false,
             },
           },
         },

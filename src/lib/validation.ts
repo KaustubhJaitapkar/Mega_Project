@@ -10,7 +10,7 @@ export const userSignupSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  role: z.enum(['PARTICIPANT', 'ORGANISER', 'JUDGE', 'MENTOR', 'SPONSOR']).optional().default('PARTICIPANT'),
+  role: z.enum(['PARTICIPANT', 'ORGANISER']).default('PARTICIPANT'),
 });
 
 export const userProfileSchema = z.object({
@@ -52,6 +52,20 @@ export const hackathonCreateSchema = z.object({
   isVirtual: z.boolean().default(true),
   prize: z.string().optional(),
   rules: z.string().optional(),
+  tagline: z.string().optional(),
+  bannerUrl: z.string().url().optional().or(z.literal('')),
+  logoUrl: z.string().url().optional().or(z.literal('')),
+  contactEmail: z.string().email().optional().or(z.literal('')),
+  hostName: z.string().optional(),
+  theme: z.string().optional(),
+  eligibilityDomain: z.string().optional(),
+  breakfastProvided: z.boolean().default(false),
+  lunchProvided: z.boolean().default(false),
+  dinnerProvided: z.boolean().default(false),
+  swagProvided: z.boolean().default(false),
+  sponsorDetails: z.any().optional(),
+  judgeDetails: z.any().optional(),
+  mentorDetails: z.any().optional(),
 });
 
 // Team validation

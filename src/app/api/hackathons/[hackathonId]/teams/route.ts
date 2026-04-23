@@ -98,9 +98,10 @@ export async function POST(
     const validatedData = teamCreateSchema.parse(body);
 
     // Create team
+    const { hackathonId: _ignore, ...teamData } = validatedData as any;
     const team = await prisma.team.create({
       data: {
-        ...validatedData,
+        ...teamData,
         hackathonId: params.hackathonId,
         creatorId: user.id,
         members: {

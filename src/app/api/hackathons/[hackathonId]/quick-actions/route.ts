@@ -20,12 +20,15 @@ export async function POST(
     }
 
     const body = await req.json();
-    const action = body.action as 'LOCK_SUBMISSIONS' | 'EXTEND_DEADLINE' | 'OPEN_JUDGING';
+    const action = body.action as 'LOCK_SUBMISSIONS' | 'UNLOCK_SUBMISSIONS' | 'EXTEND_DEADLINE' | 'OPEN_JUDGING';
     const meta = parseHackathonMeta(hackathon.rules);
 
     const data: any = {};
     if (action === 'LOCK_SUBMISSIONS') {
       meta.lockSubmissions = true;
+    }
+    if (action === 'UNLOCK_SUBMISSIONS') {
+      meta.lockSubmissions = false;
     }
     if (action === 'EXTEND_DEADLINE') {
       if (!body.submissionDeadline) {

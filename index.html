@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>hackmate — College Hackathon Scope</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Fira+Code:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #080b10;
+    --surface: #0f1319;
+    --card: #141820;
+    --card2: #191e28;
+    --border: #1e2535;
+    --border2: #252d40;
+    --g: #4ade80;
+    --b: #60a5fa;
+    --o: #fb923c;
+    --r: #f87171;
+    --p: #c084fc;
+    --y: #facc15;
+    --c: #22d3ee;
+    --text: #e2e8f0;
+    --muted: #4b5875;
+    --muted2: #6b7a9a;
+    --glow-g: rgba(74,222,128,0.08);
+    --glow-b: rgba(96,165,250,0.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Fira Code', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 40% at 15% 0%, rgba(74,222,128,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 85% 100%, rgba(96,165,250,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(192,132,252,0.03) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+
+  /* ─── HEADER ─── */
+  header { padding: 64px 0 44px; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(74,222,128,0.07);
+    border: 1px solid rgba(74,222,128,0.18);
+    color: var(--g); font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; padding: 5px 14px; border-radius: 2px; margin-bottom: 22px;
+  }
+  .eyebrow span { width: 6px; height: 6px; border-radius: 50%; background: var(--g); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+  h1 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: clamp(2.4rem, 5.5vw, 4rem);
+    font-weight: 800; line-height: 1.05; margin-bottom: 16px;
+    letter-spacing: -0.03em;
+  }
+  h1 em { font-family: 'Fraunces', serif; font-style: italic; font-weight: 300; color: var(--g); }
+  .sub { color: var(--muted2); font-size: 13px; max-width: 600px; line-height: 1.8; }
+  .sub strong { color: var(--text); font-weight: 500; }
+
+  .header-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+  .meta-badge {
+    font-size: 10px; padding: 3px 10px; border-radius: 2px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border: 1px solid;
+  }
+  .mb-g { border-color: rgba(74,222,128,0.25); color: var(--g); background: rgba(74,222,128,0.06); }
+  .mb-b { border-color: rgba(96,165,250,0.25); color: var(--b); background: rgba(96,165,250,0.06); }
+  .mb-o { border-color: rgba(251,146,60,0.25); color: var(--o); background: rgba(251,146,60,0.06); }
+  .mb-p { border-color: rgba(192,132,252,0.25); color: var(--p); background: rgba(192,132,252,0.06); }
+  .mb-y { border-color: rgba(250,204,21,0.25); color: var(--y); background: rgba(250,204,21,0.06); }
+  .mb-c { border-color: rgba(34,211,238,0.25); color: var(--c); background: rgba(34,211,238,0.06); }
+  .mb-r { border-color: rgba(248,113,113,0.25); color: var(--r); background: rgba(248,113,113,0.06); }
+
+  /* ─── TABS ─── */
+  .tab-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,11,16,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+  }
+  .tab-inner {
+    display: flex; gap: 0; overflow-x: auto; scrollbar-width: none;
+  }
+  .tab-inner::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0; padding: 14px 20px;
+    border: none; border-bottom: 2px solid transparent;
+    background: transparent; color: var(--muted2);
+    font-family: 'Fira Code', monospace; font-size: 11px;
+    cursor: pointer; transition: all 0.18s;
+    letter-spacing: 0.05em; white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--g); border-bottom-color: var(--g); }
+  .tab.future { color: var(--p); }
+  .tab.future.active { color: var(--p); border-bottom-color: var(--p); }
+
+  /* ─── SECTIONS ─── */
+  .section { display: none; padding: 44px 0 60px; }
+  .section.active { display: block; animation: fadeUp 0.28s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  .sec-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 24px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.02em;
+  }
+  .sec-desc { color: var(--muted2); font-size: 12px; line-height: 1.8; margin-bottom: 32px; max-width: 700px; }
+
+  /* ─── ROLE GRID ─── */
+  .role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .role-block {
+    background: var(--card);
+    padding: 24px;
+    transition: background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .role-block::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .rb-participant::before { background: linear-gradient(90deg, var(--g), transparent); }
+  .rb-organiser::before  { background: linear-gradient(90deg, var(--b), transparent); }
+  .rb-judge::before      { background: linear-gradient(90deg, var(--o), transparent); }
+  .rb-mentor::before     { background: linear-gradient(90deg, var(--p), transparent); }
+
+  .role-block:hover { background: var(--card2); }
+
+  .role-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .role-icon { font-size: 24px; }
+  .role-name {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 15px; font-weight: 700;
+  }
+  .role-tag {
+    font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 2px; border: 1px solid; display: inline-block; margin-top: 3px;
+  }
+
+  .feat-list { list-style: none; }
+  .feat-list li {
+    font-size: 11.5px; color: var(--muted2); padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex; gap: 10px; align-items: flex-start; line-height: 1.5;
+  }
+  .feat-list li:last-child { border-bottom: none; padding-bottom: 0; }
+  .arr { flex-shrink: 0; font-size: 10px; margin-top: 3px; }
+
+  /* ─── LIFECYCLE ─── */
+  .lifecycle { display: flex; flex-direction: column; gap: 0; }
+  .phase {
+    display: grid; grid-template-columns: 180px 1fr;
+    gap: 0; border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; margin-bottom: 10px;
+  }
+  .phase-label {
+    background: var(--surface); padding: 24px 20px;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 8px;
+  }
+  .phase-num {
+    font-size: 11px; color: var(--muted); letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .phase-name {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 14px; font-weight: 700; line-height: 1.3;
+  }
+  .phase-status {
+    font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 2px; border: 1px solid; display: inline-block; margin-top: 4px; width: fit-content;
+  }
+  .phase-body { background: var(--card); padding: 20px 24px; }
+  .phase-events { display: flex; flex-direction: column; gap: 8px; }
+  .pe {
+    display: flex; gap: 12px; align-items: flex-start;
+    font-size: 11.5px; color: var(--muted2); line-height: 1.5;
+  }
+  .pe-icon { flex-shrink: 0; font-size: 14px; margin-top: -1px; }
+  .pe strong { color: var(--text); font-weight: 500; }
+
+  @media (max-width: 600px) {
+    .phase { grid-template-columns: 1fr; }
+    .phase-label { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  /* ─── ROADMAP ─── */
+  .roadmap { display: flex; flex-direction: column; gap: 0; }
+  .rm-phase { display: flex; gap: 20px; }
+  .rm-line { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .rm-dot {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 2px solid; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700;
+    background: var(--card); z-index: 1; flex-shrink: 0;
+  }
+  .rm-connector { width: 2px; flex: 1; min-height: 20px; background: var(--border); margin: 4px 0; }
+  .rm-body { padding-bottom: 36px; flex: 1; padding-top: 6px; }
+  .rm-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .rm-sub { font-size: 11px; color: var(--muted2); margin-bottom: 14px; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .pill {
+    background: var(--surface); border: 1px solid var(--border2);
+    font-size: 10.5px; padding: 4px 12px; border-radius: 3px; color: var(--text);
+  }
+  .pill.hl { background: rgba(74,222,128,0.07); border-color: rgba(74,222,128,0.22); color: var(--g); }
+
+  /* ─── STACK ─── */
+  .stack-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
+  }
+  @media (max-width: 640px) { .stack-grid { grid-template-columns: 1fr; } }
+  .stack-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px;
+  }
+  .stack-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px; font-weight: 700; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot8 { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .tech-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 11.5px;
+  }
+  .tech-row:last-child { border-bottom: none; }
+  .tech-n { color: var(--text); }
+  .tech-w { color: var(--muted2); font-size: 10.5px; text-align: right; max-width: 180px; }
+
+  /* ─── AI GUIDE ─── */
+  .ai-intro {
+    background: linear-gradient(135deg, rgba(74,222,128,0.06), rgba(96,165,250,0.06));
+    border: 1px solid var(--border2); border-radius: 12px;
+    padding: 28px; margin-bottom: 28px;
+  }
+  .ai-intro-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px; font-weight: 700; margin-bottom: 10px;
+  }
+  .ai-intro p { font-size: 12px; color: var(--muted2); line-height: 1.9; }
+  .ai-intro p strong { color: var(--g); }
+
+  .tool-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;
+    margin-bottom: 32px;
+  }
+  .tool-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .tool-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  }
+  .tc1::after { background: var(--g); }
+  .tc2::after { background: var(--b); }
+  .tc3::after { background: var(--o); }
+  .tc4::after { background: var(--p); }
+  .tc5::after { background: var(--y); }
+  .tc6::after { background: var(--c); }
+
+  .tool-logo { font-size: 26px; margin-bottom: 10px; }
+  .tool-name { font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .tool-role { font-size: 10px; color: var(--muted2); margin-bottom: 10px; letter-spacing: 0.08em; }
+  .tool-use { font-size: 11.5px; color: var(--muted2); line-height: 1.7; }
+  .tool-use strong { color: var(--text); font-weight: 500; }
+
+  .workflow { margin-top: 32px; }
+  .wf-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+  .wf-steps { display: flex; flex-direction: column; gap: 0; }
+  .wf-step {
+    display: flex; gap: 20px; align-items: flex-start;
+    padding: 20px 0; border-bottom: 1px solid var(--border);
+  }
+  .wf-step:last-child { border-bottom: none; }
+  .wf-num {
+    width: 36px; height: 36px; border-radius: 6px; flex-shrink: 0;
+    background: var(--surface); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif; font-size: 14px; font-weight: 700;
+    color: var(--g);
+  }
+  .wf-content { flex: 1; }
+  .wf-step-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .wf-step-desc { font-size: 11.5px; color: var(--muted2); line-height: 1.7; }
+  .wf-step-desc strong { color: var(--text); font-weight: 500; }
+  .wf-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .wf-tool {
+    font-size: 10px; padding: 3px 10px; border-radius: 3px;
+    background: var(--surface); border: 1px solid var(--border2); color: var(--muted2);
+    letter-spacing: 0.05em;
+  }
+
+  .prompt-box {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 16px 20px; margin-top: 12px;
+    font-size: 11px; color: var(--muted2); line-height: 1.8;
+    position: relative;
+  }
+  .prompt-box::before {
+    content: '// example prompt';
+    display: block; color: var(--muted); font-size: 10px; margin-bottom: 8px; letter-spacing: 0.1em;
+  }
+  .prompt-box em { color: var(--g); font-style: normal; }
+
+  /* ─── FUTURE SCOPE ─── */
+  .future-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;
+    margin-bottom: 28px;
+  }
+  .fs-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 22px; position: relative; overflow: hidden;
+    opacity: 0.85;
+  }
+  .fs-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--p), transparent);
+  }
+  .fs-label {
+    font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--p); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .fs-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text);
+  }
+  .fs-desc { font-size: 11px; color: var(--muted2); line-height: 1.8; }
+  .fs-desc strong { color: var(--muted2); font-weight: 500; }
+  .fs-tag {
+    display: inline-block; margin-top: 10px;
+    font-size: 9px; padding: 2px 8px; border-radius: 2px;
+    border: 1px solid rgba(192,132,252,0.25); color: var(--p);
+    background: rgba(192,132,252,0.06); letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .fs-section-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; margin: 32px 0 14px;
+    color: var(--p); display: flex; align-items: center; gap: 8px;
+  }
+  .fs-section-title::before { content: '◆'; font-size: 10px; }
+
+  /* ─── CALLOUT ─── */
+  .callout {
+    border-radius: 10px; padding: 18px 22px; margin-bottom: 20px;
+    font-size: 12px; line-height: 1.8; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .callout-g { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.2); color: #a7f3d0; }
+  .callout-b { background: rgba(96,165,250,0.06); border: 1px solid rgba(96,165,250,0.2); color: #bfdbfe; }
+  .callout-o { background: rgba(251,146,60,0.06); border: 1px solid rgba(251,146,60,0.2); color: #fed7aa; }
+  .callout-p { background: rgba(192,132,252,0.06); border: 1px solid rgba(192,132,252,0.2); color: #e9d5ff; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    margin-top: 64px; padding: 28px 0;
+    border-top: 1px solid var(--border);
+    text-align: center; font-size: 10px;
+    color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="eyebrow"><span></span> College Hackathon Scope</div>
+    <h1>hackmate —<br>Built for the<br><em>college hackathon</em></h1>
+    <p class="sub">
+      Features scoped for a <strong>college-level hackathon</strong> — realistic to ship, high-impact on day one.
+      Advanced ideas are parked in <strong>Future Scope</strong> for later phases.
+    </p>
+    <div class="header-meta">
+      <span class="meta-badge mb-g">Participant</span>
+      <span class="meta-badge mb-b">Organiser</span>
+      <span class="meta-badge mb-o">Judge</span>
+      <span class="meta-badge mb-p">Mentor</span>
+      <span class="meta-badge mb-c">QR · Logistics</span>
+      <span class="meta-badge mb-r">Post-Hackathon</span>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <nav class="tab-bar">
+    <div class="tab-inner wrap">
+      <button class="tab active" onclick="show('roles',this)">All Roles</button>
+      <button class="tab" onclick="show('lifecycle',this)">Event Lifecycle</button>
+      <button class="tab" onclick="show('roadmap',this)">Build Roadmap</button>
+      <button class="tab" onclick="show('stack',this)">Tech Stack</button>
+      <button class="tab" onclick="show('ai-guide',this)">Build with AI ✦</button>
+      <button class="tab future" onclick="show('future',this)">Future Scope 🔮</button>
+    </div>
+  </nav>
+
+  <!-- ══════════ ALL ROLES ══════════ -->
+  <div class="section active" id="roles">
+    <div class="sec-title">All Roles — Hackathon Scope</div>
+    <p class="sec-desc">Only features scoped for a college hackathon MVP.
+      <span style="color:var(--g)">Green = Participant</span> ·
+      <span style="color:var(--b)">Blue = Organiser</span> ·
+      <span style="color:var(--o)">Orange = Judge</span> ·
+      <span style="color:var(--p)">Purple = Mentor</span>
+    </p>
+
+    <!-- PARTICIPANT -->
+    <div style="margin-bottom:28px;">
+      <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;color:var(--g);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">
+        ◆ Participant
+      </div>
+      <div class="role-grid">
+
+        <div class="role-block rb-participant">
+          <div class="role-header">
+            <span class="role-icon">🃏</span>
+            <div>
+              <div class="role-name">Talent Profile</div>
+              <span class="role-tag mb-g">Identity</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--g)">→</span> Name, skills, role preference (dev / design / PM)</li>
+            <li><span class="arr" style="color:var(--g)">→</span> GitHub link + brief bio</li>
+            <li><span class="arr" style="color:var(--g)">→</span> "Looking for team" toggle — shows up in public discovery feed</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-participant">
+          <div class="role-header">
+            <span class="role-icon">👥</span>
+            <div>
+              <div class="role-name">Team Formation</div>
+              <span class="role-tag mb-g">Team</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--g)">→</span> Create a team or join via invite code</li>
+            <li><span class="arr" style="color:var(--g)">→</span> View other participants who are looking for a team</li>
+            <li><span class="arr" style="color:var(--g)">→</span> Team lead can accept / reject join requests</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-participant">
+          <div class="role-header">
+            <span class="role-icon">📦</span>
+            <div>
+              <div class="role-name">Final Submission Portal</div>
+              <span class="role-tag mb-g">Submission</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--g)">→</span> Submit GitHub Repo URL + Live Demo URL</li>
+            <li><span class="arr" style="color:var(--g)">→</span> <strong>Project Health Check</strong>: pings both links to verify they're live before deadline</li>
+            <li><span class="arr" style="color:var(--g)">→</span> Upload pitch deck (PDF/PPT) and add tech stack tags</li>
+            <li><span class="arr" style="color:var(--g)">→</span> Draft save + resubmissions allowed until deadline lock</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-participant">
+          <div class="role-header">
+            <span class="role-icon">🙋</span>
+            <div>
+              <div class="role-name">Raise a Hand (Mentor Help)</div>
+              <span class="role-tag mb-g">Support</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--g)">→</span> Tag-specific help requests: #ReactError, #FirebaseIssue, #IdeaBlock</li>
+            <li><span class="arr" style="color:var(--g)">→</span> Request appears in assigned mentor's live Help Queue</li>
+            <li><span class="arr" style="color:var(--g)">→</span> Status: Pending → Mentor On Way → Resolved</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-participant">
+          <div class="role-header">
+            <span class="role-icon">📱</span>
+            <div>
+              <div class="role-name">QR Code + Logistics</div>
+              <span class="role-tag mb-g">On-Ground</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--g)">→</span> Personal QR code in dashboard — volunteer scans for check-in</li>
+            <li><span class="arr" style="color:var(--g)">→</span> Scanned again for "Lunch Redeemed" and "Swag Collected" — prevents abuse</li>
+            <li><span class="arr" style="color:var(--g)">→</span> Attendance state: Registered → Checked In → Submitted</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ORGANISER -->
+    <div style="margin-bottom:28px;">
+      <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;color:var(--b);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">
+        ◆ Organiser
+      </div>
+      <div class="role-grid">
+
+        <div class="role-block rb-organiser">
+          <div class="role-header">
+            <span class="role-icon">🗓️</span>
+            <div>
+              <div class="role-name">Event Setup + Timeline</div>
+              <span class="role-tag mb-b">Setup</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--b)">→</span> Custom event page: banner, logo, tagline, tracks/themes</li>
+            <li><span class="arr" style="color:var(--b)">→</span> Visual event timeline shown to all roles (pre-event + hackathon day)</li>
+            <li><span class="arr" style="color:var(--b)">→</span> Team size limits and eligibility rules (college, year, branch)</li>
+            <li><span class="arr" style="color:var(--b)">→</span> Public / invite-only / college-email-gated visibility</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-organiser">
+          <div class="role-header">
+            <span class="role-icon">👥</span>
+            <div>
+              <div class="role-name">Add Mentors + Judges</div>
+              <span class="role-tag mb-b">People</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--b)">→</span> Invite mentors and judges via email — they get limited-access portal</li>
+            <li><span class="arr" style="color:var(--b)">→</span> Manually assign mentors to teams</li>
+            <li><span class="arr" style="color:var(--b)">→</span> Teams notified of their assigned mentor before hackathon day</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-organiser">
+          <div class="role-header">
+            <span class="role-icon">📡</span>
+            <div>
+              <div class="role-name">Announcement Broadcast</div>
+              <span class="role-tag mb-b">Communications</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--b)">→</span> Push alerts to all participant dashboards (in-app notifications)</li>
+            <li><span class="arr" style="color:var(--b)">→</span> Pinned announcements on event dashboard visible to all roles</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-organiser">
+          <div class="role-header">
+            <span class="role-icon">🔒</span>
+            <div>
+              <div class="role-name">Kill Switch</div>
+              <span class="role-tag mb-b">Control</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--b)">→</span> Lock / unlock submissions globally or per-team</li>
+            <li><span class="arr" style="color:var(--b)">→</span> Extend deadline for specific teams (with audit log)</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-organiser">
+          <div class="role-header">
+            <span class="role-icon">📊</span>
+            <div>
+              <div class="role-name">Basic Dashboard</div>
+              <span class="role-tag mb-b">Analytics</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--b)">→</span> Registration count, team count, submission count</li>
+            <li><span class="arr" style="color:var(--b)">→</span> Live check-in count and meal/swag redemption stats</li>
+            <li><span class="arr" style="color:var(--b)">→</span> CSV export of participants</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- JUDGE -->
+    <div style="margin-bottom:28px;">
+      <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;color:var(--o);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">
+        ◆ Judge
+      </div>
+      <div class="role-grid">
+
+        <div class="role-block rb-judge">
+          <div class="role-header">
+            <span class="role-icon">🖥️</span>
+            <div>
+              <div class="role-name">Split-View Evaluation</div>
+              <span class="role-tag mb-o">Core UI</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--o)">→</span> GitHub + Live Demo links on left, rubric sliders on right</li>
+            <li><span class="arr" style="color:var(--o)">→</span> Judges <strong>must add notes</strong> explaining each score — anti-bias proof</li>
+            <li><span class="arr" style="color:var(--o)">→</span> Notes are printable as a bias-audit document post-event</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-judge">
+          <div class="role-header">
+            <span class="role-icon">🙈</span>
+            <div>
+              <div class="role-name">Blind Folder</div>
+              <span class="role-tag mb-o">Anti-Bias</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--o)">→</span> Anonymised project names — prevents college-name bias</li>
+            <li><span class="arr" style="color:var(--o)">→</span> Organiser toggles blind mode on/off per judging round</li>
+            <li><span class="arr" style="color:var(--o)">→</span> Names revealed only after all scores are locked</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-judge">
+          <div class="role-header">
+            <span class="role-icon">🔏</span>
+            <div>
+              <div class="role-name">Review &amp; Seal (One-Way Submit)</div>
+              <span class="role-tag mb-o">Integrity</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--o)">→</span> "Review &amp; Seal" button — irrevocably locks marks into database</li>
+            <li><span class="arr" style="color:var(--o)">→</span> Confirmation modal: shows final scores + notes before sealing</li>
+            <li><span class="arr" style="color:var(--o)">→</span> Sealed scores are timestamped and immutable — full audit trail</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MENTOR -->
+    <div style="margin-bottom:28px;">
+      <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;color:var(--p);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">
+        ◆ Mentor
+      </div>
+      <div class="role-grid">
+
+        <div class="role-block rb-mentor">
+          <div class="role-header">
+            <span class="role-icon">🎫</span>
+            <div>
+              <div class="role-name">Live Help Queue</div>
+              <span class="role-tag mb-p">Real-time</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--p)">→</span> See all "Raised Hands" from assigned teams in real time</li>
+            <li><span class="arr" style="color:var(--p)">→</span> Filtered by tag: #ReactError, #FirebaseIssue, #DesignHelp</li>
+            <li><span class="arr" style="color:var(--p)">→</span> Accept a request → status changes for team to "Mentor On Way"</li>
+          </ul>
+        </div>
+
+        <div class="role-block rb-mentor">
+          <div class="role-header">
+            <span class="role-icon">👀</span>
+            <div>
+              <div class="role-name">Team Overview</div>
+              <span class="role-tag mb-p">Monitoring</span>
+            </div>
+          </div>
+          <ul class="feat-list">
+            <li><span class="arr" style="color:var(--p)">→</span> Read-only view of all assigned teams' submission status</li>
+            <li><span class="arr" style="color:var(--p)">→</span> See team name, project title, and submission state at a glance</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="callout callout-g">
+      <span class="callout-icon">✅</span>
+      <div><strong>Scope Note:</strong> Sponsor role, XP/badges, ghost slots recommendation engine, AI Idea Validator, and GitHub activity monitoring have been moved to Future Scope. These are high-value but non-essential for a first college hackathon. Build the core loop first — teams, submissions, judging, QR. Ship with this, validate, then layer in more.</div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ LIFECYCLE ══════════ -->
+  <div class="section" id="lifecycle">
+    <div class="sec-title">Event Lifecycle — 3 Phases</div>
+    <p class="sec-desc">What happens from setup to post-event, mapped to hackathon scope.</p>
+
+    <div class="lifecycle">
+
+      <div class="phase">
+        <div class="phase-label">
+          <div class="phase-num">Phase 01</div>
+          <div class="phase-name">Pre-Hackathon Setup</div>
+          <div class="phase-status mb-b">Organiser-led</div>
+        </div>
+        <div class="phase-body">
+          <div class="phase-events">
+            <div class="pe"><span class="pe-icon">🎛️</span><div><strong>Organiser creates the event</strong> — sets title, banner, timeline, tracks, team size limits, eligibility rules, visibility mode.</div></div>
+            <div class="pe"><span class="pe-icon">⚖️</span><div><strong>Organiser configures the rubric</strong> — sets judging criteria with weightings (e.g. Innovation, Technical, Impact, Presentation).</div></div>
+            <div class="pe"><span class="pe-icon">👥</span><div><strong>Organiser invites mentors and judges</strong> via email. They receive portal logins with role-limited access.</div></div>
+            <div class="pe"><span class="pe-icon">📋</span><div><strong>Participants register</strong> — create profile, join or create teams, invite teammates via code.</div></div>
+            <div class="pe"><span class="pe-icon">🔔</span><div><strong>Mentor assignment notification</strong> — participants are informed of their assigned mentor before hackathon day.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-label">
+          <div class="phase-num">Phase 02</div>
+          <div class="phase-name">Hackathon Day (Live)</div>
+          <div class="phase-status mb-g">All roles active</div>
+        </div>
+        <div class="phase-body">
+          <div class="phase-events">
+            <div class="pe"><span class="pe-icon">📱</span><div><strong>QR check-in at venue</strong> — volunteer scans participant QR, marks as "Checked In". Same QR used for lunch and swag redemption.</div></div>
+            <div class="pe"><span class="pe-icon">⏱️</span><div><strong>Live event timeline + countdown timer</strong> visible to all — time-specific milestones shown on the event dashboard.</div></div>
+            <div class="pe"><span class="pe-icon">📡</span><div><strong>Organiser broadcasts updates</strong> — announcements pushed to participant dashboards.</div></div>
+            <div class="pe"><span class="pe-icon">🙋</span><div><strong>Participants raise hands</strong> — tagged help requests appear in mentor's live Help Queue.</div></div>
+            <div class="pe"><span class="pe-icon">🖥️</span><div><strong>Judge rounds begin</strong> — judges use split-view + mandatory notes. Blind folder optionally active.</div></div>
+            <div class="pe"><span class="pe-icon">📦</span><div><strong>Final submission portal</strong> — teams submit GitHub + Live URL. Health Check pings links before deadline. Kill Switch available to organiser.</div></div>
+            <div class="pe"><span class="pe-icon">🔏</span><div><strong>"Review &amp; Seal" locks all marks</strong> — scores are immutable and timestamped. Final leaderboard generated.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-label">
+          <div class="phase-num">Phase 03</div>
+          <div class="phase-name">Post-Hackathon</div>
+          <div class="phase-status mb-r">Wrap-up</div>
+        </div>
+        <div class="phase-body">
+          <div class="phase-events">
+            <div class="pe"><span class="pe-icon">📜</span><div><strong>Digital certificates auto-generated</strong> — downloadable PDFs with participant name, team name, rank (Winner / Runner-Up / Participant). LinkedIn-shareable link.</div></div>
+            <div class="pe"><span class="pe-icon">📝</span><div><strong>Feedback survey</strong> — participants rate mentors, judges, food, and organisation. Data exported for organiser.</div></div>
+            <div class="pe"><span class="pe-icon">🖨️</span><div><strong>Judge bias-audit report</strong> — printable PDF of all judge notes per project. Proof that scoring was justified.</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════ ROADMAP ══════════ -->
+  <div class="section" id="roadmap">
+    <div class="sec-title">Suggested Build Roadmap</div>
+    <p class="sec-desc">Two phases scoped for a hackathon team. Get something live fast and iterate. Advanced features are in Future Scope.</p>
+
+    <div class="roadmap">
+
+      <div class="rm-phase">
+        <div class="rm-line">
+          <div class="rm-dot" style="border-color:var(--g);color:var(--g);">1</div>
+          <div class="rm-connector"></div>
+        </div>
+        <div class="rm-body">
+          <div class="rm-title">MVP — Core Hackathon Loop</div>
+          <div class="rm-sub">⏱ 4–6 weeks · Ship this first</div>
+          <div class="pill-row">
+            <span class="pill hl">User auth + profiles</span>
+            <span class="pill hl">Create hackathon event</span>
+            <span class="pill hl">Register + form team (invite code)</span>
+            <span class="pill hl">Project submission portal</span>
+            <span class="pill hl">Project Health Check (link ping)</span>
+            <span class="pill hl">Basic judge panel + rubric</span>
+            <span class="pill hl">Blind folder + Review &amp; Seal</span>
+            <span class="pill hl">QR check-in + meal/swag tracking</span>
+            <span class="pill hl">Digital certificates (PDF)</span>
+            <span class="pill">Email notifications</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="rm-phase">
+        <div class="rm-line">
+          <div class="rm-dot" style="border-color:var(--b);color:var(--b);">2</div>
+        </div>
+        <div class="rm-body">
+          <div class="rm-title">v2 — Live Operations + Mentor Flow</div>
+          <div class="rm-sub">⏱ 3–4 weeks after MVP</div>
+          <div class="pill-row">
+            <span class="pill hl">Raise a Hand + Live Help Queue</span>
+            <span class="pill hl">Mentor team assignment + overview</span>
+            <span class="pill hl">Announcement broadcast (in-app)</span>
+            <span class="pill hl">Kill Switch (lock/extend deadlines)</span>
+            <span class="pill hl">Basic organiser dashboard (counts + CSV)</span>
+            <span class="pill">Feedback survey post-event</span>
+            <span class="pill">Judge bias-audit PDF export</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="callout callout-p" style="margin-top:24px;">
+      <span class="callout-icon">🔮</span>
+      <div><strong>After v2:</strong> See the <strong>Future Scope</strong> tab for Ghost Slots, Recommendation Engine, Sponsor Portal, XP/Badges, AI Idea Validator, GitHub monitoring, and more. Those are Phase 3+ features — build them once you've validated the core with real users.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ TECH STACK ══════════ -->
+  <div class="section" id="stack">
+    <div class="sec-title">Recommended Tech Stack</div>
+    <p class="sec-desc">Practical choices for a small team building fast. Kept lean for hackathon scope — no overengineering.</p>
+
+    <div class="stack-grid">
+      <div class="stack-card">
+        <div class="stack-title"><span class="dot8" style="background:var(--g)"></span> Frontend</div>
+        <div class="tech-row"><span class="tech-n">Next.js 14 (App Router)</span><span class="tech-w">SSR + routing</span></div>
+        <div class="tech-row"><span class="tech-n">Tailwind CSS</span><span class="tech-w">Fast, consistent styling</span></div>
+        <div class="tech-row"><span class="tech-n">ShadCN UI</span><span class="tech-w">Pre-built accessible components</span></div>
+        <div class="tech-row"><span class="tech-n">React Query</span><span class="tech-w">Server state management</span></div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-title"><span class="dot8" style="background:var(--b)"></span> Backend + DB</div>
+        <div class="tech-row"><span class="tech-n">Supabase</span><span class="tech-w">Postgres + Auth + Realtime + Storage</span></div>
+        <div class="tech-row"><span class="tech-n">Prisma (optional)</span><span class="tech-w">Type-safe ORM if not using Supabase client</span></div>
+        <div class="tech-row"><span class="tech-n">Node.js + Next.js API Routes</span><span class="tech-w">Backend logic co-located</span></div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-title"><span class="dot8" style="background:var(--o)"></span> Auth + Storage + Email</div>
+        <div class="tech-row"><span class="tech-n">Supabase Auth / Clerk</span><span class="tech-w">Google OAuth + college email auth</span></div>
+        <div class="tech-row"><span class="tech-n">Supabase Storage / Cloudflare R2</span><span class="tech-w">Pitch decks, cert PDFs</span></div>
+        <div class="tech-row"><span class="tech-n">Resend</span><span class="tech-w">Transactional emails</span></div>
+        <div class="tech-row"><span class="tech-n">PDFKit</span><span class="tech-w">Certificate generation</span></div>
+        <div class="tech-row"><span class="tech-n">QRCode.js</span><span class="tech-w">Participant QR generation</span></div>
+      </div>
+
+      <div class="stack-card">
+        <div class="stack-title"><span class="dot8" style="background:var(--p)"></span> Infra + Deploy</div>
+        <div class="tech-row"><span class="tech-n">Vercel</span><span class="tech-w">Zero-config Next.js deploy</span></div>
+        <div class="tech-row"><span class="tech-n">Supabase Realtime</span><span class="tech-w">Live help queue (no Socket.io needed for v1)</span></div>
+        <div class="tech-row"><span class="tech-n">Railway (if self-hosting DB)</span><span class="tech-w">Postgres + Node hosting fallback</span></div>
+      </div>
+    </div>
+
+    <div class="callout callout-b" style="margin-top:12px;">
+      <span class="callout-icon">💡</span>
+      <div><strong>Simplification vs original:</strong> Redis, Socket.io, GitHub API, Google Meet API, Discord Webhooks, pgvector, and the AI Idea Validator (Anthropic/OpenAI API) have been deferred to Future Scope. Supabase Realtime handles the help queue for v1 without needing Socket.io. This keeps the stack manageable for a hackathon team.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ AI GUIDE ══════════ -->
+  <div class="section" id="ai-guide">
+    <div class="sec-title">How to Build This with AI ✦</div>
+    <p class="sec-desc">You don't need a team of 10 engineers. Here's exactly which AI tools to use, when to use them, and what prompts to give them.</p>
+
+    <div class="ai-intro">
+      <div class="ai-intro-title">The Core Principle</div>
+      <p>Modern AI tools have made it possible for a solo founder or small 2-person team to build a production-grade platform. The key is knowing <strong>which AI does what</strong>. Think of it like having a team: Claude is your architect + senior developer, Cursor/Copilot is your coding pair-programmer, v0 is your UI designer, and Claude Code is your autonomous devops engineer. <strong>You are the product manager and decision-maker.</strong></p>
+    </div>
+
+    <div class="tool-grid">
+
+      <div class="tool-card tc1">
+        <div class="tool-logo">🤖</div>
+        <div class="tool-name">Claude (claude.ai)</div>
+        <div class="tool-role">Architect · System Designer · Senior Dev</div>
+        <div class="tool-use">Use for <strong>planning, architecture decisions, complex backend logic</strong>, database schema design, API structure, writing full feature specs, and debugging hard problems. Best tool for thinking through tradeoffs. Great for writing Prisma schemas, auth flows, and complex queries.</div>
+      </div>
+
+      <div class="tool-card tc2">
+        <div class="tool-logo">⌨️</div>
+        <div class="tool-name">Claude Code</div>
+        <div class="tool-role">Autonomous Engineer · CLI Agent</div>
+        <div class="tool-use">Use for <strong>running entire features end-to-end</strong> in your codebase. Tell it: "Implement the QR check-in system — create the API route, the DB model, and the participant dashboard QR display." It reads your files, writes code, runs tests, and fixes errors without you copy-pasting.</div>
+      </div>
+
+      <div class="tool-card tc3">
+        <div class="tool-logo">🖱️</div>
+        <div class="tool-name">Cursor / GitHub Copilot</div>
+        <div class="tool-role">Pair Programmer · Daily Coding</div>
+        <div class="tool-use">Your <strong>day-to-day coding environment</strong>. Cursor has full codebase context. Use Cmd+K to edit existing functions inline. Use Composer for multi-file changes. Best for iterative work: "Add validation to this form", "Refactor this to use React Query", "Add error handling here."</div>
+      </div>
+
+      <div class="tool-card tc4">
+        <div class="tool-logo">🎨</div>
+        <div class="tool-name">v0 by Vercel</div>
+        <div class="tool-role">UI Designer · Component Generator</div>
+        <div class="tool-use">Use for <strong>generating UI components from descriptions</strong>. "Build a split-view judge evaluation panel — GitHub/demo iframe on left, rubric sliders on right, notes textarea at bottom." Outputs production-ready Next.js + ShadCN + Tailwind code. Best starting point for every new screen.</div>
+      </div>
+
+      <div class="tool-card tc5">
+        <div class="tool-logo">🗄️</div>
+        <div class="tool-name">Supabase + AI Assist</div>
+        <div class="tool-role">Database · Auth · Real-time</div>
+        <div class="tool-use">Supabase is <strong>Postgres + Auth + Real-time + Storage</strong> in one. Use its built-in AI to generate SQL migrations, RLS policies, and triggers. Their SQL editor has AI autocomplete. Generate your entire schema by describing it in plain English.</div>
+      </div>
+
+      <div class="tool-card tc6">
+        <div class="tool-logo">🚀</div>
+        <div class="tool-name">Lovable / Bolt.new</div>
+        <div class="tool-role">Full-Stack Scaffolding · Fast Prototyping</div>
+        <div class="tool-use">Use at the very start to <strong>generate the entire initial scaffold</strong> from a description. "Build a hackathon platform with participant/organiser roles, team management, and a project submission form." Get 70% of the boilerplate for free in hours, then refine with Cursor + Claude.</div>
+      </div>
+
+    </div>
+
+    <div class="workflow">
+      <div class="wf-title">⚡ Step-by-Step: Build hackmate with AI</div>
+      <div class="wf-steps">
+
+        <div class="wf-step">
+          <div class="wf-num">1</div>
+          <div class="wf-content">
+            <div class="wf-step-title">Design your database schema with Claude</div>
+            <div class="wf-step-desc">Before writing any code, use Claude to design your entire Supabase/Postgres schema. Give it your scoped feature list and ask for a complete ERD. This is the most important step — a good schema prevents rewrites later.</div>
+            <div class="prompt-box">
+              <em>"I'm building a college hackathon platform. Roles: Participant, Organiser, Judge, Mentor. Features: event creation, team formation with invite codes, project submission with GitHub + live URL, Project Health Check, judging with blind folder and mandatory notes, Review &amp; Seal, QR check-in + meal/swag tracking, mentor help queue with tags. Design a complete PostgreSQL schema with all tables, foreign keys, and indexes. Use Prisma schema syntax."</em>
+            </div>
+            <div class="wf-tools"><span class="wf-tool">Claude</span><span class="wf-tool">Prisma / Supabase</span></div>
+          </div>
+        </div>
+
+        <div class="wf-step">
+          <div class="wf-num">2</div>
+          <div class="wf-content">
+            <div class="wf-step-title">Scaffold the full app with Lovable or Bolt.new</div>
+            <div class="wf-step-desc">Use a full-stack AI scaffolder to generate the Next.js project structure, routing, auth setup, and basic CRUD pages. Don't spend time on boilerplate — let AI create it in minutes.</div>
+            <div class="prompt-box">
+              <em>"Build a Next.js 14 app with Supabase auth (Google OAuth + email). Four role types: participant, organiser, judge, mentor. Each role gets a separate dashboard. Include: event creation form, team creation with invite code, project submission form with GitHub URL and live URL fields. Use Tailwind + ShadCN UI. Dark theme."</em>
+            </div>
+            <div class="wf-tools"><span class="wf-tool">Lovable / Bolt.new</span><span class="wf-tool">Next.js</span><span class="wf-tool">Supabase</span></div>
+          </div>
+        </div>
+
+        <div class="wf-step">
+          <div class="wf-num">3</div>
+          <div class="wf-content">
+            <div class="wf-step-title">Build each screen with v0 + wire up with Cursor</div>
+            <div class="wf-step-desc">For each major UI screen, describe it to v0 to get the component, then use Cursor to connect it to your Supabase queries. This is your main development loop.</div>
+            <div class="prompt-box">
+              <em>v0: "Build a judge evaluation panel. Left side: GitHub link and live demo URL display. Right side: 4 rubric criteria (Innovation, Technical, Impact, Presentation) each with a 0–10 slider and a required notes textarea. Bottom: 'Review &amp; Seal' button that shows a confirmation modal. Use ShadCN + Tailwind dark theme."</em>
+            </div>
+            <div class="wf-tools"><span class="wf-tool">v0 by Vercel</span><span class="wf-tool">Cursor</span><span class="wf-tool">ShadCN UI</span></div>
+          </div>
+        </div>
+
+        <div class="wf-step">
+          <div class="wf-num">4</div>
+          <div class="wf-content">
+            <div class="wf-step-title">Implement complex features with Claude Code</div>
+            <div class="wf-step-desc">For features that touch multiple files — like the Project Health Check, QR check-in system, or certificate PDF generator — use Claude Code in your terminal. It reads your codebase and implements end-to-end.</div>
+            <div class="prompt-box">
+              <em>"Implement the Project Health Check feature. When a participant submits their project, the backend should: (1) ping the GitHub repo URL and live demo URL using fetch, (2) if either returns a non-200 status, mark the submission as 'broken-link' in the DB and return an error to the frontend, (3) if both are live, mark as 'verified' and complete the submission. Use our existing Prisma submission model."</em>
+            </div>
+            <div class="wf-tools"><span class="wf-tool">Claude Code</span><span class="wf-tool">Node.js API</span><span class="wf-tool">Prisma</span></div>
+          </div>
+        </div>
+
+        <div class="wf-step">
+          <div class="wf-num">5</div>
+          <div class="wf-content">
+            <div class="wf-step-title">Set up real-time mentor help queue with Supabase Realtime</div>
+            <div class="wf-step-desc">The Help Queue (mentor sees raised hands live) needs real-time updates. Supabase Realtime eliminates the need for Socket.io for v1 — just subscribe to DB table changes.</div>
+            <div class="prompt-box">
+              <em>"Using Supabase Realtime, set up a subscription on the 'help_requests' table filtered by mentor_id. When a new row is inserted (participant raised a hand), update the React state to show it in the mentor's live help queue. Show me the Supabase channel subscription code and the React hook."</em>
+            </div>
+            <div class="wf-tools"><span class="wf-tool">Supabase Realtime</span><span class="wf-tool">React Query</span><span class="wf-tool">Cursor</span></div>
+          </div>
+        </div>
+
+        <div class="wf-step">
+          <div class="wf-num">6</div>
+          <div class="wf-content">
+            <div class="wf-step-title">Generate certificates with PDFKit</div>
+            <div class="wf-step-desc">Auto-generating PDF certificates is a high-value, well-defined task. Ask Claude to write the full certificate generation function and API route.</div>
+            <div class="prompt-box">
+              <em>"Write a Node.js function using PDFKit that generates a hackathon participation certificate. Inputs: participant name, team name, event name, rank (Winner / Runner-Up / Participant), event date. Design it with a dark background, the event logo (passed as URL), participant name in a large decorative font, and a QR code linking to a verification URL. Output as a PDF buffer."</em>
+            </div>
+            <div class="wf-tools"><span class="wf-tool">PDFKit</span><span class="wf-tool">Claude</span><span class="wf-tool">Supabase Storage</span></div>
+          </div>
+        </div>
+
+        <div class="wf-step">
+          <div class="wf-num">7</div>
+          <div class="wf-content">
+            <div class="wf-step-title">Deploy and iterate fast</div>
+            <div class="wf-step-desc">Deploy frontend to Vercel (zero config for Next.js) and DB to Supabase. Use AI for debugging production issues — paste error logs into Claude and get fixes immediately.</div>
+            <div class="wf-step-desc" style="margin-top:8px;">Once live, run your first real hackathon with it. The real feedback from 50 participants will tell you more than 3 months of planning. <strong>Ship fast, iterate with AI, improve with data.</strong></div>
+            <div class="wf-tools"><span class="wf-tool">Vercel</span><span class="wf-tool">Supabase</span><span class="wf-tool">Claude (debugging)</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="callout callout-o" style="margin-top:32px;">
+      <span class="callout-icon">⚡</span>
+      <div><strong>Realistic Timeline with AI:</strong> A 2-person team that knows Next.js can build the MVP in 3–4 weeks using this AI stack. The key is to use Claude for all architecture decisions upfront, so you avoid rewrites. Keep a <code>ARCHITECTURE.md</code> file in your repo that summarises all major design decisions — paste it into every AI session.</div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ FUTURE SCOPE ══════════ -->
+  <div class="section" id="future">
+    <div class="sec-title">Future Scope 🔮</div>
+    <p class="sec-desc">These are all valuable features — just not for the first build. Park them here, validate your MVP first, then come back. Each one is well-defined enough to pick up when the time is right.</p>
+
+    <div class="callout callout-p">
+      <span class="callout-icon">🔮</span>
+      <div><strong>Why Future Scope?</strong> These features are either technically complex, require third-party integrations, or are only valuable at scale. Build the core hackathon loop first — teams, submissions, judging, QR. Once real users validate that, layer these in one at a time.</div>
+    </div>
+
+    <!-- Team Discovery -->
+    <div class="fs-section-title">Team Discovery &amp; Matching</div>
+    <div class="future-grid">
+
+      <div class="fs-card">
+        <div class="fs-label">👻 Team Discovery</div>
+        <div class="fs-title">Ghost Slots + Opportunity Gallery</div>
+        <div class="fs-desc">Teams advertise specific open roles — <strong>"Looking for: 1× UI/UX Designer"</strong> — in a public gallery. Solo participants browse and "Ping" teams directly. WhatsApp contact bridges digital to real life.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+      <div class="fs-card">
+        <div class="fs-label">🧠 AI Matching</div>
+        <div class="fs-title">Recommendation Engine (Perfect Match Feed)</div>
+        <div class="fs-desc">Algorithm ranks teams by compatibility — team has 2 backend devs? Suggests frontend match. v1: tag-based weighted scoring. v2: cosine similarity with pgvector. Prevents ghost requests with mutual-interest counters.</div>
+        <span class="fs-tag">Phase 3 → 4</span>
+      </div>
+
+    </div>
+
+    <!-- Organiser Power Features -->
+    <div class="fs-section-title">Organiser Power Features</div>
+    <div class="future-grid">
+
+      <div class="fs-card">
+        <div class="fs-label">📊 Analytics</div>
+        <div class="fs-title">Command Center (Real-Time Heatmap)</div>
+        <div class="fs-desc">Real-time heatmap of team registrations, skill distributions, registration funnel (signup → team formed → submitted), and college/branch/year breakdowns with CSV export.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+      <div class="fs-card">
+        <div class="fs-label">⚖️ Judging</div>
+        <div class="fs-title">Dynamic Rubric Builder</div>
+        <div class="fs-desc">Drag-and-drop rubric creation with weighted percentages that must sum to 100%. Configure number of judging rounds. Assign projects to judges in blind or open mode. Currently handled with a simpler static rubric config.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+      <div class="fs-card">
+        <div class="fs-label">📡 Communications</div>
+        <div class="fs-title">Scheduled Broadcast + Discord/WhatsApp Integration</div>
+        <div class="fs-desc">Schedule-based auto-announcements (e.g. "1 hour to submission deadline"), integrated Discord channel broadcast, and WhatsApp group notifications. Basic in-app announcements ship in v1 — external integrations come later.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+      <div class="fs-card">
+        <div class="fs-label">🏛️ Multi-College</div>
+        <div class="fs-title">Multi-College Event Umbrella</div>
+        <div class="fs-desc">Support events where multiple colleges collaborate — each college has a local coordinator managing their institution's registrations, while a central organiser sees everything. Common in inter-college fests.</div>
+        <span class="fs-tag">Phase 4</span>
+      </div>
+
+    </div>
+
+    <!-- Judge Features -->
+    <div class="fs-section-title">Judge Power Features</div>
+    <div class="future-grid">
+
+      <div class="fs-card">
+        <div class="fs-label">🎪 Live Round</div>
+        <div class="fs-title">Presentation Queue (Stage View)</div>
+        <div class="fs-desc">Stage View showing which team is presenting now and who's next. Judges prep by viewing earlier round scores. Multiple judging rounds supported with cumulative scoring. Ships after basic judging is validated.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+    </div>
+
+    <!-- Mentor Features -->
+    <div class="fs-section-title">Mentor Power Features</div>
+    <div class="future-grid">
+
+      <div class="fs-card">
+        <div class="fs-label">📊 GitHub Monitoring</div>
+        <div class="fs-title">GitHub Commit Activity Monitor</div>
+        <div class="fs-desc">Mentors see GitHub commit activity for assigned teams. Auto-alert after 6 hours of no commits — mentor can proactively check in before the team realises they're stuck. Requires GitHub API integration and polling.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+      <div class="fs-card">
+        <div class="fs-label">🗓️ Async / Online</div>
+        <div class="fs-title">Office Hours Scheduler</div>
+        <div class="fs-desc">Calendar for mentors to mark available 1-on-1 slots. Teams book 20-min brainstorming sessions. Auto-generates Google Meet link on booking. Primarily relevant for online hackathons.</div>
+        <span class="fs-tag">Phase 4</span>
+      </div>
+
+    </div>
+
+    <!-- Sponsor + Gamification -->
+    <div class="fs-section-title">Sponsor Portal + Gamification</div>
+    <div class="future-grid">
+
+      <div class="fs-card">
+        <div class="fs-label">🏪 Branding</div>
+        <div class="fs-title">Sponsor Booth</div>
+        <div class="fs-desc">Dedicated page with sponsor logo, bio, and sponsor-specific prize tracks (e.g. "Best use of [Their API]"). Sponsor can post workshop announcements visible to all participants.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+      <div class="fs-card">
+        <div class="fs-label">🎯 Recruitment</div>
+        <div class="fs-title">Talent Export for Sponsors</div>
+        <div class="fs-desc">Sponsors browse opted-in participant Talent Profiles, filter by skills/year/college/project, and export to CSV. Direct pings to notify participants of sponsor workshops or opportunities.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+      <div class="fs-card">
+        <div class="fs-label">🏅 Gamification</div>
+        <div class="fs-title">XP + Badges + Public Developer Portfolio</div>
+        <div class="fs-desc">Every hackathon earns XP. Badges for milestones: first hack, team leader, mentor's pick, 3-peat finisher. Participants build a public profile shareable on LinkedIn. Drives long-term platform return rate.</div>
+        <span class="fs-tag">Phase 3</span>
+      </div>
+
+    </div>
+
+    <!-- AI Features -->
+    <div class="fs-section-title">AI-Powered Features</div>
+    <div class="future-grid">
+
+      <div class="fs-card">
+        <div class="fs-label">🤖 AI</div>
+        <div class="fs-title">Idea Validator (Claude/GPT)</div>
+        <div class="fs-desc">When a team submits their idea (before final submission), run it against an LLM — checks originality, feasibility, and gives improvement suggestions. Judges also see the AI report alongside the project. Requires Anthropic/OpenAI API integration.</div>
+        <span class="fs-tag">Phase 4</span>
+      </div>
+
+    </div>
+
+    <!-- Post-Hackathon -->
+    <div class="fs-section-title">Post-Hackathon</div>
+    <div class="future-grid">
+
+      <div class="fs-card">
+        <div class="fs-label">🤝 After the Hack</div>
+        <div class="fs-title">Post-Hackathon Collab Board</div>
+        <div class="fs-desc">After results, teams can mark their project as "open to continue". Other participants or the public can express interest. Turns hackathon prototypes into real ongoing projects. Builds long-term platform stickiness.</div>
+        <span class="fs-tag">Phase 4</span>
+      </div>
+
+      <div class="fs-card">
+        <div class="fs-label">📱 Mobile</div>
+        <div class="fs-title">Mobile App (React Native)</div>
+        <div class="fs-desc">A dedicated mobile app for on-ground hackathon experience — QR scanning, help queue, live timeline, and push notifications. The web app handles mobile use for v1; a native app unlocks better on-ground UX at scale.</div>
+        <span class="fs-tag">Phase 4</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer>hackmate Platform Blueprint — College Hackathon Scope · Future scope preserved for later phases</footer>
+
+</div>
+
+<script>
+  function show(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+</script>
+</body>
+</html>

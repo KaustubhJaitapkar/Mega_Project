@@ -3,222 +3,133 @@
 import { useState, useEffect } from 'react';
 import { Plus, Mail, Trash2, Users, Shuffle } from 'lucide-react';
 
-interface StaffMember {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-interface Props {
-  hackathonId: string;
-}
+interface StaffMember { id: string; name: string; email: string; role: string }
+interface Props { hackathonId: string }
 
 export default function StaffManagement({ hackathonId }: Props) {
   const [judges, setJudges] = useState<StaffMember[]>([]);
   const [mentors, setMentors] = useState<StaffMember[]>([]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'JUDGE' | 'MENTOR'>('JUDGE');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'JUDGE' | 'MENTOR'>('JUDGE');
   const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState('');
 
   const loadStaff = async () => {
     const res = await fetch(`/api/hackathons/${hackathonId}/staff`);
     const data = await res.json();
-    setJudges(data.data.judges || []);
-    setMentors(data.data.mentors || []);
+    setJudges(data.data?.judges || []);
+    setMentors(data.data?.mentors || []);
   };
 
-  useEffect(() => {
-    loadStaff();
-  }, [hackathonId]);
+  useEffect(() => { if (hackathonId) loadStaff(); }, [hackathonId]);
 
-  const handleAddExisting = async () => {
+  const showFeedback = (msg: string, ok: boolean) => { setFeedback(msg); setTimeout(() => setFeedback(''), 3000); };
+
+  async function addStaff() {
+    if (!email.trim()) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/hackathons/${hackathonId}/staff`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, type: role }),
       });
-
-      if (res.ok) {
-        loadStaff();
-        setEmail('');
-      }
-    } catch (error) {
-      console.error('Failed to add existing staff:', error);
-    }
+      const data = await res.json();
+      if (res.ok) { setJudges(data.data.judges || []); setMentors(data.data.mentors || []); setEmail(''); showFeedback(`${role.toLowerCase()} added`, true); }
+      else showFeedback(data.error || 'Failed', false);
+    } catch { showFeedback('Network error', false); }
     setLoading(false);
-  };
+  }
 
-  const handleSendInvite = async () => {
+  async function removeStaff(memberId: string) {
+    const res = await fetch(`/api/hackathons/${hackathonId}/staff?staffId=${memberId}`, { method: 'DELETE' });
+    if (res.ok) loadStaff();
+  }
+
+  async function sendInvite() {
+    if (!inviteEmail.trim()) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/hackathons/${hackathonId}/staff/invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
       });
-
-      if (res.ok) {
-        alert('Invite email sent!');
-        setEmail('');
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to send invite');
-      }
-    } catch (error) {
-      console.error('Failed to send invite:', error);
-    }
+      if (res.ok) { setInviteEmail(''); showFeedback('Invite sent', true); }
+      else { const d = await res.json(); showFeedback(d.error || 'Failed', false); }
+    } catch { showFeedback('Network error', false); }
     setLoading(false);
-  };
+  }
 
-  const handleAutoAssign = async () => {
+  async function autoAssign() {
     setLoading(true);
     try {
       const res = await fetch(`/api/hackathons/${hackathonId}/staff/auto-assign`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        alert(data.message);
-        loadStaff();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Auto-assign failed');
-      }
-    } catch (error) {
-      console.error('Auto-assign failed:', error);
-    }
+      const data = await res.json();
+      showFeedback(res.ok ? data.message || 'Done' : data.error || 'Failed', res.ok);
+    } catch { showFeedback('Failed', false); }
     setLoading(false);
-  };
+  }
+
+  const StaffList = ({ list, type }: { list: StaffMember[]; type: string }) => (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <p className="org-label">{type} ({list.length})</p>
+      </div>
+      {list.length === 0 ? (
+        <p className="org-text" style={{ padding: '0.75rem 0' }}>No {type.toLowerCase()} assigned.</p>
+      ) : list.map((s) => (
+        <div key={s.id} className="org-row">
+          <div>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 500 }}>{s.name}</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{s.email}</span>
+          </div>
+          <button className="org-btn-danger" onClick={() => removeStaff(s.id)} style={{ padding: '0.3rem 0.5rem' }}>
+            <Trash2 style={{ width: 12, height: 12 }} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Staff Management</h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {feedback && <div className={`org-feedback ${feedback.includes('added') || feedback.includes('sent') || feedback.includes('Done') ? 'org-feedback-success' : 'org-feedback-error'}`}>{feedback}</div>}
 
-      {/* Add Staff Form */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {/* Existing User */}
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <h3 className="font-semibold text-gray-900 mb-3">Add Existing User</h3>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="User email"
-              className="input flex-1"
-            />
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'JUDGE' | 'MENTOR')}
-              className="input"
-            >
-              <option value="JUDGE">Judge</option>
-              <option value="MENTOR">Mentor</option>
-            </select>
-            <button
-              onClick={handleAddExisting}
-              disabled={loading || !email}
-              className="btn btn-primary px-4 flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Send Invite */}
-        <div className="p-4 bg-emerald-50 rounded-lg">
-          <h3 className="font-semibold text-gray-900 mb-3">Send Invite Email</h3>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Invite email"
-              className="input flex-1"
-            />
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'JUDGE' | 'MENTOR')}
-              className="input"
-            >
-              <option value="JUDGE">Judge</option>
-              <option value="MENTOR">Mentor</option>
-            </select>
-            <button
-              onClick={handleSendInvite}
-              disabled={loading || !email}
-              className="btn btn-success px-4 flex items-center gap-1"
-            >
-              <Mail className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Add */}
+      <div className="org-section">
+        <p className="org-label" style={{ marginBottom: '0.6rem' }}>Add Staff</p>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <input className="org-input" placeholder="user@email.com" value={email} onChange={(e) => setEmail(e.target.value)} style={{ flex: 1 }} />
+          <select className="org-select" value={role} onChange={(e) => setRole(e.target.value as any)} style={{ width: 120 }}>
+            <option value="JUDGE">Judge</option>
+            <option value="MENTOR">Mentor</option>
+          </select>
+          <button className="org-btn-primary" onClick={addStaff} disabled={loading || !email.trim()}><Plus style={{ width: 14, height: 14 }} />Add</button>
         </div>
       </div>
 
-      {/* Auto-assign Button */}
-      <div className="mb-6">
-        <button
-          onClick={handleAutoAssign}
-          disabled={loading}
-          className="btn btn-accent flex items-center gap-2"
-        >
-          <Shuffle className="w-4 h-4" />
-          Auto-assign Mentors to Teams
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        {/* Judges Section */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Judges ({judges.length})</h3>
-          <div className="space-y-2">
-            {judges.length === 0 ? (
-              <p className="text-sm text-gray-600">No judges added yet</p>
-            ) : (
-              judges.map((judge) => (
-                <div
-                  key={judge.id}
-                  className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{judge.name}</p>
-                    <p className="text-sm text-gray-600">{judge.email}</p>
-                  </div>
-                  <button className="text-red-600 hover:bg-red-50 p-2 rounded">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Mentors Section */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Mentors ({mentors.length})</h3>
-          <div className="space-y-2">
-            {mentors.length === 0 ? (
-              <p className="text-sm text-gray-600">No mentors added yet</p>
-            ) : (
-              mentors.map((mentor) => (
-                <div
-                  key={mentor.id}
-                  className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{mentor.name}</p>
-                    <p className="text-sm text-gray-600">{mentor.email}</p>
-                  </div>
-                  <button className="text-red-600 hover:bg-red-50 p-2 rounded">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
+      {/* Invite */}
+      <div className="org-section">
+        <p className="org-label" style={{ marginBottom: '0.6rem' }}>Invite by Email</p>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <input className="org-input" placeholder="invite@email.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} style={{ flex: 1 }} />
+          <select className="org-select" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)} style={{ width: 120 }}>
+            <option value="JUDGE">Judge</option>
+            <option value="MENTOR">Mentor</option>
+          </select>
+          <button className="org-btn-secondary" onClick={sendInvite} disabled={loading || !inviteEmail.trim()}><Mail style={{ width: 14, height: 14 }} />Invite</button>
         </div>
       </div>
+
+      {/* Auto-assign */}
+      <button className="org-btn-secondary" onClick={autoAssign} disabled={loading} style={{ alignSelf: 'flex-start' }}>
+        <Shuffle style={{ width: 14, height: 14 }} />Auto-Assign Mentors
+      </button>
+
+      {/* Lists */}
+      <StaffList list={judges} type="Judges" />
+      <StaffList list={mentors} type="Mentors" />
     </div>
   );
 }

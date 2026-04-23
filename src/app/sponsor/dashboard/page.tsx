@@ -6,123 +6,141 @@ export default function SponsorDashboardPage() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [skill, setSkill] = useState('');
-  const [college, setCollege] = useState('');
-  const [experience, setExperience] = useState('');
-  const [message, setMessage] = useState({ hackathonId: '', title: '', content: '' });
-  const [prize, setPrize] = useState({ hackathonId: '', userId: '', type: 'BEST_PROJECT', title: '', description: '' });
-  const [branding, setBranding] = useState({ logoUrl: '', tier: 'title' });
   const [notice, setNotice] = useState('');
+  const [activeTab, setActiveTab] = useState<'discover' | 'engage' | 'branding'>('discover');
 
-  async function loadParticipants() {
+  useEffect(() => {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (skill) params.set('skill', skill);
-    if (college) params.set('college', college);
-    if (experience) params.set('experience', experience);
-    const res = await fetch(`/api/sponsor/participants?${params.toString()}`);
-    const data = await res.json();
-    setParticipants(data.data || []);
-  }
+    (async () => {
+      try {
+        const res = await fetch(`/api/sponsor/participants?${params.toString()}`);
+        setParticipants((await res.json()).data || []);
+      } catch { /* silent */ }
+    })();
+  }, [search, skill]);
 
-  useEffect(() => {
-    loadParticipants();
-  }, [search, skill, college, experience]);
+  const showNotice = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(''), 3000); };
 
-  async function sendSponsorMessage() {
+  async function sendSponsorMessage(hackathonId: string, title: string, content: string) {
     const res = await fetch('/api/sponsor/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(message),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hackathonId, title, content }),
     });
-    const data = await res.json();
-    setNotice(res.ok ? 'Opportunity broadcasted' : data.error || 'Failed to send message');
-  }
-
-  async function assignPrize() {
-    const res = await fetch('/api/sponsor/prizes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(prize),
-    });
-    const data = await res.json();
-    setNotice(res.ok ? 'Prize assigned' : data.error || 'Failed to assign prize');
-  }
-
-  async function saveBranding() {
-    const res = await fetch('/api/sponsor/branding', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(branding),
-    });
-    const data = await res.json();
-    setNotice(res.ok ? 'Branding saved' : data.error || 'Failed to save branding');
+    showNotice(res.ok ? 'Broadcast sent' : 'Failed');
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-4xl font-bold text-gray-900">Sponsor Dashboard</h1>
-        <p className="text-gray-600 mt-2">Discover opt-in participants and drive engagement</p>
+    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>Sponsor</p>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Dashboard</h1>
+        <p className="org-text" style={{ marginTop: '0.35rem' }}>Discover opt-in participants and drive engagement.</p>
       </div>
-      {notice && <div className="p-3 rounded bg-indigo-100 text-indigo-700">{notice}</div>}
 
-      <div className="card">
-        <h2 className="text-xl font-semibold mb-3">Participant Discovery (opt-in only)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-          <input className="input" placeholder="Keyword search" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <input className="input" placeholder="Skill match" value={skill} onChange={(e) => setSkill(e.target.value)} />
-          <input className="input" placeholder="College" value={college} onChange={(e) => setCollege(e.target.value)} />
-          <input className="input" placeholder="Experience" value={experience} onChange={(e) => setExperience(e.target.value)} />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {participants.map((p) => (
-            <div key={p.id} className="border rounded p-3">
-              <p className="font-semibold">{p.name}</p>
-              <p className="text-sm text-gray-600">{p.profile?.bio || 'No bio'}</p>
-              <p className="text-sm mt-1">Skills: {(p.profile?.skills || []).join(', ') || 'N/A'}</p>
-              <p className="text-sm">GitHub: {p.githubUsername ? `github.com/${p.githubUsername}` : 'N/A'}</p>
-              <p className="text-sm">College: {p.profile?.company || 'N/A'}</p>
-              <p className="text-sm">Experience: {p.profile?.experience || 'N/A'}</p>
+      {notice && <div className="org-feedback org-feedback-success">{notice}</div>}
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-default)', paddingBottom: '0.75rem' }}>
+        {[
+          { id: 'discover' as const, label: 'Participant Discovery' },
+          { id: 'engage' as const, label: 'Engagement' },
+          { id: 'branding' as const, label: 'Branding' },
+        ].map((t) => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+            border: '1px solid', borderColor: activeTab === t.id ? 'var(--accent)' : 'var(--border-default)',
+            background: activeTab === t.id ? 'var(--accent)' : 'var(--bg-raised)',
+            color: activeTab === t.id ? 'var(--text-inverse)' : 'var(--text-secondary)',
+            borderRadius: 999, padding: '0.4rem 0.85rem', fontFamily: 'var(--font-display)',
+            fontSize: '0.72rem', cursor: 'pointer', fontWeight: activeTab === t.id ? 700 : 400,
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* Discovery Tab */}
+      {activeTab === 'discover' && (
+        <div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <input className="org-input" placeholder="Search participants..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
+            <input className="org-input" placeholder="Filter by skill..." value={skill} onChange={(e) => setSkill(e.target.value)} style={{ maxWidth: 200 }} />
+          </div>
+          {participants.length === 0 ? (
+            <div className="org-empty" style={{ padding: '3rem' }}>No opt-in participants match your filters.</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
+              {participants.map((p) => (
+                <div key={p.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+                  <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{p.name}</p>
+                  <p className="org-text" style={{ marginBottom: '0.5rem' }}>{p.profile?.bio || 'No bio provided'}</p>
+                  {p.profile?.skills?.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' }}>
+                      {p.profile.skills.map((s: string) => <span key={s} className="org-badge org-badge-info">{s}</span>)}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {p.profile?.company && <span>{p.profile.company} &middot; </span>}
+                    {p.githubUsername && <span>github.com/{p.githubUsername}</span>}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-          {participants.length === 0 && <p className="text-sm text-gray-600">No opt-in participants match filters.</p>}
+          )}
         </div>
+      )}
+
+      {/* Engagement Tab */}
+      {activeTab === 'engage' && <EngagementPanel onSend={sendSponsorMessage} />}
+
+      {/* Branding Tab */}
+      {activeTab === 'branding' && <BrandingPanel onSave={showNotice} />}
+    </div>
+  );
+}
+
+function EngagementPanel({ onSend }: { onSend: (hId: string, title: string, content: string) => void }) {
+  const [hId, setHId] = useState('');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  return (
+    <div className="org-section" style={{ maxWidth: 600 }}>
+      <p className="org-label" style={{ marginBottom: '0.75rem' }}>Broadcast Opportunity</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <input className="org-input" placeholder="Hackathon ID" value={hId} onChange={(e) => setHId(e.target.value)} />
+        <input className="org-input" placeholder="Title (e.g. Hiring Challenge)" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <textarea className="org-input" placeholder="Describe the opportunity..." value={content} onChange={(e) => setContent(e.target.value)} style={{ minHeight: 100, resize: 'vertical' as const }} />
+        <button className="org-btn-primary" onClick={() => { onSend(hId, title, content); setHId(''); setTitle(''); setContent(''); }} disabled={!hId || !title || !content}>Send Broadcast</button>
       </div>
+    </div>
+  );
+}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="card space-y-3">
-          <h3 className="font-semibold">Engagement</h3>
-          <input className="input" placeholder="Hackathon ID" value={message.hackathonId} onChange={(e) => setMessage({ ...message, hackathonId: e.target.value })} />
-          <input className="input" placeholder="Title" value={message.title} onChange={(e) => setMessage({ ...message, title: e.target.value })} />
-          <textarea className="input min-h-24" placeholder="Broadcast opportunities" value={message.content} onChange={(e) => setMessage({ ...message, content: e.target.value })} />
-          <button className="btn btn-primary" onClick={sendSponsorMessage}>Send Sponsor Message</button>
+function BrandingPanel({ onSave }: { onSave: (msg: string) => void }) {
+  const [logo, setLogo] = useState('');
+  const [tier, setTier] = useState('title');
+  return (
+    <div className="org-section" style={{ maxWidth: 600 }}>
+      <p className="org-label" style={{ marginBottom: '0.75rem' }}>Branding Settings</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Logo URL</label>
+          <input className="org-input" value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://your-company.com/logo.png" />
         </div>
-
-        <div className="card space-y-3">
-          <h3 className="font-semibold">Prize Management</h3>
-          <input className="input" placeholder="Hackathon ID" value={prize.hackathonId} onChange={(e) => setPrize({ ...prize, hackathonId: e.target.value })} />
-          <input className="input" placeholder="User ID" value={prize.userId} onChange={(e) => setPrize({ ...prize, userId: e.target.value })} />
-          <select className="input" value={prize.type} onChange={(e) => setPrize({ ...prize, type: e.target.value })}>
-            <option value="BEST_PROJECT">best_project</option>
-            <option value="WINNER">winner</option>
-            <option value="RUNNER_UP">runner_up</option>
-            <option value="PARTICIPANT">participant</option>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Sponsorship Tier</label>
+          <select className="org-select" value={tier} onChange={(e) => setTier(e.target.value)}>
+            <option value="title">Title Sponsor</option>
+            <option value="gold">Gold</option>
+            <option value="silver">Silver</option>
           </select>
-          <input className="input" placeholder="Prize Title" value={prize.title} onChange={(e) => setPrize({ ...prize, title: e.target.value })} />
-          <textarea className="input min-h-20" placeholder="Description" value={prize.description} onChange={(e) => setPrize({ ...prize, description: e.target.value })} />
-          <button className="btn btn-primary" onClick={assignPrize}>Create / Assign Prize</button>
         </div>
-
-        <div className="card space-y-3">
-          <h3 className="font-semibold">Branding</h3>
-          <input className="input" placeholder="Logo URL" value={branding.logoUrl} onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value })} />
-          <select className="input" value={branding.tier} onChange={(e) => setBranding({ ...branding, tier: e.target.value })}>
-            <option value="title">title</option>
-            <option value="gold">gold</option>
-            <option value="silver">silver</option>
-          </select>
-          <button className="btn btn-primary" onClick={saveBranding}>Save Branding</button>
-        </div>
+        <button className="org-btn-primary" onClick={async () => {
+          const res = await fetch('/api/sponsor/branding', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logoUrl: logo, tier }),
+          });
+          onSave(res.ok ? 'Branding saved' : 'Save failed');
+        }}>Save Branding</button>
       </div>
     </div>
   );

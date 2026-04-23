@@ -15,17 +15,14 @@ export default async function ParticipantLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
-
-  if (!session) {
-    redirect('/login');
-  }
+  if (!session) redirect('/login');
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar role={session.user?.role as any} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-root)' }}>
+      <Sidebar role={(session.user as any)?.role || 'PARTICIPANT'} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Header />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main style={{ flex: 1, overflow: 'auto' }}>{children}</main>
       </div>
     </div>
   );

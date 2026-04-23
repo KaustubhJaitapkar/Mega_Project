@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { hackathonCreateSchema } from '@/lib/validation';
 import { ZodError } from 'zod';
 
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const publishedWhere = { status: { in: ['REGISTRATION', 'ONGOING', 'ENDED'] } };
+    const publishedWhere = { status: { in: ['REGISTRATION', 'ONGOING', 'ENDED'] as Prisma.EnumHackathonStatusFilter<'Hackathon'>['in'] } };
     const visibilityWhere = organiserId
       ? { OR: [publishedWhere, { organiserId }] }
       : publishedWhere;
@@ -114,9 +115,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validatedData = hackathonCreateSchema.parse(body);
 
+    const { organiserId: _ignore, ...hackathonData } = validatedData as any;
     const hackathon = await prisma.hackathon.create({
       data: {
-        ...validatedData,
+        ...hackathonData,
         sponsorIds: [],
         organiserId: user.id,
       },

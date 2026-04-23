@@ -2,272 +2,254 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 interface Hackathon {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  location?: string;
-  isVirtual: boolean;
-  submissionDeadline: string;
-  registrationDeadline: string;
-  timelines?: Array<{
-    id: string;
-    title: string;
-    startTime: string;
-    endTime: string;
-  }>;
+  id: string; title: string; description: string; status: string;
+  startDate: string; endDate: string; location?: string; isVirtual: boolean;
+  submissionDeadline: string; registrationDeadline: string;
+  timelines?: Array<{ id: string; title: string; startTime: string; endTime: string }>;
 }
 
 export default function ParticipantDashboardPage() {
-  const router = useRouter();
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [activeHackathon, setActiveHackathon] = useState<Hackathon | null>(null);
   const [announcements, setAnnouncements] = useState<Array<{ id: string; title: string; createdAt: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
-  const [registeredHackathonIds, setRegisteredHackathonIds] = useState<string[]>([]);
-  const [unregisteringId, setUnregisteringId] = useState('');
+  const [registeredIds, setRegisteredIds] = useState<string[]>([]);
+  const [qrCode, setQrCode] = useState('');
+  const [qrLoading, setQrLoading] = useState(false);
+  const [myAttendance, setMyAttendance] = useState<{ checkInTime: string | null; breakfastRedeemed: boolean; lunchRedeemed: boolean; swagCollected: boolean } | null>(null);
 
   useEffect(() => {
-    async function fetchHackathons() {
+    (async () => {
       try {
         const res = await fetch('/api/hackathons?limit=50');
-        const data = await res.json();
-        const list = data.data || [];
+        const list = (await res.json()).data || [];
         setHackathons(list);
-        const registrationChecks = await Promise.all(
-          list.map(async (h: Hackathon) => {
-            const r = await fetch(`/api/hackathons/${h.id}/register`);
-            const d = await r.json();
-            return d?.data?.registered ? h.id : null;
-          })
+        const checks = await Promise.all(list.map(async (h: Hackathon) => {
+          const r = await fetch(`/api/hackathons/${h.id}/register`);
+          return (await r.json())?.data?.registered ? h.id : null;
+        }));
+        const ids = checks.filter(Boolean) as string[];
+        setRegisteredIds(ids);
+        const registered = list.filter((h: Hackathon) => ids.includes(h.id));
+        setActiveHackathon(
+          registered.find((h: Hackathon) => h.status === 'ONGOING') ||
+          registered.find((h: Hackathon) => h.status === 'REGISTRATION') || registered[0] || null
         );
-        const registeredIds = registrationChecks.filter(Boolean) as string[];
-        setRegisteredHackathonIds(registeredIds);
-        const registeredList = list.filter((h: Hackathon) => registeredIds.includes(h.id));
-        const active =
-          registeredList.find((h: Hackathon) => h.status === 'ONGOING') ||
-          registeredList.find((h: Hackathon) => h.status === 'REGISTRATION') ||
-          registeredList[0] ||
-          null;
-        setActiveHackathon(active);
-      } catch (error) {
-        console.error('Failed to fetch hackathons:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchHackathons();
+      } catch { /* silent */ }
+      finally { setIsLoading(false); }
+    })();
   }, []);
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
-    async function loadAnnouncements() {
-      if (!activeHackathon) return;
+    if (!activeHackathon) return;
+    (async () => {
       const res = await fetch(`/api/hackathons/${activeHackathon.id}/announcements`);
-      const data = await res.json();
-      setAnnouncements((data.data || []).slice(0, 3));
-    }
-    loadAnnouncements();
+      setAnnouncements(((await res.json()).data || []).slice(0, 3));
+    })();
   }, [activeHackathon]);
 
-  const countdownTarget = activeHackathon
-    ? new Date(
-        activeHackathon.status === 'REGISTRATION'
-          ? activeHackathon.registrationDeadline
-          : activeHackathon.submissionDeadline
-      ).getTime()
-    : 0;
-  const countdownDiff = Math.max(0, countdownTarget - now);
-  const hours = Math.floor(countdownDiff / (1000 * 60 * 60));
-  const mins = Math.floor((countdownDiff % (1000 * 60 * 60)) / (1000 * 60));
-  const secs = Math.floor((countdownDiff % (1000 * 60)) / 1000);
+  useEffect(() => {
+    if (!activeHackathon) return;
+    setQrLoading(true);
+    (async () => {
+      try {
+        const [qrRes, attRes] = await Promise.all([
+          fetch(`/api/user/qr?hackathonId=${activeHackathon.id}`),
+          fetch(`/api/hackathons/${activeHackathon.id}/attendance`),
+        ]);
+        const qrData = await qrRes.json();
+        if (qrData.data?.qrCode) setQrCode(qrData.data.qrCode);
+        const attData = await attRes.json();
+        const profileRes = await fetch('/api/users/profile');
+        const profile = await profileRes.json();
+        const userId = profile.user?.id;
+        const myAtt = (attData.data || []).find((a: any) => a.user?.id === userId);
+        if (myAtt) setMyAttendance(myAtt);
+      } catch { /* silent */ }
+      finally { setQrLoading(false); }
+    })();
+  }, [activeHackathon]);
+
+  const target = activeHackathon ? new Date(activeHackathon.status === 'REGISTRATION' ? activeHackathon.registrationDeadline : activeHackathon.submissionDeadline).getTime() : 0;
+  const diff = Math.max(0, target - now);
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
   const nextEvent = activeHackathon?.timelines?.find((ev) => new Date(ev.startTime).getTime() > now);
 
-  async function unregisterFromHackathon(hackathonId: string) {
-    setUnregisteringId(hackathonId);
-    try {
-      const res = await fetch(`/api/hackathons/${hackathonId}/register`, { method: 'DELETE' });
-      if (res.ok) {
-        setRegisteredHackathonIds((prev) => prev.filter((id) => id !== hackathonId));
-      } else {
-        const d = await res.json();
-        alert(d.error || 'Unregister failed');
-      }
-    } finally {
-      setUnregisteringId('');
-    }
+  if (isLoading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
+      <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+    </div>;
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="text-4xl font-bold text-gray-900">Participant Dashboard</h1>
-          <p className="text-gray-600 mt-2">Discover hackathons and start building with teams</p>
-        </div>
-        <Link href="/participant/profile" className="btn btn-secondary">
-          Complete Profile
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="card">
-          <p className="text-sm text-gray-500">Registered Hackathons</p>
-          <p className="text-3xl font-bold text-gray-900">{registeredHackathonIds.length}</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-500">Current/Next Event</p>
-          <p className="text-lg font-semibold text-gray-900">{nextEvent?.title || 'No upcoming event'}</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-500">Countdown</p>
-          <p className="text-lg font-semibold text-gray-900">
-            {hours}h {mins}m {secs}s
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>
+            Participant
           </p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 2vw, 1.8rem)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Dashboard
+          </h1>
         </div>
-        <div className="card">
-          <p className="text-sm text-gray-500">Navigation</p>
-          <p className="text-lg font-semibold text-gray-900">My Team, Submit, Schedule</p>
-        </div>
+        <Link href="/participant/hackathons" className="org-btn-primary">Explore Events</Link>
       </div>
 
+      {/* Active Hackathon Hero */}
       {activeHackathon && (
-        <div className="card mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">{activeHackathon.title}</h2>
-              <p className="text-gray-600">{activeHackathon.description}</p>
-              <p className="text-sm text-gray-600 mt-2">
-                {activeHackathon.isVirtual ? 'Virtual' : activeHackathon.location || 'Venue TBA'}
-              </p>
+        <div style={{
+          background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-lg)', padding: '1.5rem', marginBottom: '1.25rem',
+          display: 'grid', gridTemplateColumns: '1fr auto', gap: '1.5rem', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+              <span className={`org-badge ${activeHackathon.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-accent'}`}>{activeHackathon.status}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{activeHackathon.isVirtual ? 'Virtual' : activeHackathon.location || 'Venue TBA'}</span>
             </div>
-            <div className="flex gap-2">
-              {registeredHackathonIds.includes(activeHackathon.id) ? (
-                <>
-                  <Link href={`/participant/my-team?hackathonId=${activeHackathon.id}`} className="btn btn-primary">My Team</Link>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => unregisterFromHackathon(activeHackathon.id)}
-                    disabled={unregisteringId === activeHackathon.id}
-                  >
-                    {unregisteringId === activeHackathon.id ? 'Unregistering...' : 'Unregister'}
-                  </button>
-                </>
-              ) : (
-                <Link
-                  href={`/participant/hackathons/${activeHackathon.id}/register`}
-                  className="btn btn-primary"
-                >
-                  Register
-                </Link>
-              )}
-              <Link href="/participant/submit" className="btn btn-secondary">Submit</Link>
-            </div>
-          </div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>{activeHackathon.title}</h2>
+            <p className="org-text" style={{ marginBottom: '1rem', maxWidth: 500 }}>{activeHackathon.description}</p>
 
-          <div className="mt-5">
-            <h3 className="font-semibold mb-2">Timeline</h3>
-            <div className="space-y-2">
-              {(activeHackathon.timelines || []).slice(0, 6).map((ev) => {
-                const isCurrent =
-                  new Date(ev.startTime).getTime() <= now && new Date(ev.endTime).getTime() >= now;
-                const isNext = !isCurrent && nextEvent?.id === ev.id;
-                return (
-                  <div key={ev.id} className={`p-2 rounded border ${isCurrent ? 'bg-green-50 border-green-300' : isNext ? 'bg-yellow-50 border-yellow-300' : ''}`}>
-                    <p className="font-medium">{ev.title}</p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(ev.startTime).toLocaleString()} - {new Date(ev.endTime).toLocaleString()}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <h3 className="font-semibold mb-2">Latest Announcements</h3>
-            <div className="space-y-2">
-              {announcements.map((a) => (
-                <div key={a.id} className="p-2 rounded border">
-                  <p className="font-medium">{a.title}</p>
-                  <p className="text-sm text-gray-600">{new Date(a.createdAt).toLocaleString()}</p>
+            {/* Countdown */}
+            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
+              {[{ v: h, l: 'Hours' }, { v: m, l: 'Min' }, { v: s, l: 'Sec' }].map((t) => (
+                <div key={t.l}>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>{String(t.v).padStart(2, '0')}</p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.55rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t.l}</p>
                 </div>
               ))}
-              {announcements.length === 0 && <p className="text-sm text-gray-600">No announcements yet</p>}
             </div>
+
+            {/* Quick Actions */}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <Link href={`/participant/my-team?hackathonId=${activeHackathon.id}`} className="org-btn-primary">My Team</Link>
+              <Link href="/participant/submit" className="org-btn-secondary">Submit</Link>
+              <Link href="/participant/schedule" className="org-btn-secondary">Schedule</Link>
+            </div>
+          </div>
+
+          {/* QR Code + Attendance Status */}
+          {registeredIds.includes(activeHackathon.id) && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+              {qrLoading ? (
+                <div style={{ width: 120, height: 120, background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 20, height: 20, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+                </div>
+              ) : qrCode ? (
+                <img src={qrCode} alt="Check-in QR" style={{ width: 120, height: 120, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }} />
+              ) : (
+                <div style={{ width: 120, height: 120, background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', padding: '0.5rem' }}>
+                  QR not available
+                </div>
+              )}
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.05em', textAlign: 'center' }}>CHECK-IN QR</p>
+
+              {/* Attendance Status */}
+              {myAttendance && (
+                <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.3rem', marginTop: '0.25rem' }}>
+                  {[
+                    { label: 'Check-in', done: !!myAttendance.checkInTime, color: '#3ecf8e' },
+                    { label: 'Breakfast', done: myAttendance.breakfastRedeemed, color: '#f59e0b' },
+                    { label: 'Lunch', done: myAttendance.lunchRedeemed, color: '#e8a44a' },
+                    { label: 'Swag', done: myAttendance.swagCollected, color: '#818cf8' },
+                  ].map((item) => (
+                    <div key={item.label} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.35rem 0.5rem',
+                      background: item.done ? `${item.color}10` : 'var(--bg-raised)',
+                      border: `1px solid ${item.done ? `${item.color}30` : 'var(--border-subtle)'}`,
+                      borderRadius: 'var(--radius-sm)',
+                    }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: item.done ? item.color : 'var(--text-muted)' }}>
+                        {item.done ? '\u2713' : '\u2014'}
+                      </span>
+                      <span style={{ fontSize: '0.65rem', color: item.done ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 500 }}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Timeline + Announcements */}
+      {activeHackathon && (
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+          {/* Timeline */}
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            <p className="org-label" style={{ marginBottom: '0.75rem' }}>Timeline</p>
+            {(activeHackathon.timelines || []).slice(0, 5).map((ev) => {
+              const isCurrent = new Date(ev.startTime).getTime() <= now && new Date(ev.endTime).getTime() >= now;
+              const isNext = !isCurrent && nextEvent?.id === ev.id;
+              return (
+                <div key={ev.id} style={{
+                  padding: '0.6rem 0.85rem', marginBottom: '0.4rem', borderRadius: 'var(--radius-sm)',
+                  borderLeft: `3px solid ${isCurrent ? '#3ecf8e' : isNext ? 'var(--accent)' : 'var(--border-subtle)'}`,
+                  background: isCurrent ? 'rgba(62,207,142,0.06)' : isNext ? 'var(--accent-dim)' : 'transparent',
+                }}>
+                  <p style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{ev.title}</p>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    {new Date(ev.startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              );
+            })}
+            {(!activeHackathon.timelines || activeHackathon.timelines.length === 0) && (
+              <p className="org-text">No timeline events yet.</p>
+            )}
+          </div>
+
+          {/* Announcements */}
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            <p className="org-label" style={{ marginBottom: '0.75rem' }}>Announcements</p>
+            {announcements.map((a) => (
+              <div key={a.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <p style={{ fontWeight: 500, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{a.title}</p>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{new Date(a.createdAt).toLocaleDateString()}</p>
+              </div>
+            ))}
+            {announcements.length === 0 && <p className="org-text">No announcements yet.</p>}
           </div>
         </div>
       )}
 
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        </div>
-      ) : registeredHackathonIds.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-gray-600 mb-4">You have not registered for any hackathons yet</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {hackathons
-            .filter((hackathon) => registeredHackathonIds.includes(hackathon.id))
-            .map((hackathon) => (
-              <div
-                key={hackathon.id}
-                className="card hover:shadow-lg transition-shadow cursor-pointer"
-                role="button"
-                tabIndex={0}
-                onClick={() => router.push(`/participant/hackathons/${hackathon.id}`)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    router.push(`/participant/hackathons/${hackathon.id}`);
-                  }
-                }}
-              >
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{hackathon.title}</h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{hackathon.description}</p>
-                <div className="space-y-2 text-sm text-gray-600">
-                  <span className="badge badge-primary">{hackathon.status}</span>
-                  <p>
-                    {new Date(hackathon.startDate).toLocaleDateString()} -{' '}
-                    {new Date(hackathon.endDate).toLocaleDateString()}
-                  </p>
-                  <p>{hackathon.isVirtual ? 'Virtual' : `In-person: ${hackathon.location || 'TBA'}`}</p>
+      {/* Registered Hackathons */}
+      <div>
+        <p className="org-label" style={{ marginBottom: '0.75rem' }}>Your Hackathons ({registeredIds.length})</p>
+        {registeredIds.length === 0 ? (
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '2.5rem', textAlign: 'center' }}>
+            <p className="org-text" style={{ marginBottom: '1rem' }}>You have not registered for any hackathons yet.</p>
+            <Link href="/participant/hackathons" className="org-btn-primary">Browse Hackathons</Link>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
+            {hackathons.filter((h) => registeredIds.includes(h.id)).map((h) => (
+              <div key={h.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{h.title}</h3>
+                  <span className={`org-badge ${h.status === 'ONGOING' ? 'org-badge-success' : h.status === 'REGISTRATION' ? 'org-badge-accent' : 'org-badge-muted'}`}>{h.status}</span>
                 </div>
-                <div className="mt-4 flex gap-2">
-                  <Link
-                    href={`/participant/my-team?hackathonId=${hackathon.id}`}
-                    className="btn btn-primary text-sm"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    Create/Join Team
-                  </Link>
-                  <button
-                    className="btn btn-secondary text-sm"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      unregisterFromHackathon(hackathon.id);
-                    }}
-                    disabled={unregisteringId === hackathon.id}
-                  >
-                    {unregisteringId === hackathon.id ? 'Unregistering...' : 'Unregister'}
-                  </button>
+                <p className="org-text" style={{ fontSize: '0.78rem', marginBottom: '0.75rem' }}>
+                  {new Date(h.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(h.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {' '}&middot; {h.isVirtual ? 'Virtual' : h.location || 'TBA'}
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <Link href={`/participant/my-team?hackathonId=${h.id}`} className="org-btn-primary" style={{ fontSize: '0.68rem' }}>Team</Link>
+                  <Link href="/participant/submit" className="org-btn-secondary" style={{ fontSize: '0.68rem' }}>Submit</Link>
                 </div>
               </div>
             ))}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

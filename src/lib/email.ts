@@ -1,5 +1,5 @@
 import nodemailer, { Transporter } from 'nodemailer';
-import { VerificationRequestProps } from 'next-auth/providers/email';
+import { SendVerificationRequestParams } from 'next-auth/providers/email';
 
 let transporter: Transporter | null = null;
 
@@ -22,7 +22,7 @@ function getTransporter(): Transporter {
 export async function sendVerificationEmail({
   url,
   identifier: email,
-}: VerificationRequestProps) {
+}: SendVerificationRequestParams) {
   const transport = getTransporter();
 
   const emailHtml = `

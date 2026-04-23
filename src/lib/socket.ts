@@ -1,5 +1,4 @@
 import { Server as HTTPServer } from 'http';
-import { Socket as ClientSocket } from 'socket.io-client';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 
 export interface ServerToClientEvents {

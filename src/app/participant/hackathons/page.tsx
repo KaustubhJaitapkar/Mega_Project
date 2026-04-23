@@ -4,17 +4,9 @@ import { useEffect, useState } from 'react';
 import HackathonCard from '@/components/HackathonCard';
 
 interface Hackathon {
-  id: string;
-  title: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  location?: string;
-  isVirtual: boolean;
-  _count: {
-    teams: number;
-    submissions: number;
-  };
+  id: string; title: string; description: string;
+  startDate: string; endDate: string; location?: string; isVirtual: boolean;
+  _count: { teams: number; submissions: number };
 }
 
 export default function ExploreHackathonsPage() {
@@ -23,61 +15,41 @@ export default function ExploreHackathonsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    async function fetchHackathons() {
+    (async () => {
       try {
         const res = await fetch('/api/hackathons?limit=100');
-        const data = await res.json();
-        setHackathons(data.data || []);
-      } catch (error) {
-        console.error('Failed to fetch hackathons:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchHackathons();
+        setHackathons((await res.json()).data || []);
+      } catch { /* silent */ }
+      finally { setIsLoading(false); }
+    })();
   }, []);
 
   const filtered = hackathons.filter((h) => {
     if (!search.trim()) return true;
     const term = search.toLowerCase();
-    return (
-      h.title.toLowerCase().includes(term) ||
-      h.description.toLowerCase().includes(term) ||
-      (h.location || '').toLowerCase().includes(term)
-    );
+    return h.title.toLowerCase().includes(term) || h.description.toLowerCase().includes(term) || (h.location || '').toLowerCase().includes(term);
   });
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-start justify-between gap-6">
+    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', gap: '1rem' }}>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Explore Hackathons</h1>
-          <p className="text-gray-600 mt-2">Discover and join upcoming hackathons</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>Discover</p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Hackathons</h1>
+          <p className="org-text" style={{ marginTop: '0.35rem' }}>Find and join upcoming events.</p>
         </div>
-        <div className="w-full max-w-sm">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, location, or keyword"
-            className="input"
-          />
-        </div>
+        <input className="org-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or location..." style={{ maxWidth: 280 }} />
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
+          <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-gray-600">No hackathons found for that search.</p>
-        </div>
+        <div className="org-empty" style={{ padding: '3rem' }}>No hackathons found.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filtered.map((hackathon) => (
-            <HackathonCard key={hackathon.id} hackathon={hackathon} />
-          ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
+          {filtered.map((h) => <HackathonCard key={h.id} hackathon={h} />)}
         </div>
       )}
     </div>

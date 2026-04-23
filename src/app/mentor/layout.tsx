@@ -14,13 +14,12 @@ export default async function MentorLayout({
   if ((session.user as any).role !== 'MENTOR') redirect('/dashboard');
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-root)' }}>
       <Sidebar role={(session.user as any).role} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Header />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main style={{ flex: 1, overflow: 'auto' }}>{children}</main>
       </div>
     </div>
   );
 }
-

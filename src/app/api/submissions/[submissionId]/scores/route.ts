@@ -47,6 +47,7 @@ export async function POST(
     }
 
     // Create or update score
+    const { submissionId: _sid, ...scoreCreate } = validatedData as any;
     const score = await prisma.score.upsert({
       where: {
         submissionId_rubricItemId_judgerId: {
@@ -56,10 +57,10 @@ export async function POST(
         },
       },
       create: {
+        ...scoreCreate,
         submissionId: params.submissionId,
         rubricItemId,
         judgerId: user.id,
-        ...validatedData,
       },
       update: validatedData,
       include: {

@@ -1,23 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function ParticipantSubmitPage() {
   const [teamId, setTeamId] = useState('');
   const [submission, setSubmission] = useState<any>(null);
-  const [form, setForm] = useState({
-    githubUrl: '',
-    liveUrl: '',
-    description: '',
-    technologies: [] as string[],
-  });
+  const [form, setForm] = useState({ githubUrl: '', liveUrl: '', description: '', technologies: [] as string[] });
   const [tech, setTech] = useState('');
-  const [status, setStatus] = useState<'checking' | 'healthy' | 'broken' | 'idle'>('idle');
+  const [status, setStatus] = useState<'idle' | 'checking' | 'healthy' | 'broken'>('idle');
   const [issues, setIssues] = useState<string[]>([]);
   const [deadlinePassed, setDeadlinePassed] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    async function resolveTeam() {
+    (async () => {
       const profile = await fetch('/api/users/profile').then((r) => r.json());
       const userId = profile.user?.id;
       const hacks = await fetch('/api/hackathons?limit=50').then((r) => r.json());
@@ -30,104 +27,119 @@ export default function ParticipantSubmitPage() {
           return;
         }
       }
-    }
-    resolveTeam();
+    })();
   }, []);
 
   useEffect(() => {
     if (!teamId) return;
-    async function load() {
+    (async () => {
       const res = await fetch(`/api/teams/${teamId}/submission`);
       const data = await res.json();
       setSubmission(data.data);
       if (data.data) {
         setForm({
-          githubUrl: data.data.githubUrl || '',
-          liveUrl: data.data.liveUrl || '',
-          description: data.data.description || '',
-          technologies: data.data.technologies || [],
+          githubUrl: data.data.githubUrl || '', liveUrl: data.data.liveUrl || '',
+          description: data.data.description || '', technologies: data.data.technologies || [],
         });
       }
-    }
-    load();
-  }, [teamId]);
-
-  useEffect(() => {
-    if (!teamId) return;
+    })();
     const timer = setInterval(async () => {
       const res = await fetch(`/api/teams/${teamId}/submission`);
-      const data = await res.json();
-      setSubmission(data.data);
-    }, 3000);
+      setSubmission((await res.json()).data);
+    }, 5000);
     return () => clearInterval(timer);
   }, [teamId]);
 
-  function addTech() {
-    if (!tech.trim() || form.technologies.includes(tech.trim())) return;
-    setForm((p) => ({ ...p, technologies: [...p.technologies, tech.trim()] }));
-    setTech('');
-  }
-
   async function saveSubmission() {
     if (!teamId) return;
-    if (form.githubUrl && !/^https:\/\/github\.com\/[^/]+\/[^/]+/.test(form.githubUrl)) {
-      setIssues(['GitHub URL must match repository format']);
-      return;
-    }
-    if (form.description.length < 20) {
-      setIssues(['Description should be at least 20 characters']);
-      return;
-    }
-
-    setStatus('checking');
+    if (form.githubUrl && !/^https:\/\/github\.com\/[^/]+\/[^/]+/.test(form.githubUrl)) { setIssues(['GitHub URL must be a repository link']); return; }
+    if (form.description.length < 20) { setIssues(['Description needs at least 20 characters']); return; }
+    setSaving(true); setStatus('checking');
     const res = await fetch(`/api/teams/${teamId}/submission`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
     });
     const data = await res.json();
-    if (res.ok) {
-      setSubmission(data.data);
-      setIssues(data.issues || []);
-      setStatus(data.healthStatus === 'healthy' ? 'healthy' : 'broken');
-    } else {
-      setIssues([data.error || 'Submission failed']);
-      setStatus('broken');
-    }
+    if (res.ok) { setSubmission(data.data); setIssues(data.issues || []); setStatus(data.healthStatus === 'healthy' ? 'healthy' : 'broken'); }
+    else { setIssues([data.error || 'Failed']); setStatus('broken'); }
+    setSaving(false);
   }
 
   return (
-    <div className="p-8 space-y-5 max-w-4xl">
-      <h1 className="text-3xl font-bold">Submission</h1>
-      {deadlinePassed && <div className="p-3 rounded bg-red-100 text-red-700">Submission deadline passed. Form is disabled.</div>}
-      <div className="card space-y-4">
-        <input className="input" placeholder="GitHub URL" value={form.githubUrl} onChange={(e) => setForm({ ...form, githubUrl: e.target.value })} disabled={deadlinePassed} />
-        <input className="input" placeholder="Live URL" value={form.liveUrl} onChange={(e) => setForm({ ...form, liveUrl: e.target.value })} disabled={deadlinePassed} />
-        <textarea className="input min-h-28" placeholder="Project description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} disabled={deadlinePassed} />
-        <div className="flex gap-2">
-          <input className="input" placeholder="Technology" value={tech} onChange={(e) => setTech(e.target.value)} disabled={deadlinePassed} />
-          <button className="btn btn-secondary" onClick={addTech} disabled={deadlinePassed}>Add</button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {form.technologies.map((t) => (
-            <span key={t} className="badge badge-primary">{t}</span>
-          ))}
-        </div>
-        <button className="btn btn-primary" onClick={saveSubmission} disabled={deadlinePassed || status === 'checking'}>
-          {status === 'checking' ? 'Checking health...' : 'Create / Update Submission'}
-        </button>
+    <div style={{ padding: '1.5rem', maxWidth: 800, margin: '0 auto' }}>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>Project</p>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Submit</h1>
+        <p className="org-text" style={{ marginTop: '0.35rem' }}>Submit your project links and description for judging.</p>
       </div>
 
-      <div className="card">
-        <p className="font-semibold">Status Tracking</p>
-        <p className="text-sm">Health: {status}</p>
-        <p className="text-sm">Submission Status: {submission?.status || 'NOT_SUBMITTED'}</p>
-        {issues.length > 0 && (
-          <ul className="text-sm text-red-600 list-disc pl-5 mt-2">
-            {issues.map((i) => <li key={i}>{i}</li>)}
-          </ul>
-        )}
-      </div>
+      {deadlinePassed && <div className="org-feedback org-feedback-error">Submission deadline has passed. Form is locked.</div>}
+
+      {!teamId ? (
+        <div className="org-empty" style={{ padding: '3rem' }}>Join or create a team first to submit a project.</div>
+      ) : (
+        <>
+          <div className="org-section" style={{ marginBottom: '0.75rem' }}>
+            <p className="org-label" style={{ marginBottom: '0.75rem' }}>Project Details</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>GitHub Repository</label>
+                <input className="org-input" value={form.githubUrl} onChange={(e) => setForm({ ...form, githubUrl: e.target.value })} disabled={deadlinePassed} placeholder="https://github.com/user/repo" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Live Demo URL</label>
+                <input className="org-input" value={form.liveUrl} onChange={(e) => setForm({ ...form, liveUrl: e.target.value })} disabled={deadlinePassed} placeholder="https://your-project.vercel.app" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Description</label>
+                <textarea className="org-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} disabled={deadlinePassed} style={{ minHeight: 100, resize: 'vertical' as const }} placeholder="Describe what your project does and how it works..." />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Technologies</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input className="org-input" value={tech} onChange={(e) => setTech(e.target.value)} disabled={deadlinePassed} placeholder="e.g. React, Python" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (tech.trim() && !form.technologies.includes(tech.trim())) { setForm((p) => ({ ...p, technologies: [...p.technologies, tech.trim()] })); setTech(''); }}}} />
+                  <button type="button" className="org-btn-secondary" disabled={deadlinePassed} onClick={() => { if (tech.trim() && !form.technologies.includes(tech.trim())) { setForm((p) => ({ ...p, technologies: [...p.technologies, tech.trim()] })); setTech(''); }}}>Add</button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.5rem' }}>
+                  {form.technologies.map((t) => (
+                    <span key={t} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                      padding: '0.2rem 0.5rem', background: 'var(--accent-dim)', border: '1px solid rgba(232,164,74,0.2)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--accent)', fontSize: '0.72rem',
+                    }}>
+                      {t}
+                      {!deadlinePassed && <button type="button" onClick={() => setForm((p) => ({ ...p, technologies: p.technologies.filter((x) => x !== t) }))} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}>&times;</button>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button onClick={saveSubmission} disabled={deadlinePassed || saving} className="org-btn-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.65rem' }}>
+              {saving ? 'Checking & saving...' : 'Save Submission'}
+            </button>
+          </div>
+
+          {/* Status */}
+          <div className="org-section">
+            <p className="org-label" style={{ marginBottom: '0.6rem' }}>Status</p>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                {status === 'healthy' ? <CheckCircle style={{ width: 16, height: 16, color: '#3ecf8e' }} /> :
+                 status === 'broken' ? <AlertCircle style={{ width: 16, height: 16, color: '#ef4444' }} /> :
+                 <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--border-default)' }} />}
+                <span style={{ fontSize: '0.82rem', color: status === 'healthy' ? '#3ecf8e' : status === 'broken' ? '#ef4444' : 'var(--text-muted)', fontWeight: 600, textTransform: 'capitalize' }}>{status === 'idle' ? 'Not checked' : status}</span>
+              </div>
+              <span className={`org-badge ${submission?.status === 'SUBMITTED' ? 'org-badge-success' : 'org-badge-muted'}`}>{submission?.status || 'DRAFT'}</span>
+              {submission?.githubUrl && <a href={submission.githubUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'var(--accent)', fontSize: '0.72rem', textDecoration: 'none' }}><ExternalLink style={{ width: 12, height: 12 }} />GitHub</a>}
+              {submission?.liveUrl && <a href={submission.liveUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'var(--accent)', fontSize: '0.72rem', textDecoration: 'none' }}><ExternalLink style={{ width: 12, height: 12 }} />Live</a>}
+            </div>
+            {issues.length > 0 && (
+              <div style={{ marginTop: '0.6rem' }}>
+                {issues.map((i) => <p key={i} style={{ fontSize: '0.78rem', color: '#ef4444', marginBottom: '0.2rem' }}>&#8226; {i}</p>)}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

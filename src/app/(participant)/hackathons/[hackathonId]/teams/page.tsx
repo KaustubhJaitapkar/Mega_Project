@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, redirect } from 'next/navigation';
 import TeamCard from '@/components/TeamCard';
-import { use } from 'react';
 
 interface Team {
   id: string;

@@ -91,10 +91,11 @@ export async function POST(
 
     const announcement = await prisma.announcement.create({
       data: {
-        ...validatedData,
-        hackathonId: params.hackathonId,
-        authorId: user.id,
+        title: validatedData.title,
+        isUrgent: validatedData.isUrgent ?? false,
         content: `[channel:${channel}] ${validatedData.content}`,
+        hackathon: { connect: { id: params.hackathonId } },
+        author: { connect: { id: user.id } },
       },
       include: {
         author: { select: { id: true, name: true, image: true } },

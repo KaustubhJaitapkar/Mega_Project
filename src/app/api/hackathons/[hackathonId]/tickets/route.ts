@@ -66,9 +66,10 @@ export async function POST(
     const body = await req.json();
     const validatedData = ticketCreateSchema.parse(body);
 
+    const { hackathonId: _ignore, ...ticketData } = validatedData as any;
     const ticket = await prisma.helpTicket.create({
       data: {
-        ...validatedData,
+        ...ticketData,
         hackathonId: params.hackathonId,
         creatorId: user.id,
       },

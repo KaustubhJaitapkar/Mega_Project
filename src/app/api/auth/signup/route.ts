@@ -9,25 +9,21 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Validate input
     const validatedData = userSignupSchema.parse(body);
 
-    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: validatedData.email },
     });
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Email already registered' },
-        { status: 400 }
+        { error: 'An account with this email already exists' },
+        { status: 409 }
       );
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(validatedData.password, 12);
 
-    // Create user
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
@@ -42,7 +38,6 @@ export async function POST(req: NextRequest) {
       include: { profile: true },
     });
 
-    // Send welcome email
     try {
       await sendWelcomeEmail(user.email, user.name);
     } catch (emailError) {
@@ -56,6 +51,7 @@ export async function POST(req: NextRequest) {
           id: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
         },
       },
       { status: 201 }
@@ -63,14 +59,14 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', issues: error.errors },
+        { error: error.errors[0]?.message || 'Invalid input' },
         { status: 400 }
       );
     }
 
     console.error('Signup error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Something went wrong. Please try again.' },
       { status: 500 }
     );
   }

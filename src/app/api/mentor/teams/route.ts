@@ -32,7 +32,7 @@ export async function GET() {
     return NextResponse.json({
       data: assignments.map((assignment) => ({
         team: assignment.team,
-        assignedAt: assignment.createdAt
+        assignedAt: assignment.assignedAt
       }))
     });
   } catch (error) {

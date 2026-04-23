@@ -75,7 +75,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role || 'PARTICIPANT';
+        token.role = (user as { role?: string | null })?.role || null;
       }
 
       // Persist role changes made via `useSession().update(...)`
@@ -83,27 +83,58 @@ export const authOptions: NextAuthOptions = {
         token.role = session.role;
       }
 
+      // Re-fetch role from DB on each JWT refresh to stay in sync
+      if (token.id && !user) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true },
+        });
+        if (dbUser) {
+          token.role = dbUser.role;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
+        (session.user as { id: string }).id = token.id as string;
+        (session.user as { role: string | null }).role = (token.role as string | null) || null;
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Allows relative callback URLs
+      // Never redirect to auth pages after login
+      if (url.startsWith('/login') || url.startsWith('/signup') || url.startsWith('/select-role')) {
+        return `${baseUrl}/dashboard`;
+      }
+      // Allow relative callback URLs
       if (url.startsWith('/')) return `${baseUrl}${url}`;
-      // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url;
-      return baseUrl;
+      // Allow callback URLs on the same origin
+      if (new URL(url).origin === baseUrl) return url;
+      return `${baseUrl}/dashboard`;
+    },
+    async signIn({ user, account }) {
+      // For OAuth providers, check if user already exists
+      if (account && account.provider !== 'credentials') {
+        const existingUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { role: true, createdAt: true, updatedAt: true },
+        });
+
+        // If user was just created (createdAt === updatedAt within 2s), they need role selection
+        if (existingUser && !existingUser.role) {
+          // New OAuth user without role - they'll be redirected to select-role
+          return true;
+        }
+      }
+      return true;
     },
   },
   pages: {
     signIn: '/login',
     error: '/login',
-    verifyRequest: '/verify-request',
+    newUser: '/select-role',
   },
   session: {
     strategy: 'jwt',
@@ -116,7 +147,6 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async signIn({ user }) {
-      // Update last login
       await prisma.user.update({
         where: { id: user.id },
         data: { updatedAt: new Date() },

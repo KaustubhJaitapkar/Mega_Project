@@ -166,6 +166,7 @@ model Profile {
   country         String?
   timezone        String?
   isPublic        Boolean   @default(true)
+  isLookingForTeam Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -177,11 +178,14 @@ model Profile {
 model Hackathon {
   id              String              @id @default(cuid())
   title           String
+  tagline         String?
+  description     String              @db.Text
+  shortDescription String
+  bannerUrl       String?
+  logoUrl         String?
 
   staffInvites    StaffInvite[]
   chatMessages    ChatMessage[]
-  description     String              @db.Text
-  shortDescription String
   bannerId        String?
   status          HackathonStatus     @default(DRAFT)
   startDate       DateTime
@@ -195,6 +199,20 @@ model Hackathon {
   prize           String?
   sponsorIds      String[]
   rules           String?             @db.Text
+
+  // Organiser fields
+  contactEmail    String?
+  hostName        String?
+  theme           String?
+  eligibilityDomain String?
+  breakfastProvided Boolean           @default(false)
+  lunchProvided   Boolean             @default(false)
+  dinnerProvided  Boolean             @default(false)
+  swagProvided    Boolean             @default(false)
+  sponsorDetails  Json?               // [{name, logoUrl, tier, website}]
+  judgeDetails    Json?               // [{name, email, company}]
+  mentorDetails   Json?               // [{name, email, expertise}]
+
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
@@ -337,6 +355,7 @@ model Submission {
   status          SubmissionStatus    @default(NOT_SUBMITTED)
   description     String?             @db.Text
   technologies    String[]
+  pitchDeckUrl    String?
   isHealthy       Boolean             @default(false)
   healthCheckAt   DateTime?
   submittedAt     DateTime?
@@ -451,6 +470,9 @@ model Attendance {
   userId          String
   checkInTime     DateTime?
   checkOutTime    DateTime?
+  breakfastRedeemed Boolean @default(false)
+  lunchRedeemed   Boolean   @default(false)
+  swagCollected   Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

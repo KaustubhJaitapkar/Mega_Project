@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 
 interface Submission {
@@ -10,11 +10,7 @@ interface Submission {
   liveUrl?: string;
   description?: string;
   technologies: string[];
-  team: {
-    id: string;
-    name: string;
-    members: Array<any>;
-  };
+  team: { id: string; name: string; members: Array<any> };
   scores: Array<any>;
 }
 
@@ -25,9 +21,12 @@ interface RubricItem {
   weight: number;
 }
 
+type EmbedMode = 'readme' | 'live' | 'none';
+
 export default function JudgingPage() {
   const params = useParams();
   const hackathonId = params.hackathonId as string;
+
   const [teamRows, setTeamRows] = useState<Array<{ id: string; name: string; submissionId: string | null; scored: boolean }>>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [rubricItems, setRubricItems] = useState<RubricItem[]>([]);
@@ -36,10 +35,14 @@ export default function JudgingPage() {
   const [notes, setNotes] = useState('');
   const [seal, setSeal] = useState(false);
   const [blindMode, setBlindMode] = useState(false);
-  const [gitActivity, setGitActivity] = useState<string>('');
+  const [gitActivity, setGitActivity] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [embedMode, setEmbedMode] = useState<EmbedMode>('none');
+  const [iframeError, setIframeError] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -49,35 +52,23 @@ export default function JudgingPage() {
           fetch(`/api/hackathons/${hackathonId}`),
           fetch(`/api/judge/rubric?hackathonId=${hackathonId}`),
         ]);
-
         const teamsData = await teamsRes.json();
         const hackathonData = await hackathonRes.json();
         const rubricData = await rubricRes.json();
-
         const rows = teamsData.data?.teams || [];
         setTeamRows(rows);
         setBlindMode(!!teamsData.data?.blindMode);
         const subMap: Record<string, Submission> = {};
-        const list = hackathonData.data?.submissions || [];
-        list.forEach((s: Submission) => {
-          subMap[s.id] = s;
-        });
+        (hackathonData.data?.submissions || []).forEach((s: Submission) => { subMap[s.id] = s; });
         setSubmissions(subMap);
         setRubricItems(rubricData.data?.items || []);
-
-        if (rows.length > 0) {
-          setSelectedIndex(0);
-        }
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
       } finally {
         setIsLoading(false);
       }
     }
-
-    if (hackathonId) {
-      fetchData();
-    }
+    if (hackathonId) fetchData();
   }, [hackathonId]);
 
   const selectedTeam = teamRows[selectedIndex] || null;
@@ -100,13 +91,15 @@ export default function JudgingPage() {
         const commitDate = data?.[0]?.commit?.author?.date;
         if (commitDate) {
           const hrs = Math.floor((Date.now() - new Date(commitDate).getTime()) / 36e5);
-          setGitActivity(`Last commit ${hrs}h ago${hrs > 72 ? ' - inactivity warning' : ''}`);
+          setGitActivity(`Last commit ${hrs}h ago${hrs > 72 ? ' — inactivity warning' : ''}`);
         }
       } catch {
         setGitActivity('Unable to fetch commit activity');
       }
     }
     loadGitActivity();
+    setEmbedMode('none');
+    setIframeError(false);
   }, [selectedSubmission?.id]);
 
   const weightedTotal = rubricItems.reduce((sum, item) => {
@@ -114,13 +107,27 @@ export default function JudgingPage() {
     return sum + (val / item.maxScore) * item.weight;
   }, 0);
 
+  const allScored = rubricItems.every((item) => scores[item.id] !== undefined && scores[item.id] > 0);
+  const notesValid = notes.trim().length > 0;
+
+  const filteredTeams = useMemo(() => {
+    if (!searchQuery.trim()) return teamRows.map((t, i) => ({ ...t, idx: i }));
+    const q = searchQuery.toLowerCase();
+    return teamRows
+      .map((t, i) => ({ ...t, idx: i }))
+      .filter((t) => t.name.toLowerCase().includes(q) || String(t.idx + 1).includes(q));
+  }, [teamRows, searchQuery]);
+
   async function handleSubmitScores() {
     if (!selectedSubmission || !selectedTeam) return;
     if (rubricItems.some((item) => scores[item.id] === undefined)) {
       setFeedback('All criteria must be scored');
       return;
     }
-
+    if (!notes.trim()) {
+      setFeedback('Notes are required before submitting scores');
+      return;
+    }
     setIsSaving(true);
     try {
       const payload = {
@@ -136,160 +143,372 @@ export default function JudgingPage() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setFeedback(data.error || 'Failed to save scores');
-        return;
-      }
+      if (!res.ok) { setFeedback(data.error || 'Failed to save scores'); return; }
       setFeedback(seal ? 'Scores sealed successfully' : 'Scores saved');
       setTeamRows((prev) => prev.map((t) => (t.id === selectedTeam.id ? { ...t, scored: true } : t)));
+      setShowConfirm(false);
       if (selectedIndex < teamRows.length - 1) setSelectedIndex((i) => i + 1);
-    } catch (error) {
-      console.error('Failed to submit scores:', error);
+    } catch (err) {
+      console.error('Failed to submit scores:', err);
     } finally {
       setIsSaving(false);
     }
   }
 
+  function selectTeam(idx: number) {
+    setSelectedIndex(idx);
+    setScores({});
+    setNotes('');
+    setSeal(false);
+    setShowConfirm(false);
+    setFeedback('');
+    setEmbedMode('none');
+    setIframeError(false);
+  }
+
+  function getEmbedUrl(): string {
+    if (embedMode === 'live' && selectedSubmission?.liveUrl) return selectedSubmission.liveUrl;
+    if (embedMode === 'readme' && selectedSubmission?.githubUrl) {
+      const match = selectedSubmission.githubUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+      if (match) return `https://github.com/${match[1]}/${match[2]}#readme`;
+    }
+    return '';
+  }
+
+  function getStatusDot(team: { scored: boolean; idx: number }) {
+    if (team.scored) return 'judging-dot judging-dot--done';
+    if (team.idx === selectedIndex) return 'judging-dot judging-dot--active';
+    return 'judging-dot judging-dot--pending';
+  }
+
   if (isLoading) {
     return (
-      <div className="p-8 flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-root)' }}>
+        <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
       </div>
     );
   }
 
   return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold text-gray-900 mb-8">Judging Console</h1>
-      {feedback && <div className="mb-4 p-3 bg-indigo-100 text-indigo-700 rounded">{feedback}</div>}
-      <div className="mb-6">
-        <div className="flex justify-between text-sm mb-1">
-          <span>Progress</span>
-          <span>{scoredCount}/{teamRows.length} ({progressPct}%)</span>
+    <div className="judging-shell">
+      {/* ─── TOP BAR ─── */}
+      <div className="judging-topbar">
+        <div>
+          <span className="judging-topbar__label">Judging Console</span>
+          <span className="judging-topbar__mode">
+            {blindMode ? '● Blind Mode' : '○ Open'} — {scoredCount}/{teamRows.length} scored
+          </span>
         </div>
-        <div className="w-full h-2 bg-gray-200 rounded">
-          <div className="h-2 bg-indigo-600 rounded" style={{ width: `${progressPct}%` }} />
+        <div className="judging-topbar__progress">
+          <div className="judging-topbar__bar">
+            <div className="judging-topbar__fill" style={{ width: `${progressPct}%` }} />
+          </div>
+          <span className="judging-topbar__pct">{progressPct}%</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Submissions List */}
-        <div className="col-span-1">
-          <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Submissions</h2>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {teamRows.map((team, idx) => (
-                <button
-                  key={team.id}
-                  onClick={() => setSelectedIndex(idx)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    selectedIndex === idx
-                      ? 'bg-indigo-100 border-indigo-600 border'
-                      : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <p className="font-medium text-gray-900">{team.name}</p>
-                  <p className="text-sm text-gray-600">{team.scored ? 'Scored' : 'Pending'}</p>
-                </button>
-              ))}
-            </div>
+      {feedback && (
+        <div className={`judging-feedback ${feedback.includes('Seal') || feedback.includes('sealed') ? 'judging-feedback--warn' : 'judging-feedback--ok'}`}>
+          {feedback}
+        </div>
+      )}
+
+      {/* ─── THREE-COLUMN LAYOUT ─── */}
+      <div className="judging-layout">
+
+        {/* ═══ COL 1: QUEUE SIDEBAR ═══ */}
+        <div className="judging-queue">
+          <div className="judging-queue__header">
+            <span className="judging-queue__title">Queue</span>
+            <span className="judging-queue__count">{scoredCount}/{teamRows.length}</span>
+          </div>
+          <div className="judging-queue__search-wrap">
+            <svg className="judging-queue__search-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M13 13l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <input
+              className="judging-queue__search"
+              placeholder="Search team or #"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="judging-queue__list">
+            {filteredTeams.map((team) => (
+              <button
+                key={team.id}
+                onClick={() => selectTeam(team.idx)}
+                className={`judging-queue__item ${team.idx === selectedIndex ? 'judging-queue__item--active' : ''}`}
+              >
+                <span className={getStatusDot(team)} />
+                <span className="judging-queue__item-name">
+                  {blindMode ? `Team ${team.idx + 1}` : team.name}
+                </span>
+              </button>
+            ))}
+            {filteredTeams.length === 0 && (
+              <p className="judging-queue__empty">No teams found</p>
+            )}
           </div>
         </div>
 
-        {/* Scoring Panel */}
-        <div className="col-span-2">
+        {/* ═══ COL 2: EVIDENCE PANE ═══ */}
+        <div className="judging-evidence">
           {selectedSubmission ? (
-            <div className="card">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">{selectedTeam?.name}</h2>
+            <>
+              {/* Project Header */}
+              <div className="judging-evidence__header">
+                <div>
+                  <p className="judging-evidence__team-label">
+                    {blindMode ? `Team ${selectedIndex + 1}` : selectedTeam?.name}
+                  </p>
+                  <p className="judging-evidence__tech">
+                    {selectedSubmission.technologies?.join(' · ') || 'No tech stack listed'}
+                  </p>
+                  {selectedSubmission.description && (
+                    <p className="judging-evidence__desc">{selectedSubmission.description}</p>
+                  )}
+                  {gitActivity && (
+                    <span className={`judging-activity-tag ${gitActivity.includes('warning') ? 'judging-activity-tag--warn' : 'judging-activity-tag--ok'}`}>
+                      <span className="judging-activity-tag__dot" />
+                      {gitActivity}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-              {/* Links */}
-              <div className="mb-6 pb-6 border-b">
+              {/* Action Bar */}
+              <div className="judging-evidence__actions">
+                {selectedSubmission.liveUrl && (
+                  <button
+                    className={`judging-action-btn judging-action-btn--live ${embedMode === 'live' ? 'judging-action-btn--active' : ''}`}
+                    onClick={() => {
+                      setEmbedMode(embedMode === 'live' ? 'none' : 'live');
+                      setIframeError(false);
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                    </svg>
+                    {embedMode === 'live' ? 'Hide' : 'Open Live Demo'}
+                  </button>
+                )}
                 {selectedSubmission.githubUrl && (
-                  <div className="mb-2">
-                    <a
-                      href={selectedSubmission.githubUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-indigo-600 hover:text-indigo-700 font-medium"
-                    >
-                      GitHub Repository →
-                    </a>
-                  </div>
+                  <button
+                    className={`judging-action-btn judging-action-btn--gh ${embedMode === 'readme' ? 'judging-action-btn--active' : ''}`}
+                    onClick={() => {
+                      setEmbedMode(embedMode === 'readme' ? 'none' : 'readme');
+                      setIframeError(false);
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    {embedMode === 'readme' ? 'Hide Readme' : 'View Source Code'}
+                  </button>
                 )}
                 {selectedSubmission.liveUrl && (
-                  <div>
-                    <a
-                      href={selectedSubmission.liveUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-indigo-600 hover:text-indigo-700 font-medium"
-                    >
-                      Live Demo →
-                    </a>
-                  </div>
+                  <a href={selectedSubmission.liveUrl} target="_blank" rel="noopener noreferrer" className="judging-action-btn judging-action-btn--ext">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
+                    </svg>
+                    External
+                  </a>
                 )}
-                <p className="text-sm text-gray-600 mt-2">{gitActivity}</p>
               </div>
 
-              {/* Scoring */}
-              <div className="space-y-4 mb-6">
-                <h3 className="font-bold text-gray-900">Score Submission</h3>
-                {rubricItems.map((item) => (
-                  <div key={item.id}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {item.name} (0-{item.maxScore}, weight {item.weight}%)
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max={item.maxScore}
-                      step="1"
-                      value={scores[item.id] ?? 0}
-                      onChange={(e) =>
-                        setScores({
-                          ...scores,
-                          [item.id]: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full"
+              {/* Embedded View */}
+              {embedMode !== 'none' && (
+                <div className="judging-embed">
+                  {iframeError ? (
+                    <div className="judging-embed__error">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                      </svg>
+                      <p>This page can't be embedded (X-Frame-Options blocked).</p>
+                      <a href={getEmbedUrl()} target="_blank" rel="noopener noreferrer" className="judging-embed__open-link">
+                        Open in new tab →
+                      </a>
+                    </div>
+                  ) : (
+                    <iframe
+                      key={embedMode + selectedSubmission.id}
+                      src={getEmbedUrl()}
+                      className="judging-embed__frame"
+                      onError={() => setIframeError(true)}
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                      title={embedMode === 'live' ? 'Live Demo' : 'GitHub Readme'}
                     />
-                    <p className="text-xs text-gray-600">Score: {scores[item.id] ?? 0}</p>
-                  </div>
-                ))}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                  <textarea className="input min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                  )}
                 </div>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={seal} onChange={(e) => setSeal(e.target.checked)} />
-                  Seal scores (irreversible)
-                </label>
-                <p className="text-sm font-semibold">Live weighted total: {weightedTotal.toFixed(2)}</p>
-              </div>
-
-              <div className="flex gap-2">
-                <button onClick={() => setSelectedIndex((i) => Math.max(0, i - 1))} className="btn btn-secondary flex-1" disabled={selectedIndex === 0}>
-                  Previous Team
-                </button>
-                <button
-                  onClick={handleSubmitScores}
-                  disabled={isSaving || rubricItems.length === 0}
-                  className="btn btn-primary flex-1"
-                >
-                  {isSaving ? 'Saving...' : seal ? 'Review & Seal Scores' : 'Save Scores'}
-                </button>
-                <button onClick={() => setSelectedIndex((i) => Math.min(teamRows.length - 1, i + 1))} className="btn btn-secondary flex-1" disabled={selectedIndex === teamRows.length - 1}>
-                  Next Team
-                </button>
-              </div>
-            </div>
+              )}
+            </>
           ) : (
-            <div className="card text-center py-12">
-              <p className="text-gray-600">Select a submission to score</p>
+            <div className="judging-evidence__empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12h6M12 9v6"/>
+              </svg>
+              <p>Select a team from the queue to begin</p>
             </div>
           )}
         </div>
+
+        {/* ═══ COL 3: VERDICT PANE ═══ */}
+        <div className="judging-verdict">
+          <div className="judging-verdict__inner">
+            {selectedSubmission ? (
+              <>
+                <div className="judging-verdict__header">
+                  <span className="judging-verdict__title">Score Submission</span>
+                  <div className="judging-score-total">
+                    <span className="judging-score-total__label">Weighted Total</span>
+                    <span className="judging-score-total__value">{weightedTotal.toFixed(2)}</span>
+                    <span className="judging-score-total__max">/ 100</span>
+                  </div>
+                </div>
+
+                {/* Rubric Sliders */}
+                <div className="judging-rubric">
+                  {rubricItems.map((item) => {
+                    const cur = scores[item.id] ?? 0;
+                    const pct = item.maxScore > 0 ? (cur / item.maxScore) * 100 : 0;
+                    return (
+                      <div key={item.id} className="judging-rubric__card">
+                        <div className="judging-rubric__row">
+                          <div>
+                            <p className="judging-rubric__name">{item.name}</p>
+                            <p className="judging-rubric__weight">Weight: {item.weight}%</p>
+                          </div>
+                          <div className="judging-rubric__score">
+                            <span className="judging-rubric__score-val">{cur}</span>
+                            <span className="judging-rubric__score-max">/{item.maxScore}</span>
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max={item.maxScore}
+                          step="1"
+                          value={cur}
+                          onChange={(e) => setScores({ ...scores, [item.id]: parseFloat(e.target.value) })}
+                          className="judging-slider"
+                          style={{ '--slider-pct': `${pct}%` } as React.CSSProperties}
+                        />
+                        <div className="judging-rubric__minmax">
+                          <span>0</span><span>{item.maxScore}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Notes */}
+                <div className="judging-notes">
+                  <div className="judging-notes__label-row">
+                    <label className="judging-notes__label">Evaluation Notes <span style={{ color: 'var(--error)' }}>*</span></label>
+                    {!notesValid && notes.length === 0 && (
+                      <span className="judging-notes__hint">Required for anti-bias audit</span>
+                    )}
+                  </div>
+                  <textarea
+                    className={`judging-notes__textarea ${notesValid ? '' : 'judging-notes__textarea--error'}`}
+                    placeholder="Explain your scoring rationale…"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="judging-actions">
+                  <button
+                    onClick={() => selectTeam(Math.max(0, selectedIndex - 1))}
+                    disabled={selectedIndex === 0}
+                    className="judging-nav-btn"
+                  >← Prev</button>
+
+                  {!seal ? (
+                    <button
+                      onClick={() => {
+                        if (!allScored) { setFeedback('All criteria must be scored'); return; }
+                        if (!notesValid) { setFeedback('Notes are required before saving'); return; }
+                        handleSubmitScores();
+                      }}
+                      disabled={isSaving || rubricItems.length === 0}
+                      className="judging-save-btn"
+                    >
+                      {isSaving ? 'Saving…' : 'Save Scores'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { if (allScored && notesValid) setShowConfirm(true); }}
+                      disabled={isSaving || !allScored || !notesValid}
+                      className="judging-seal-btn"
+                    >
+                      {isSaving ? 'Sealing…' : 'Review & Seal'}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => selectTeam(Math.min(teamRows.length - 1, selectedIndex + 1))}
+                    disabled={selectedIndex === teamRows.length - 1}
+                    className="judging-nav-btn"
+                  >Next →</button>
+                </div>
+
+                {/* Seal toggle */}
+                <label className="judging-seal-toggle">
+                  <div
+                    onClick={() => setSeal(!seal)}
+                    className={`judging-seal-toggle__track ${seal ? 'judging-seal-toggle__track--on' : ''}`}
+                  >
+                    <div className={`judging-seal-toggle__thumb ${seal ? 'judging-seal-toggle__thumb--on' : ''}`} />
+                  </div>
+                  <span className="judging-seal-toggle__label">
+                    Seal scores after saving <span style={{ color: 'var(--text-muted)' }}>(irreversible)</span>
+                  </span>
+                </label>
+              </>
+            ) : (
+              <div className="judging-verdict__empty">
+                Select a team to score
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* ─── SEAL CONFIRM MODAL ─── */}
+      {showConfirm && selectedSubmission && (
+        <div className="judging-modal-overlay">
+          <div className="judging-modal">
+            <h2 className="judging-modal__title">Confirm & Seal Scores</h2>
+            <p className="judging-modal__sub">This action is irreversible. Scores will be locked permanently.</p>
+            <div className="judging-modal__scores">
+              {rubricItems.map((item) => (
+                <div key={item.id} className="judging-modal__score-row">
+                  <span>{item.name}</span>
+                  <span className="judging-modal__score-val">{scores[item.id] ?? 0}/{item.maxScore}</span>
+                </div>
+              ))}
+              <div className="judging-modal__score-row judging-modal__score-row--total">
+                <span>Weighted Total</span>
+                <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-display)' }}>{weightedTotal.toFixed(2)}</span>
+              </div>
+            </div>
+            <div className="judging-modal__notes">
+              <p className="org-label" style={{ marginBottom: '0.4rem' }}>Notes</p>
+              <p className="judging-modal__notes-text">{notes}</p>
+            </div>
+            <div className="judging-modal__actions">
+              <button onClick={() => setShowConfirm(false)} className="judging-nav-btn" style={{ flex: 1 }}>Cancel</button>
+              <button onClick={handleSubmitScores} disabled={isSaving} className="judging-seal-btn" style={{ flex: 1 }}>
+                {isSaving ? 'Sealing…' : 'Confirm & Seal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

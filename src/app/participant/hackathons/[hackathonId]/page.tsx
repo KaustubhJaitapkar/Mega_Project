@@ -1,396 +1,291 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
 interface Hackathon {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  registrationDeadline: string;
-  submissionDeadline: string;
-  location?: string;
-  isVirtual: boolean;
-  prize?: string;
-  rules?: string;
-  maxTeamSize: number;
-  minTeamSize: number;
-  organiser: {
-    id: string;
-    name: string;
-    email: string;
-    image?: string | null;
-  };
-  timelines: Array<{
-    id: string;
-    title: string;
-    description?: string | null;
-    startTime: string;
-    endTime: string;
-  }>;
-  _count?: {
-    teams: number;
-    submissions: number;
-    attendances: number;
-  };
+  id: string; title: string; tagline?: string; description: string; status: string;
+  startDate: string; endDate: string; registrationDeadline: string; submissionDeadline: string;
+  location?: string; isVirtual: boolean; prize?: string; rules?: string;
+  maxTeamSize: number; minTeamSize: number; theme?: string; hostName?: string; eligibilityDomain?: string;
+  breakfastProvided: boolean; lunchProvided: boolean; dinnerProvided: boolean; swagProvided: boolean;
+  sponsorDetails?: any; judgeDetails?: any;
+  organiser: { id: string; name: string; email: string };
+  timelines: Array<{ id: string; title: string; description?: string | null; startTime: string; endTime: string; type: string }>;
+  _count?: { teams: number; submissions: number; attendances: number };
 }
 
-const TABS = [
-  { id: 'overview', label: 'Stages & Timeline' },
-  { id: 'details', label: 'Details' },
-  { id: 'dates', label: 'Dates & Deadlines' },
-  { id: 'prizes', label: 'Prizes' },
-  { id: 'reviews', label: 'Reviews' },
-  { id: 'faqs', label: 'FAQs & Discussions' },
-];
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString();
-}
-
-function formatDateOnly(value: string) {
-  return new Date(value).toLocaleDateString();
-}
+const TABS = ['Overview', 'Timeline', 'Prizes', 'Rules'] as const;
 
 export default function HackathonDetailPage() {
   const params = useParams();
   const { data: session } = useSession();
+  const router = useRouter();
   const hackathonId = params.hackathonId as string;
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(TABS[0].id);
+  const [activeTab, setActiveTab] = useState<string>('Overview');
   const [isRegistered, setIsRegistered] = useState(false);
   const [unregistering, setUnregistering] = useState(false);
 
   useEffect(() => {
-    async function fetchHackathon() {
+    if (!hackathonId) return;
+    (async () => {
       try {
-        const res = await fetch(`/api/hackathons/${hackathonId}`);
-        const data = await res.json();
-        setHackathon(data.data);
-        const regRes = await fetch(`/api/hackathons/${hackathonId}/register`);
-        const regData = await regRes.json();
-        setIsRegistered(!!regData?.data?.registered);
-      } catch (error) {
-        console.error('Failed to fetch hackathon:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    if (hackathonId) {
-      fetchHackathon();
-    }
+        const [hRes, rRes] = await Promise.all([
+          fetch(`/api/hackathons/${hackathonId}`),
+          fetch(`/api/hackathons/${hackathonId}/register`),
+        ]);
+        setHackathon((await hRes.json()).data);
+        setIsRegistered(!!(await rRes.json())?.data?.registered);
+      } catch { /* silent */ }
+      finally { setIsLoading(false); }
+    })();
   }, [hackathonId]);
 
-  const daysLeft = useMemo(() => {
-    if (!hackathon) return 0;
-    const end = new Date(hackathon.registrationDeadline).getTime();
-    return Math.max(0, Math.ceil((end - Date.now()) / (1000 * 60 * 60 * 24)));
-  }, [hackathon]);
-
-  async function unregisterFromHackathon() {
-    if (!hackathon) return;
+  async function unregister() {
     setUnregistering(true);
     try {
       const res = await fetch(`/api/hackathons/${hackathon.id}/register`, { method: 'DELETE' });
-      if (res.ok) {
-        setIsRegistered(false);
-        setHackathon((prev) =>
-          prev
-            ? {
-                ...prev,
-                _count: {
-                  ...prev._count,
-                  attendances: Math.max(0, (prev._count?.attendances || 0) - 1),
-                },
-              }
-            : prev
-        );
-      } else {
-        const d = await res.json();
-        alert(d.error || 'Unregister failed');
-      }
-    } finally {
-      setUnregistering(false);
-    }
+      if (res.ok) setIsRegistered(false);
+    } finally { setUnregistering(false); }
   }
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
+  if (isLoading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
+    <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+  </div>;
 
-  if (!hackathon) {
-    return (
-      <div className="p-8">
-        <div className="card text-center py-12">
-          <p className="text-gray-600">Hackathon not found</p>
-        </div>
-      </div>
-    );
-  }
+  if (!hackathon) return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Hackathon not found.</div>;
 
-  const teamRange = `${hackathon.minTeamSize} - ${hackathon.maxTeamSize} Members`;
-  const formattedLocation = hackathon.isVirtual ? 'Online' : hackathon.location || 'Venue TBA';
-  const registeredCount = hackathon._count?.attendances ?? 0;
-  const timelineItems = hackathon.timelines || [];
-  const rulesText = (hackathon.rules || '').split('\n').filter(Boolean);
+  const daysLeft = Math.max(0, Math.ceil((new Date(hackathon.registrationDeadline).getTime() - Date.now()) / 86400000));
+  const meals = [hackathon.breakfastProvided && 'Breakfast', hackathon.lunchProvided && 'Lunch', hackathon.dinnerProvided && 'Dinner', hackathon.swagProvided && 'Swag'].filter(Boolean).join(' \u00b7 ') || 'TBA';
+  const sponsors = hackathon.sponsorDetails || [];
+  const rulesLines = (hackathon.rules || '').split('\n').filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="mb-6 rounded-3xl overflow-hidden bg-[radial-gradient(circle_at_top_left,#dbeafe,transparent_45%),radial-gradient(circle_at_bottom_right,#e0f2fe,transparent_45%),linear-gradient(135deg,#0f172a,#1e293b)] text-white">
-          <div className="px-8 py-10">
-            <div className="flex items-center gap-3 text-sm text-slate-200 mb-4">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10">
-                {hackathon.isVirtual ? 'Online' : 'Offline'}
-              </span>
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10">
-                {formatDateOnly(hackathon.startDate)} - {formatDateOnly(hackathon.endDate)}
-              </span>
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-400/20 text-emerald-100">
-                {hackathon.status}
-              </span>
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight mb-2">{hackathon.title}</h1>
-            <p className="text-slate-200 max-w-2xl">{hackathon.description}</p>
-            <div className="mt-6 flex flex-wrap gap-4 text-sm">
-              <div className="px-4 py-2 rounded-2xl bg-white/10">
-                <div className="text-slate-300">Location</div>
-                <div className="font-semibold text-white">{formattedLocation}</div>
+    <div style={{ padding: '1.5rem', maxWidth: 1100, margin: '0 auto' }}>
+      {/* Hero */}
+      <div style={{
+        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-lg)', padding: '2rem', marginBottom: '1.25rem',
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 80% at 0% 100%, var(--accent-dim), transparent)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            <span className={`org-badge ${
+              hackathon.status === 'ONGOING' ? 'org-badge-success' : 
+              hackathon.status === 'REGISTRATION' ? 'org-badge-accent' : 
+              hackathon.status === 'DRAFT' ? 'org-badge-warning' :
+              hackathon.status === 'ENDED' || hackathon.status === 'CANCELLED' ? 'org-badge-muted' :
+              'org-badge-info'
+            }`}>
+              {hackathon.status === 'DRAFT' ? 'COMING SOON' : hackathon.status}
+            </span>
+            {hackathon.theme && <span className="org-badge org-badge-info">{hackathon.theme}</span>}
+            <span className="org-badge org-badge-muted">{hackathon.isVirtual ? 'Virtual' : hackathon.location || 'In-person'}</span>
+          </div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 3vw, 2rem)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: '0.35rem' }}>
+            {hackathon.title}
+          </h1>
+          {hackathon.tagline && <p style={{ fontSize: '1rem', color: 'var(--accent)', marginBottom: '0.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>{hackathon.tagline}</p>}
+          <p className="org-text" style={{ maxWidth: 600, marginBottom: '1rem' }}>{hackathon.description}</p>
+
+          {/* Quick Stats */}
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            {[
+              { label: 'Date', value: `${new Date(hackathon.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} \u2013 ${new Date(hackathon.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` },
+              { label: 'Team Size', value: `${hackathon.minTeamSize}\u2013${hackathon.maxTeamSize}` },
+              { label: 'Prize', value: hackathon.prize || 'TBD' },
+              { label: 'Host', value: hackathon.hostName || hackathon.organiser?.name || 'TBA' },
+              { label: 'Meals', value: meals },
+            ].map((s) => (
+              <div key={s.label}>
+                <p style={{ fontSize: '0.58rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'var(--font-display)' }}>{s.label}</p>
+                <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>{s.value}</p>
               </div>
-              <div className="px-4 py-2 rounded-2xl bg-white/10">
-                <div className="text-slate-300">Team Size</div>
-                <div className="font-semibold text-white">{teamRange}</div>
-              </div>
-              <div className="px-4 py-2 rounded-2xl bg-white/10">
-                <div className="text-slate-300">Prize Pool</div>
-                <div className="font-semibold text-white">{hackathon.prize || 'TBD'}</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
-          <div>
-            <div className="sticky top-0 z-10 bg-slate-50 pt-2 pb-3 border-b border-slate-200">
-              <div className="flex flex-wrap gap-4">
-                {TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`text-sm font-medium pb-2 border-b-2 transition ${
-                      activeTab === tab.id
-                        ? 'border-blue-600 text-blue-700'
-                        : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1rem' }}>
+        {/* Left: Tabs */}
+        <div>
+          {/* Tab Bar */}
+          <div style={{ display: 'flex', gap: '0.35rem', borderBottom: '1px solid var(--border-default)', paddingBottom: '0.6rem', marginBottom: '1rem' }}>
+            {TABS.map((tab) => (
+              <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                padding: '0.3rem 0.7rem', borderRadius: 999, border: '1px solid',
+                borderColor: activeTab === tab ? 'var(--accent)' : 'var(--border-default)',
+                background: activeTab === tab ? 'var(--accent)' : 'var(--bg-raised)',
+                color: activeTab === tab ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                fontFamily: 'var(--font-display)', fontSize: '0.65rem', cursor: 'pointer',
+                fontWeight: activeTab === tab ? 700 : 400,
+              }}>{tab}</button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'Overview' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {/* Sponsors */}
+              {sponsors.length > 0 && (
+                <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+                  <p className="org-label" style={{ marginBottom: '0.75rem' }}>Sponsors</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    {sponsors.map((s: any, i: number) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                        {s.logoUrl && <img src={s.logoUrl} alt={s.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'contain' }} />}
+                        <div>
+                          <p style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</p>
+                          {s.tier && <span className="org-badge org-badge-muted" style={{ fontSize: '0.5rem' }}>{s.tier}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem' }}>
+                {[
+                  { label: 'Teams Registered', value: hackathon._count?.teams || 0, color: '#818cf8' },
+                  { label: 'Submissions', value: hackathon._count?.submissions || 0, color: '#3ecf8e' },
+                  { label: 'Checked In', value: hackathon._count?.attendances || 0, color: 'var(--accent)' },
+                ].map((s) => (
+                  <div key={s.label} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: `3px solid ${s.color}`, borderRadius: 'var(--radius-lg)', padding: '0.85rem' }}>
+                    <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.58rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{s.label}</p>
+                    <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 700, color: s.color }}>{s.value}</p>
+                  </div>
                 ))}
               </div>
             </div>
+          )}
 
-            {activeTab === 'overview' && (
-              <div className="mt-6 space-y-6">
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-                  <h2 className="text-2xl font-semibold text-slate-900 mb-4">Stages and Timeline</h2>
-                  {timelineItems.length === 0 ? (
-                    <p className="text-slate-500">Timeline will be announced soon.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {timelineItems.map((item) => (
-                        <div key={item.id} className="flex gap-4 items-start">
-                          <div className="w-16 text-center">
-                            <div className="text-lg font-bold text-blue-600">
-                              {new Date(item.startTime).getDate()}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {new Date(item.startTime).toLocaleString('default', { month: 'short' })}
-                            </div>
-                          </div>
-                          <div className="flex-1 border border-slate-200 rounded-2xl p-4">
-                            <div className="font-semibold text-slate-900">{item.title}</div>
-                            <div className="text-sm text-slate-500 mt-1">
-                              {formatDate(item.startTime)} - {formatDate(item.endTime)}
-                            </div>
-                            {item.description && (
-                              <p className="text-sm text-slate-600 mt-2">{item.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+          {activeTab === 'Timeline' && (
+            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+              {(hackathon.timelines || []).length === 0 ? (
+                <p className="org-text">Timeline will be announced soon.</p>
+              ) : hackathon.timelines.map((ev) => (
+                <div key={ev.id} style={{
+                  display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', paddingBottom: '0.75rem',
+                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                }}>
+                  <div style={{ width: 50, textAlign: 'center', flexShrink: 0 }}>
+                    <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>{new Date(ev.startTime).getDate()}</p>
+                    <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{new Date(ev.startTime).toLocaleString('default', { month: 'short' })}</p>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{ev.title}</p>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {new Date(ev.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} \u2013 {new Date(ev.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    {ev.description && <p className="org-text" style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}>{ev.description}</p>}
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
+          )}
 
-            {activeTab === 'details' && (
-              <div className="mt-6 space-y-6">
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-                  <h2 className="text-2xl font-semibold text-slate-900 mb-3">All that you need to know</h2>
-                  <p className="text-slate-600 mb-4">Organised by {hackathon.organiser.name}</p>
-                  <div className="space-y-3 text-slate-700">
-                    {rulesText.length > 0 ? (
-                      rulesText.map((line, idx) => (
-                        <p key={`${line}-${idx}`} className="leading-relaxed">{line}</p>
-                      ))
-                    ) : (
-                      <p className="leading-relaxed">More details will be shared by the organisers soon.</p>
+          {activeTab === 'Prizes' && (
+            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <div>
+                  <p className="org-label">Total Prize Pool</p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent)' }}>{hackathon.prize || 'TBD'}</p>
+                </div>
+                <span className="org-badge org-badge-success">Certificate</span>
+              </div>
+              <p className="org-text">All qualifying teams receive digital certificates.</p>
+            </div>
+          )}
+
+          {activeTab === 'Rules' && (
+            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+              <p className="org-label" style={{ marginBottom: '0.75rem' }}>Rules & Guidelines</p>
+              {rulesLines.length > 0 ? rulesLines.map((line, i) => (
+                <p key={i} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '0.4rem' }}>{line}</p>
+              )) : <p className="org-text">Rules will be shared by the organisers soon.</p>}
+            </div>
+          )}
+        </div>
+
+        {/* Right Sidebar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {/* Registration Card */}
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            {hackathon.status === 'DRAFT' ? (
+              <div style={{ textAlign: 'center' }}>
+                <span className="org-badge org-badge-warning" style={{ marginBottom: '0.75rem', display: 'inline-block' }}>Preview Mode</span>
+                <p className="org-text" style={{ fontSize: '0.82rem', marginBottom: '0.75rem' }}>Registration not yet open</p>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Check back when the hackathon is published</p>
+              </div>
+            ) : hackathon.status === 'CANCELLED' ? (
+              <div style={{ textAlign: 'center' }}>
+                <span className="org-badge org-badge-muted" style={{ marginBottom: '0.75rem', display: 'inline-block' }}>Cancelled</span>
+                <p className="org-text" style={{ fontSize: '0.82rem' }}>This hackathon has been cancelled</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span className={`org-badge ${
+                    hackathon.status === 'ONGOING' ? 'org-badge-success' :
+                    hackathon.status === 'REGISTRATION' ? 'org-badge-accent' :
+                    'org-badge-muted'
+                  }`}>
+                    {hackathon.status === 'REGISTRATION' ? `${daysLeft} Days Left` : hackathon.status}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{hackathon._count?.teams || 0} teams</span>
+                </div>
+
+                {isRegistered ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <Link href={`/participant/my-team?hackathonId=${hackathon.id}`} className="org-btn-primary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>My Team</Link>
+                    {hackathon.status === 'REGISTRATION' && (
+                      <Link href={`/participant/hackathons/${hackathon.id}/register`} className="org-btn-secondary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>Update Registration</Link>
+                    )}
+                    {hackathon.status === 'REGISTRATION' && (
+                      <button onClick={unregister} className="org-btn-danger" style={{ width: '100%', justifyContent: 'center' }} disabled={unregistering}>
+                        {unregistering ? '...' : 'Unregister'}
+                      </button>
                     )}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'dates' && (
-              <div className="mt-6 space-y-6">
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-                  <h2 className="text-2xl font-semibold text-slate-900 mb-4">Important dates & deadlines</h2>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4 border border-slate-200 rounded-2xl p-4">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 font-semibold flex items-center justify-center">
-                        {new Date(hackathon.registrationDeadline).getDate()}
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-500">Registration Deadline</div>
-                        <div className="font-semibold text-slate-900">{formatDate(hackathon.registrationDeadline)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 border border-slate-200 rounded-2xl p-4">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 font-semibold flex items-center justify-center">
-                        {new Date(hackathon.startDate).getDate()}
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-500">Hackathon Starts</div>
-                        <div className="font-semibold text-slate-900">{formatDate(hackathon.startDate)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 border border-slate-200 rounded-2xl p-4">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 font-semibold flex items-center justify-center">
-                        {new Date(hackathon.submissionDeadline).getDate()}
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-500">Submission Deadline</div>
-                        <div className="font-semibold text-slate-900">{formatDate(hackathon.submissionDeadline)}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'prizes' && (
-              <div className="mt-6 space-y-6">
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-                  <h2 className="text-2xl font-semibold text-slate-900 mb-4">Rewards and Prizes</h2>
-                  <div className="space-y-4">
-                    <div className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
-                      <div>
-                        <div className="text-sm text-slate-500">Total Prize Pool</div>
-                        <div className="text-2xl font-bold text-slate-900">{hackathon.prize || 'To be announced'}</div>
-                      </div>
-                      <div className="px-4 py-2 rounded-full bg-emerald-50 text-emerald-700 text-sm font-semibold">Certificate</div>
-                    </div>
-                    <div className="border border-slate-200 rounded-2xl p-4">
-                      <div className="font-semibold text-slate-900">Participation Certificates</div>
-                      <p className="text-sm text-slate-600 mt-1">All qualifying teams receive digital certificates.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'reviews' && (
-              <div className="mt-6 space-y-6">
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-                  <h2 className="text-2xl font-semibold text-slate-900 mb-4">Reviews</h2>
-                  <p className="text-slate-600">Reviews will appear here once participants share feedback.</p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'faqs' && (
-              <div className="mt-6 space-y-6">
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-                  <h2 className="text-2xl font-semibold text-slate-900 mb-4">FAQs & Discussions</h2>
-                  <p className="text-slate-600">Have questions? Start a discussion once registration opens.</p>
-                </div>
-              </div>
+                ) : hackathon.status === 'REGISTRATION' ? (
+                  <Link href={`/participant/hackathons/${hackathon.id}/register`} className="org-btn-primary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>
+                    Register Now
+                  </Link>
+                ) : hackathon.status === 'ONGOING' ? (
+                  <p className="org-text" style={{ textAlign: 'center', fontSize: '0.82rem' }}>Registration is closed</p>
+                ) : hackathon.status === 'ENDED' ? (
+                  <p className="org-text" style={{ textAlign: 'center', fontSize: '0.82rem' }}>This hackathon has ended</p>
+                ) : null}
+              </>
             )}
           </div>
 
-          <div className="space-y-4">
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
-              <div className="inline-flex items-center gap-2 text-xs font-semibold text-white bg-slate-900 px-3 py-1 rounded-full">
-                {daysLeft} Days Left
+          {/* Key Dates */}
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            <p className="org-label" style={{ marginBottom: '0.6rem' }}>Key Dates</p>
+            {[
+              { label: 'Registration Closes', date: hackathon.registrationDeadline },
+              { label: 'Event Starts', date: hackathon.startDate },
+              { label: 'Submission Deadline', date: hackathon.submissionDeadline },
+              { label: 'Event Ends', date: hackathon.endDate },
+            ].map((d) => (
+              <div key={d.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{d.label}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)' }}>{new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
               </div>
-              <div className="mt-4 border border-emerald-200 rounded-2xl p-4 bg-emerald-50">
-                <div className="text-sm text-emerald-700 font-semibold">You&apos;re eligible</div>
-                <div className="flex items-center gap-3 mt-2">
-                  <div className="w-10 h-10 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center font-semibold">
-                    {(session?.user?.name || 'U').charAt(0)}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">{session?.user?.name || 'Participant'}</div>
-                    <div className="text-xs text-slate-500">{session?.user?.email || 'Sign in to continue'}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4">
-                {isRegistered ? (
-                  <div className="space-y-2">
-                    <Link
-                      href={`/participant/my-team?hackathonId=${hackathon.id}`}
-                      className="btn btn-primary w-full"
-                    >
-                      Go to My Team
-                    </Link>
-                    <Link
-                      href={`/participant/hackathons/${hackathon.id}/register`}
-                      className="btn btn-secondary w-full"
-                    >
-                      Update Details
-                    </Link>
-                    <button
-                      onClick={unregisterFromHackathon}
-                      className="btn btn-secondary w-full"
-                      disabled={unregistering}
-                    >
-                      {unregistering ? 'Unregistering...' : 'Unregister'}
-                    </button>
-                  </div>
-                ) : (
-                  <Link
-                    href={`/participant/hackathons/${hackathon.id}/register`}
-                    className="btn btn-primary w-full"
-                  >
-                    Register
-                  </Link>
-                )}
-                <div className="text-xs text-slate-500 mt-3 text-center">
-                  {registeredCount} Registered
-                </div>
-              </div>
-            </div>
+            ))}
+          </div>
 
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-4">
-              <div className="font-semibold text-slate-900 mb-2">Featured</div>
-              <div className="space-y-3">
-                <div className="border border-slate-100 rounded-2xl p-3 text-sm text-slate-600">New challenges will appear here</div>
-                <div className="border border-slate-100 rounded-2xl p-3 text-sm text-slate-600">Stay tuned for sponsor updates</div>
-              </div>
-            </div>
+          {/* Eligibility */}
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            <p className="org-label" style={{ marginBottom: '0.4rem' }}>Eligibility</p>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 500 }}>{hackathon.eligibilityDomain || 'Open to all'}</p>
           </div>
         </div>
       </div>

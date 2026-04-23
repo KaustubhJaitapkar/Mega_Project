@@ -57,6 +57,18 @@ export async function POST(
       return NextResponse.json({ error: 'Hackathon not found' }, { status: 404 });
     }
 
+    if (hackathon.status === 'DRAFT') {
+      return NextResponse.json({ error: 'Registration is not yet open' }, { status: 400 });
+    }
+
+    if (hackathon.status === 'CANCELLED') {
+      return NextResponse.json({ error: 'This hackathon has been cancelled' }, { status: 400 });
+    }
+
+    if (hackathon.status === 'ENDED') {
+      return NextResponse.json({ error: 'Registration is closed' }, { status: 400 });
+    }
+
     const registrationDeadline = new Date(hackathon.registrationDeadline).getTime();
     if (Date.now() > registrationDeadline) {
       return NextResponse.json({ error: 'Registration deadline has passed' }, { status: 400 });
