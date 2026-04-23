@@ -28,6 +28,9 @@ export default function ParticipantProfilePage() {
     bio: '',
     skills: [] as string[],
     githubUsername: '',
+    githubUrl: '',
+    linkedinUrl: '',
+    resumeUrl: '',
     sponsorVisible: true,
   });
 
@@ -45,6 +48,9 @@ export default function ParticipantProfilePage() {
           bio: profile.bio || '',
           skills: profile.skills || [],
           githubUsername: user.githubUsername || '',
+          githubUrl: profile.githubUrl || '',
+          linkedinUrl: profile.linkedinUrl || '',
+          resumeUrl: profile.resumeUrl || '',
           sponsorVisible: profile.isPublic ?? true,
         });
       } catch (e) {
@@ -175,6 +181,39 @@ export default function ParticipantProfilePage() {
               Verify profile link
             </a>
           )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">GitHub Profile Link</label>
+          <input
+            className="input"
+            type="url"
+            value={form.githubUrl}
+            onChange={(e) => setForm({ ...form, githubUrl: e.target.value })}
+            placeholder="https://github.com/yourname"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">LinkedIn Profile Link</label>
+          <input
+            className="input"
+            type="url"
+            value={form.linkedinUrl}
+            onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })}
+            placeholder="https://linkedin.com/in/yourname"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Resume Link</label>
+          <input
+            className="input"
+            type="url"
+            value={form.resumeUrl}
+            onChange={(e) => setForm({ ...form, resumeUrl: e.target.value })}
+            placeholder="https://drive.google.com/..."
+          />
         </div>
 
         <label className="flex items-center gap-2">

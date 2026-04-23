@@ -21,12 +21,15 @@ export const userProfileSchema = z.object({
   experience: z.enum(['junior', 'mid', 'senior']).optional(),
   company: z.string().optional(),
   website: z.string().url().optional().or(z.literal('')),
+  resumeUrl: z.string().url().optional().or(z.literal('')),
+  githubUrl: z.string().url().optional().or(z.literal('')),
   githubUsername: z
     .string()
     .regex(/^[a-zA-Z0-9-]{1,39}$/, 'Invalid GitHub username')
     .optional()
     .or(z.literal('')),
   linkedin: z.string().optional(),
+  linkedinUrl: z.string().url().optional().or(z.literal('')),
   twitter: z.string().optional(),
   phone: z.string().optional(),
   country: z.string().optional(),

@@ -23,7 +23,7 @@ export default function Sidebar({ role }: SidebarProps) {
     ],
     ORGANISER: [
       { label: 'Dashboard', path: '/organiser/dashboard' },
-      { label: 'Create Hackathon', path: '/create' },
+      { label: 'Create Hackathon', path: '/organiser/create' },
       { label: 'Profile', path: '/profile' },
     ],
     JUDGE: [

@@ -7,6 +7,7 @@ import { ZodError } from 'zod';
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -38,8 +39,25 @@ export async function GET(req: NextRequest) {
       where.status = status;
     }
 
+    let organiserId: string | null = null;
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+      if (user?.role === 'ORGANISER') {
+        organiserId = user.id;
+      }
+    }
+
+    const publishedWhere = { status: { in: ['REGISTRATION', 'ONGOING', 'ENDED'] } };
+    const visibilityWhere = organiserId
+      ? { OR: [publishedWhere, { organiserId }] }
+      : publishedWhere;
+
+    const finalWhere = Object.keys(where).length
+      ? { AND: [where, visibilityWhere] }
+      : visibilityWhere;
+
     const hackathons = await prisma.hackathon.findMany({
-      where,
+      where: finalWhere,
       include: {
         organiser: { select: { id: true, name: true, email: true } },
         _count: {
@@ -51,7 +69,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const total = await prisma.hackathon.count({ where });
+    const total = await prisma.hackathon.count({ where: finalWhere });
 
     return NextResponse.json({
       data: hackathons,

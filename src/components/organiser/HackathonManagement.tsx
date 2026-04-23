@@ -2,55 +2,11 @@
 
 import { useState } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import HackathonForm from '@/components/HackathonForm';
 
 export default function HackathonManagement() {
   const [hackathons, setHackathons] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    venue: '',
-    startDate: '',
-    endDate: '',
-    registrationDeadline: '',
-    submissionDeadline: '',
-    minTeamSize: 1,
-    maxTeamSize: 5,
-    maxTeams: 50,
-    status: 'draft',
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/hackathons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setHackathons([...hackathons, data]);
-        setFormData({
-          name: '',
-          description: '',
-          venue: '',
-          startDate: '',
-          endDate: '',
-          registrationDeadline: '',
-          submissionDeadline: '',
-          minTeamSize: 1,
-          maxTeamSize: 5,
-          maxTeams: 50,
-          status: 'draft',
-        });
-        setShowForm(false);
-      }
-    } catch (error) {
-      console.error('Failed to create hackathon:', error);
-    }
-  };
 
   return (
     <div className="p-6">
@@ -68,133 +24,7 @@ export default function HackathonManagement() {
       {showForm && (
         <div className="mb-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Hackathon</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
-                <input
-                  type="text"
-                  value={formData.venue}
-                  onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
-                  className="input"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="input"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <input
-                  type="datetime-local"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input
-                  type="datetime-local"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="input"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Registration Deadline
-                </label>
-                <input
-                  type="datetime-local"
-                  value={formData.registrationDeadline}
-                  onChange={(e) => setFormData({ ...formData, registrationDeadline: e.target.value })}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Submission Deadline
-                </label>
-                <input
-                  type="datetime-local"
-                  value={formData.submissionDeadline}
-                  onChange={(e) => setFormData({ ...formData, submissionDeadline: e.target.value })}
-                  className="input"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Min Team Size</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.minTeamSize}
-                  onChange={(e) => setFormData({ ...formData, minTeamSize: parseInt(e.target.value) })}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Team Size</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.maxTeamSize}
-                  onChange={(e) => setFormData({ ...formData, maxTeamSize: parseInt(e.target.value) })}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Teams</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.maxTeams}
-                  onChange={(e) => setFormData({ ...formData, maxTeams: parseInt(e.target.value) })}
-                  className="input"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button type="submit" className="btn btn-primary">
-                Create Hackathon
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="btn btn-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+          <HackathonForm />
         </div>
       )}
 

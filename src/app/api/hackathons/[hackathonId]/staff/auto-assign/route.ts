@@ -27,7 +27,7 @@ interface GroqMatch {
 }
 
 export async function POST(
-  req: Request,
+  _req: Request,
   { params }: { params: { hackathonId: string } }
 ) {
   try {

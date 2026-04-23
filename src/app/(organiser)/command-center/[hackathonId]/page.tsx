@@ -652,14 +652,20 @@ export default function CommandCenterPage() {
   const [judgingControl, setJudgingControl] = useState({ judgingOpen: false, blindMode: false });
   const [certificateUserId, setCertificateUserId] = useState('');
   const [certificateType, setCertificateType] = useState('PARTICIPANT');
+  const [rankings, setRankings] = useState<any[]>([]);
+  const [rankingsLoading, setRankingsLoading] = useState(false);
+  const [autoCertLoading, setAutoCertLoading] = useState(false);
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [certificatesLoading, setCertificatesLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingControls, setIsSavingControls] = useState(false);
+  const [isPublishingHackathon, setIsPublishingHackathon] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [activeTab, setActiveTab] = useState<'monitor' | 'comms' | 'controls'>('monitor');
+  const [activeTab, setActiveTab] = useState<'monitor' | 'comms' | 'controls' | 'certificates'>('monitor');
 
-  const showFeedback = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(''), 4000);
+  const showFeedback = (message: string) => {
+    setFeedback(message);
   };
 
   useEffect(() => {
@@ -684,6 +690,24 @@ export default function CommandCenterPage() {
         setTimelineEvents(hackathonData.data?.timelines || []);
         setStaff({ judges: staffData.data?.judges || [], mentors: staffData.data?.mentors || [] });
         setJudgingControl({ judgingOpen: !!judgingData.data?.judgingOpen, blindMode: !!judgingData.data?.blindMode });
+
+        setRankingsLoading(true);
+        try {
+          const rankingsRes = await fetch(`/api/hackathons/${hackathonId}/rankings`);
+          const rankingsData = await rankingsRes.json();
+          setRankings(rankingsData.data || []);
+        } finally {
+          setRankingsLoading(false);
+        }
+
+        setCertificatesLoading(true);
+        try {
+          const certRes = await fetch(`/api/hackathons/${hackathonId}/certificates`);
+          const certData = await certRes.json();
+          setCertificates(certData.data || []);
+        } finally {
+          setCertificatesLoading(false);
+        }
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -747,12 +771,30 @@ export default function CommandCenterPage() {
   }
 
   async function saveHackathonControls() {
+    setIsSavingControls(true);
     const res = await fetch(`/api/hackathons/${hackathonId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: statusControl, maxTeams }),
     });
     const data = await res.json();
     showFeedback(res.ok ? 'Hackathon controls updated' : data.error || 'Failed to update');
+    setIsSavingControls(false);
+  }
+
+  async function publishHackathon() {
+    setIsPublishingHackathon(true);
+    const res = await fetch(`/api/hackathons/${hackathonId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'published' }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setStatusControl('published');
+      showFeedback('Hackathon published');
+    } else {
+      showFeedback(data.error || 'Failed to publish');
+    }
+    setIsPublishingHackathon(false);
   }
 
   async function createRubric() {
@@ -792,6 +834,21 @@ export default function CommandCenterPage() {
     });
     const data = await res.json();
     showFeedback(res.ok ? `Certificate generated: ${data.data.certificateUrl || data.data.id}` : data.error || 'Certificate generation failed');
+  }
+
+  async function autoGenerateCertificates() {
+    setAutoCertLoading(true);
+    try {
+      const res = await fetch(`/api/hackathons/${hackathonId}/certificates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'auto' }),
+      });
+      const data = await res.json();
+      showFeedback(res.ok ? data.message || 'Certificates generated' : data.error || 'Certificate generation failed');
+    } finally {
+      setAutoCertLoading(false);
+    }
   }
 
   async function saveTimelineEvent() {
@@ -1113,7 +1170,7 @@ export default function CommandCenterPage() {
             </div>
 
             <div style={{ display: 'flex', borderBottom: 'none', gap: 0 }}>
-              {(['monitor', 'comms', 'controls'] as const).map((t) => (
+              {(['monitor', 'comms', 'controls', 'certificates'] as const).map((t) => (
                 <button key={t} className={`tab-btn ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
                   {t.toUpperCase()}
                 </button>
@@ -1354,7 +1411,14 @@ export default function CommandCenterPage() {
                       <input className="cc-input" type="number" value={maxTeams} onChange={(e) => setMaxTeams(parseInt(e.target.value || '0', 10))} placeholder="Max teams" />
                       <span style={{ color: '#94a3b8', fontSize: 11, whiteSpace: 'nowrap', fontFamily: '"DM Mono", monospace' }}>MAX</span>
                     </div>
-                    <button className="cc-btn cc-btn-secondary" onClick={saveHackathonControls}>SAVE CONTROLS</button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <button className="cc-btn cc-btn-secondary" onClick={saveHackathonControls} disabled={isSavingControls}>
+                        {isSavingControls ? 'SAVING...' : 'SAVE CHANGES'}
+                      </button>
+                      <button className="cc-btn cc-btn-primary" onClick={publishHackathon} disabled={isPublishingHackathon}>
+                        {isPublishingHackathon ? 'PUBLISHING...' : 'PUBLISH'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1463,21 +1527,6 @@ export default function CommandCenterPage() {
                   </div>
                 </div>
 
-                {/* Certificates */}
-                <div className="card-cc">
-                  <p className="section-label">Certificate Generator</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <input className="cc-input" value={certificateUserId} onChange={(e) => setCertificateUserId(e.target.value)} placeholder="User ID" />
-                    <select className="cc-select" value={certificateType} onChange={(e) => setCertificateType(e.target.value)}>
-                      <option value="PARTICIPANT">Participant</option>
-                      <option value="WINNER">Winner</option>
-                      <option value="RUNNER_UP">Runner Up</option>
-                      <option value="BEST_PROJECT">Best Project</option>
-                    </select>
-                    <button className="cc-btn cc-btn-secondary" onClick={generateCertificate}>✦ GENERATE CERTIFICATE</button>
-                  </div>
-                </div>
-
                 {/* Score Summary */}
                 <div className="card-cc">
                   <p className="section-label">Score Summary</p>
@@ -1495,6 +1544,78 @@ export default function CommandCenterPage() {
                   </div>
                 </div>
 
+              </div>
+            )}
+
+            {/* ── CERTIFICATES TAB ── */}
+            {activeTab === 'certificates' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+                <div className="card-cc">
+                  <p className="section-label">Certificate Generator</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <input className="cc-input" value={certificateUserId} onChange={(e) => setCertificateUserId(e.target.value)} placeholder="User ID" />
+                    <select className="cc-select" value={certificateType} onChange={(e) => setCertificateType(e.target.value)}>
+                      <option value="PARTICIPANT">Participant</option>
+                      <option value="WINNER">Winner</option>
+                      <option value="RUNNER_UP">Runner Up</option>
+                      <option value="BEST_PROJECT">Best Project</option>
+                    </select>
+                    <button className="cc-btn cc-btn-secondary" onClick={generateCertificate}>✦ GENERATE CERTIFICATE</button>
+                    <button className="cc-btn cc-btn-primary" onClick={autoGenerateCertificates} disabled={autoCertLoading}>
+                      {autoCertLoading ? 'GENERATING...' : 'AUTO-GENERATE ALL'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="card-cc">
+                  <p className="section-label">Certificates</p>
+                  {certificatesLoading ? (
+                    <p style={{ color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 10 }}>LOADING...</p>
+                  ) : certificates.length === 0 ? (
+                    <p style={{ color: '#94a3b8', fontFamily: '"DM Mono", monospace', fontSize: 10 }}>NO CERTIFICATES YET</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
+                      {certificates.map((cert: any) => (
+                        <div key={cert.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', gap: 10 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cert.user?.name || 'User'}</p>
+                            <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#94a3b8' }}>{cert.type}</p>
+                          </div>
+                          {cert.certificateUrl ? (
+                            <a
+                              href={cert.certificateUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#6366f1', textDecoration: 'none' }}
+                            >
+                              VIEW
+                            </a>
+                          ) : (
+                            <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#cbd5e1' }}>PENDING</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="card-cc">
+                  <p className="section-label">Rankings</p>
+                  {rankingsLoading ? (
+                    <p style={{ color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 10 }}>LOADING...</p>
+                  ) : rankings.length === 0 ? (
+                    <p style={{ color: '#94a3b8', fontFamily: '"DM Mono", monospace', fontSize: 10 }}>NO SCORES YET</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
+                      {rankings.map((entry: any) => (
+                        <div key={entry.teamId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                          <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, fontWeight: 600, color: '#1e293b' }}>#{entry.rank} {entry.teamName}</span>
+                          <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 11, color: '#6366f1' }}>{entry.totalScore}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

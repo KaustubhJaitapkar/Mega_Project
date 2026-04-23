@@ -157,7 +157,10 @@ model Profile {
   experience      String?   // junior, mid, senior
   company         String?
   website         String?
+  resumeUrl       String?
+  githubUrl       String?
   linkedin        String?
+  linkedinUrl     String?
   twitter         String?
   phone           String?
   country         String?

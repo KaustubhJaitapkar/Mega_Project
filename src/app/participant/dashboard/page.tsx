@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Hackathon {
   id: string;
@@ -23,6 +24,7 @@ interface Hackathon {
 }
 
 export default function ParticipantDashboardPage() {
+  const router = useRouter();
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [activeHackathon, setActiveHackathon] = useState<Hackathon | null>(null);
   const [announcements, setAnnouncements] = useState<Array<{ id: string; title: string; createdAt: string }>>([]);
@@ -45,10 +47,13 @@ export default function ParticipantDashboardPage() {
             return d?.data?.registered ? h.id : null;
           })
         );
-        setRegisteredHackathonIds(registrationChecks.filter(Boolean) as string[]);
+        const registeredIds = registrationChecks.filter(Boolean) as string[];
+        setRegisteredHackathonIds(registeredIds);
+        const registeredList = list.filter((h: Hackathon) => registeredIds.includes(h.id));
         const active =
-          list.find((h: Hackathon) => h.status === 'ONGOING') ||
-          list.find((h: Hackathon) => h.status === 'REGISTRATION') ||
+          registeredList.find((h: Hackathon) => h.status === 'ONGOING') ||
+          registeredList.find((h: Hackathon) => h.status === 'REGISTRATION') ||
+          registeredList[0] ||
           null;
         setActiveHackathon(active);
       } catch (error) {
@@ -118,8 +123,8 @@ export default function ParticipantDashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div className="card">
-          <p className="text-sm text-gray-500">Open Hackathons</p>
-          <p className="text-3xl font-bold text-gray-900">{hackathons.length}</p>
+          <p className="text-sm text-gray-500">Registered Hackathons</p>
+          <p className="text-3xl font-bold text-gray-900">{registeredHackathonIds.length}</p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Current/Next Event</p>
@@ -209,49 +214,58 @@ export default function ParticipantDashboardPage() {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         </div>
-      ) : hackathons.length === 0 ? (
+      ) : registeredHackathonIds.length === 0 ? (
         <div className="card text-center py-12">
-          <p className="text-gray-600 mb-4">No open hackathons right now</p>
+          <p className="text-gray-600 mb-4">You have not registered for any hackathons yet</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {hackathons.map((hackathon) => (
-            <div key={hackathon.id} className="card hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{hackathon.title}</h3>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-2">{hackathon.description}</p>
-              <div className="space-y-2 text-sm text-gray-600">
-                <span className="badge badge-primary">{hackathon.status}</span>
-                <p>
-                  {new Date(hackathon.startDate).toLocaleDateString()} -{' '}
-                  {new Date(hackathon.endDate).toLocaleDateString()}
-                </p>
-                <p>{hackathon.isVirtual ? 'Virtual' : `In-person: ${hackathon.location || 'TBA'}`}</p>
-              </div>
-              <div className="mt-4 flex gap-2">
-                {registeredHackathonIds.includes(hackathon.id) ? (
-                  <>
-                    <Link href={`/participant/my-team?hackathonId=${hackathon.id}`} className="btn btn-primary text-sm">
-                      Create/Join Team
-                    </Link>
-                    <button
-                      className="btn btn-secondary text-sm"
-                      onClick={() => unregisterFromHackathon(hackathon.id)}
-                      disabled={unregisteringId === hackathon.id}
-                    >
-                      {unregisteringId === hackathon.id ? 'Unregistering...' : 'Unregister'}
-                    </button>
-                  </>
-                ) : (
+          {hackathons
+            .filter((hackathon) => registeredHackathonIds.includes(hackathon.id))
+            .map((hackathon) => (
+              <div
+                key={hackathon.id}
+                className="card hover:shadow-lg transition-shadow cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/participant/hackathons/${hackathon.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    router.push(`/participant/hackathons/${hackathon.id}`);
+                  }
+                }}
+              >
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{hackathon.title}</h3>
+                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{hackathon.description}</p>
+                <div className="space-y-2 text-sm text-gray-600">
+                  <span className="badge badge-primary">{hackathon.status}</span>
+                  <p>
+                    {new Date(hackathon.startDate).toLocaleDateString()} -{' '}
+                    {new Date(hackathon.endDate).toLocaleDateString()}
+                  </p>
+                  <p>{hackathon.isVirtual ? 'Virtual' : `In-person: ${hackathon.location || 'TBA'}`}</p>
+                </div>
+                <div className="mt-4 flex gap-2">
                   <Link
-                    href={`/participant/hackathons/${hackathon.id}/register`}
+                    href={`/participant/my-team?hackathonId=${hackathon.id}`}
                     className="btn btn-primary text-sm"
+                    onClick={(event) => event.stopPropagation()}
                   >
-                    Register
+                    Create/Join Team
                   </Link>
-                )}
+                  <button
+                    className="btn btn-secondary text-sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      unregisterFromHackathon(hackathon.id);
+                    }}
+                    disabled={unregisteringId === hackathon.id}
+                  >
+                    {unregisteringId === hackathon.id ? 'Unregistering...' : 'Unregister'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
     </div>
