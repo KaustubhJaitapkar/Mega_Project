@@ -19,6 +19,7 @@ interface RubricItem {
   name: string;
   maxScore: number;
   weight: number;
+  description?: string;
 }
 
 type EmbedMode = 'readme' | 'live' | 'none';
@@ -160,7 +161,7 @@ export default function JudgingPage() {
     }
   }
 
-  function selectTeam(idx: number) {
+  async function selectTeam(idx: number) {
     setSelectedIndex(idx);
     setScores({});
     setNotes('');
@@ -169,6 +170,36 @@ export default function JudgingPage() {
     setFeedback('');
     setEmbedMode('none');
     setIframeError(false);
+
+    // Fetch existing scores for this team/submission for the current judge
+    const team = teamRows[idx];
+    if (!team?.submissionId) return;
+    try {
+      const res = await fetch(`/api/submissions/${team.submissionId}/scores`);
+      if (!res.ok) return;
+      const data = await res.json();
+      // Get current judge's email from session (injected by backend on page load or via a prop, or fallback to first score)
+      // For now, assume only the current judge's scores are returned, or filter by judge if needed
+      const judgeEmail = null; // Optionally, get from session if available
+      let judgeScores = data.data;
+      // If multiple judges' scores are returned, filter by judge (if judge info is available)
+      // judgeScores = judgeScores.filter((s: any) => s.judge?.email === judgeEmail);
+      if (Array.isArray(judgeScores) && judgeScores.length > 0) {
+        // Only use scores if they are not sealed (if sealed, do not allow editing)
+        const notSealed = judgeScores.filter((s: any) => !s.isSealed);
+        const useScores = notSealed.length > 0 ? notSealed : judgeScores;
+        const scoresObj: Record<string, number> = {};
+        useScores.forEach((s: any) => {
+          scoresObj[s.rubricItemId] = s.score;
+        });
+        setScores(scoresObj);
+        // Optionally, set notes if available (if you store notes per score, adjust as needed)
+        if (useScores[0]?.comment) setNotes(useScores[0].comment);
+        if (useScores[0]?.isSealed) setSeal(true);
+      }
+    } catch (err) {
+      // Ignore errors, fallback to empty
+    }
   }
 
   function getEmbedUrl(): string {
