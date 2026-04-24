@@ -15,18 +15,17 @@ export default function ParticipantSubmitPage() {
 
   useEffect(() => {
     (async () => {
-      const profile = await fetch('/api/users/profile').then((r) => r.json());
-      const userId = profile.user?.id;
-      const hacks = await fetch('/api/hackathons?limit=50').then((r) => r.json());
-      for (const h of hacks.data || []) {
-        const teams = await fetch(`/api/hackathons/${h.id}/teams`).then((r) => r.json());
-        const mine = (teams.data || []).find((t: any) => t.members.some((m: any) => m.user.id === userId));
-        if (mine) {
-          setTeamId(mine.id);
-          setDeadlinePassed(new Date() > new Date(h.submissionDeadline));
-          return;
+      try {
+        const res = await fetch('/api/users/my-team');
+        const data = await res.json();
+        const teams = data.data || [];
+        // Pick the first active team (ONGOING > REGISTRATION priority, sorted by API)
+        const activeTeam = teams[0];
+        if (activeTeam) {
+          setTeamId(activeTeam.teamId);
+          setDeadlinePassed(new Date() > new Date(activeTeam.submissionDeadline));
         }
-      }
+      } catch { /* silent */ }
     })();
   }, []);
 

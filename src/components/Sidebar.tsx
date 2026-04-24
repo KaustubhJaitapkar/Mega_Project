@@ -112,6 +112,7 @@ export default function Sidebar({ role }: SidebarProps) {
     ],
     MENTOR: [
       { label: 'Dashboard', path: '/mentor/dashboard', icon: icons.dashboard },
+      { label: 'My Teams', path: '/mentor/dashboard', icon: icons.teams },
       { label: 'Profile', path: '/profile', icon: icons.profile },
     ],
     SPONSOR: [
