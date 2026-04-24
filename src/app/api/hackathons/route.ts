@@ -61,6 +61,8 @@ export async function GET(req: NextRequest) {
       where: finalWhere,
       include: {
         organiser: { select: { id: true, name: true, email: true } },
+        judges: { select: { id: true, name: true, email: true } },
+        mentors: { select: { id: true, name: true, email: true } },
         _count: {
           select: { teams: true, submissions: true },
         },

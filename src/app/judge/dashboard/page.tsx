@@ -1,10 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 
 interface Hackathon { id: string; title: string; status: string; startDate: string; endDate: string }
+
+// Card component for hackathon with judging open check
+function JudgeHackathonCard({ hackathon, isMentor, progress }: { hackathon: any, isMentor: boolean, progress: any }) {
+  const [judgingOpen, setJudgingOpen] = useState<boolean | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/hackathons/${hackathon.id}/judging-control`);
+        const data = await res.json();
+        if (mounted) setJudgingOpen(!!data.data?.judgingOpen);
+      } catch { setJudgingOpen(false); }
+    })();
+    return () => { mounted = false; };
+  }, [hackathon.id]);
+
+  const isJudgingClosed = judgingOpen === false;
+  const href = isMentor ? '/mentor/dashboard' : `/judging/${hackathon.id}`;
+  const shouldDisable = isJudgingClosed && !isMentor;
+
+  return (
+    <Link href={href} style={{ textDecoration: 'none', pointerEvents: shouldDisable ? 'none' : undefined, opacity: shouldDisable ? 0.6 : 1 }}>
+      <div style={{
+        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-lg)', padding: '1.25rem', transition: 'border-color 0.2s',
+      }}
+        onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-strong)'}
+        onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+      >
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{hackathon.title}</h3>
+        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+          <span className={`org-badge ${hackathon.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-muted'}`}>{hackathon.status}</span>
+          <span className="org-badge org-badge-muted">
+            {new Date(hackathon.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(hackathon.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+          {!isMentor && progress && (
+            <span className="org-badge org-badge-info">{progress.scored} scored / {progress.pending} pending</span>
+          )}
+        </div>
+        <span className="org-btn-primary" style={{ width: '100%', justifyContent: 'center', background: shouldDisable ? 'var(--border-subtle)' : undefined, color: isJudgingClosed ? 'white' : 'var(--text-primary)' }}>
+          {isMentor ? 'Open Mentoring Panel' : isJudgingClosed ? 'Judging Closed' : judgingOpen === null ? 'Loading...' : 'Start Judging'}
+        </span>
+      </div>
+    </Link>
+  );
+}
 
 export default function JudgeDashboardPage() {
   const { data: session } = useSession();
@@ -17,25 +63,43 @@ export default function JudgeDashboardPage() {
   useEffect(() => {
     (async () => {
       try {
+        // Fetch all hackathons
         const res = await fetch('/api/hackathons');
         const list = (await res.json()).data || [];
-        setHackathons(list);
+        console.log('All hackathons:', list);
+        console.log('Session user:', session?.user);
+        
+        // Filter only those where the judge is assigned
+        const judgeId = (session?.user as any)?.id;
+        console.log('Judge ID:', judgeId);
+        
+        const filtered = list.filter((h: any) => {
+          console.log(`Hackathon ${h.title} judges:`, h.judges);
+          return h.judges?.some((j: any) => j.id === judgeId);
+        });
+        console.log('Filtered hackathons:', filtered);
+        
+        setHackathons(filtered);
         if (!isMentor) {
-          const entries = await Promise.all(list.map(async (h: Hackathon) => {
+          const entries = await Promise.all(filtered.map(async (h: Hackathon) => {
             const r = await fetch(`/api/judge/teams?hackathonId=${h.id}`);
             const d = await r.json();
             return [h.id, { scored: d.data?.scored || 0, pending: d.data?.pending || 0 }] as const;
           }));
           setProgress(Object.fromEntries(entries));
         }
-      } catch { /* silent */ }
+      } catch (error) { 
+        console.error('Error fetching hackathons:', error);
+      }
       finally { setIsLoading(false); }
     })();
-  }, []);
+  }, [session, isMentor]);
 
-  if (isLoading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
-    <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-  </div>;
+  if (isLoading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
+      <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+    </div>
+  );
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
@@ -69,29 +133,7 @@ export default function JudgeDashboardPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
           {hackathons.map((h) => (
-            <Link key={h.id} href={isMentor ? '/mentor/dashboard' : `/judging/${h.id}`} style={{ textDecoration: 'none' }}>
-              <div style={{
-                background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-lg)', padding: '1.25rem', transition: 'border-color 0.2s',
-              }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-strong)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
-              >
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{h.title}</h3>
-                <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-                  <span className={`org-badge ${h.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-muted'}`}>{h.status}</span>
-                  <span className="org-badge org-badge-muted">
-                    {new Date(h.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} \u2013 {new Date(h.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                  {!isMentor && progress[h.id] && (
-                    <span className="org-badge org-badge-info">{progress[h.id].scored} scored / {progress[h.id].pending} pending</span>
-                  )}
-                </div>
-                <span className="org-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                  {isMentor ? 'Open Mentoring Panel' : 'Start Judging'}
-                </span>
-              </div>
-            </Link>
+            <JudgeHackathonCard key={h.id} hackathon={h} isMentor={isMentor} progress={progress[h.id]} />
           ))}
         </div>
       )}
