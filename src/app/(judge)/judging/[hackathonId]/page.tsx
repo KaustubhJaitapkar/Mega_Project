@@ -47,21 +47,26 @@ export default function JudgingPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [teamsRes, hackathonRes, rubricRes] = await Promise.all([
+        const [teamsRes, hackathonRes, rubricsRes] = await Promise.all([
           fetch(`/api/judge/teams?hackathonId=${hackathonId}`),
           fetch(`/api/hackathons/${hackathonId}`),
-          fetch(`/api/judge/rubric?hackathonId=${hackathonId}`),
+          fetch(`/api/hackathons/${hackathonId}/rubrics`),
         ]);
         const teamsData = await teamsRes.json();
         const hackathonData = await hackathonRes.json();
-        const rubricData = await rubricRes.json();
+        const rubricsData = await rubricsRes.json();
         const rows = teamsData.data?.teams || [];
         setTeamRows(rows);
         setBlindMode(!!teamsData.data?.blindMode);
         const subMap: Record<string, Submission> = {};
-        (hackathonData.data?.submissions || []).forEach((s: Submission) => { subMap[s.id] = s; });
+        (hackathonData.data?.teams || []).forEach((team: any) => {
+          if (team.submission) subMap[team.submission.id] = team.submission as Submission;
+        });
         setSubmissions(subMap);
-        setRubricItems(rubricData.data?.items || []);
+        // Get rubric items from the first rubric
+        const rubrics = rubricsData.data || [];
+        const rubricItems = rubrics.length > 0 ? (rubrics[0].items || []) : [];
+        setRubricItems(rubricItems);
       } catch (err) {
         console.error('Failed to fetch data:', err);
       } finally {
@@ -267,7 +272,10 @@ export default function JudgingPage() {
                     {selectedSubmission.technologies?.join(' · ') || 'No tech stack listed'}
                   </p>
                   {selectedSubmission.description && (
-                    <p className="judging-evidence__desc">{selectedSubmission.description}</p>
+                    <div className="judging-evidence__desc">
+                      <span style={{ display: 'block', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Work Done So Far</span>
+                      <p>{selectedSubmission.description}</p>
+                    </div>
                   )}
                   {gitActivity && (
                     <span className={`judging-activity-tag ${gitActivity.includes('warning') ? 'judging-activity-tag--warn' : 'judging-activity-tag--ok'}`}>
@@ -360,51 +368,94 @@ export default function JudgingPage() {
             {selectedSubmission ? (
               <>
                 <div className="judging-verdict__header">
-                  <span className="judging-verdict__title">Score Submission</span>
-                  <div className="judging-score-total">
-                    <span className="judging-score-total__label">Weighted Total</span>
-                    <span className="judging-score-total__value">{weightedTotal.toFixed(2)}</span>
-                    <span className="judging-score-total__max">/ 100</span>
-                  </div>
+                  <span className="judging-verdict__title">Evaluation</span>
                 </div>
 
-                {/* Rubric Sliders */}
-                <div className="judging-rubric">
-                  {rubricItems.map((item) => {
-                    const cur = scores[item.id] ?? 0;
-                    const pct = item.maxScore > 0 ? (cur / item.maxScore) * 100 : 0;
-                    return (
-                      <div key={item.id} className="judging-rubric__card">
-                        <div className="judging-rubric__row">
-                          <div>
-                            <p className="judging-rubric__name">{item.name}</p>
-                            <p className="judging-rubric__weight">Weight: {item.weight}%</p>
+                {/* Rubrics Section */}
+                {rubricItems.length > 0 && (
+                  <div style={{ marginBottom: '2rem' }}>
+                    <h3 style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                      Rubric Criteria
+                    </h3>
+                    <div className="judging-rubric">
+                      {rubricItems.map((item) => (
+                        <div key={item.id} className="judging-rubric__card">
+                          <div className="judging-rubric__row">
+                            <div>
+                              <p className="judging-rubric__name">{item.name}</p>
+                              <p className="judging-rubric__weight">Weight: {item.weight}%</p>
+                            </div>
                           </div>
-                          <div className="judging-rubric__score">
-                            <span className="judging-rubric__score-val">{cur}</span>
-                            <span className="judging-rubric__score-max">/{item.maxScore}</span>
+                          {item.description && (
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Marks Input Section */}
+                <div>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                    Enter Marks
+                  </h3>
+                  
+                  <div className="judging-rubric">
+                    {rubricItems.map((item) => {
+                      const cur = scores[item.id] ?? 0;
+                      return (
+                        <div key={item.id} className="judging-rubric__card">
+                          <div className="judging-rubric__row">
+                            <div>
+                              <p className="judging-rubric__name">{item.name}</p>
+                            </div>
+                            <div className="judging-rubric__score">
+                              <input
+                                type="number"
+                                min={0}
+                                max={item.maxScore}
+                                value={cur}
+                                onChange={(e) => {
+                                  let val = parseFloat(e.target.value);
+                                  if (isNaN(val)) val = 0;
+                                  if (val < 0) val = 0;
+                                  if (val > item.maxScore) val = item.maxScore;
+                                  setScores({ ...scores, [item.id]: val });
+                                }}
+                                style={{ width: 60, fontSize: '1.1rem', fontWeight: 600, textAlign: 'right', marginRight: 4 , color: 'black'}}
+                              />
+                              <span className="judging-rubric__score-max">/ {item.maxScore}</span>
+                            </div>
                           </div>
                         </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max={item.maxScore}
-                          step="1"
-                          value={cur}
-                          onChange={(e) => setScores({ ...scores, [item.id]: parseFloat(e.target.value) })}
-                          className="judging-slider"
-                          style={{ '--slider-pct': `${pct}%` } as React.CSSProperties}
-                        />
-                        <div className="judging-rubric__minmax">
-                          <span>0</span><span>{item.maxScore}</span>
-                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Weighted Total */}
+                  {rubricItems.length > 0 && (
+                    <div className="judging-score-total" style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div>
+                        <span className="judging-score-total__label">Total Marks Obtained: </span>
+                        <span className="judging-score-total__value">
+                          {rubricItems.reduce((sum, item) => sum + (scores[item.id] ?? 0), 0)}
+                        </span>
+                        <span className="judging-score-total__max">/ {rubricItems.reduce((sum, item) => sum + item.maxScore, 0)}</span>
                       </div>
-                    );
-                  })}
+                      {/* <div>
+                        <span className="judging-score-total__label">Weighted Total: </span>
+                        <span className="judging-score-total__value">{weightedTotal.toFixed(2)}</span>
+                        <span className="judging-score-total__max">/ 100</span>
+                      </div> */}
+                    </div>
+                  )}
                 </div>
 
                 {/* Notes */}
-                <div className="judging-notes">
+                <div className="judging-notes" style={{ marginTop: '2rem' }}>
                   <div className="judging-notes__label-row">
                     <label className="judging-notes__label">Evaluation Notes <span style={{ color: 'var(--error)' }}>*</span></label>
                     {!notesValid && notes.length === 0 && (

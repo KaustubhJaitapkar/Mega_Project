@@ -42,11 +42,12 @@ export async function POST(req: Request) {
     }
 
     const rubric = await prisma.rubric.findFirst({
-      where: { hackathonId, isActive: true },
+      where: { hackathonId },
       include: { items: true },
+      orderBy: { createdAt: 'desc' },
     });
     if (!rubric) {
-      return NextResponse.json({ error: 'No active rubric found' }, { status: 400 });
+      return NextResponse.json({ error: 'No rubric found' }, { status: 400 });
     }
 
     const itemIds = rubric.items.map((i) => i.id);
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
     }
 
     const map = new Map(rubric.items.map((i) => [i.id, i]));
-    let weightedTotal = 0;
+    let totalObtained = 0;
     for (const row of scores) {
       const item = map.get(row.rubricItemId);
       if (!item) {
@@ -73,9 +74,8 @@ export async function POST(req: Request) {
       if (row.score < 0 || row.score > item.maxScore) {
         return NextResponse.json({ error: `Score out of range for ${item.name}` }, { status: 400 });
       }
-      weightedTotal += (row.score / item.maxScore) * item.weight * 100;
+      totalObtained += row.score;
     }
-    weightedTotal = Number((weightedTotal / 100).toFixed(2));
 
     await prisma.$transaction([
       prisma.score.deleteMany({
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
             rubricItemId: row.rubricItemId,
             judgerId: judge.id,
             score: row.score,
-            comment: idx === 0 ? `${notes || ''}\nWeighted total: ${weightedTotal}` : '',
+            comment: idx === 0 ? `${notes || ''}\nTotal obtained: ${totalObtained}` : '',
             isSealed: !!seal,
           },
         })
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       message: seal ? 'Scores submitted and sealed' : 'Scores saved',
-      data: { weightedTotal, sealed: !!seal },
+      data: { totalObtained, sealed: !!seal },
     });
   } catch (error) {
     console.error('Submit score error:', error);

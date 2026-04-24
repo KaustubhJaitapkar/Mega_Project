@@ -69,7 +69,7 @@ export default function ParticipantSubmitPage() {
       <div style={{ marginBottom: '1.5rem' }}>
         <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>Project</p>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Submit</h1>
-        <p className="org-text" style={{ marginTop: '0.35rem' }}>Submit your project links and description for judging.</p>
+        <p className="org-text" style={{ marginTop: '0.35rem' }}>Submit your GitHub, live demo, and progress update for judging.</p>
       </div>
 
       {deadlinePassed && <div className="org-feedback org-feedback-error">Submission deadline has passed. Form is locked.</div>}
@@ -90,8 +90,8 @@ export default function ParticipantSubmitPage() {
                 <input className="org-input" value={form.liveUrl} onChange={(e) => setForm({ ...form, liveUrl: e.target.value })} disabled={deadlinePassed} placeholder="https://your-project.vercel.app" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Description</label>
-                <textarea className="org-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} disabled={deadlinePassed} style={{ minHeight: 100, resize: 'vertical' as const }} placeholder="Describe what your project does and how it works..." />
+                <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Work Done So Far</label>
+                <textarea className="org-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} disabled={deadlinePassed} style={{ minHeight: 100, resize: 'vertical' as const }} placeholder="Summarize your current progress, key features built, and what's left..." />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Technologies</label>

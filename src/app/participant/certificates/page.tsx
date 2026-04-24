@@ -46,7 +46,21 @@ export default function ParticipantCertificatesPage() {
             allCerts.push(...certs);
           } catch { /* skip */ }
         }
-        setCertificates(allCerts);
+        // Deduplicate: only one certificate per hackathon, prefer highest type
+        const typePriority: Record<string, number> = {
+          WINNER: 4,
+          RUNNER_UP: 3,
+          BEST_PROJECT: 2,
+          PARTICIPANT: 1,
+        };
+        const certMap = new Map<string, Certificate>();
+        for (const cert of allCerts) {
+          const key = cert.hackathon.id;
+          if (!certMap.has(key) || (typePriority[cert.type] ?? 0) > (typePriority[certMap.get(key)!.type] ?? 0)) {
+            certMap.set(key, cert);
+          }
+        }
+        setCertificates(Array.from(certMap.values()));
       } catch (e) {
         console.error('Failed to load certificates:', e);
       } finally {

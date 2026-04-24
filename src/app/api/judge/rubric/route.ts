@@ -20,11 +20,16 @@ export async function GET(req: Request) {
     }
 
     const rubrics = await prisma.rubric.findMany({
-      where: { hackathonId, isActive: true },
+      where: { hackathonId },
       include: { items: { orderBy: { order: 'asc' } } },
       orderBy: { createdAt: 'desc' },
     });
-    return NextResponse.json({ data: rubrics[0] || null });
+    const rubric = rubrics[0];
+    return NextResponse.json({ 
+      data: {
+        items: rubric?.items || []
+      }
+    });
   } catch (error) {
     console.error('Judge rubric error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

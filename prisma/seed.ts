@@ -310,6 +310,7 @@ async function main() {
   console.log("🏆 Creating hackathons...");
 
   const hackathon1 = await prisma.hackathon.create({
+      // Add rubric for hackathon1
     data: {
       title: "AI Innovation Challenge 2025",
       tagline: "Build the future with AI",
@@ -364,8 +365,26 @@ Prizes worth $50,000 including cloud credits, hardware, and cash rewards.`,
       },
     },
   });
+  // Add rubric for hackathon1
+  await prisma.rubric.create({
+    data: {
+      hackathonId: hackathon1.id,
+      name: "General Rubric",
+      description: "Standard rubric for AI Innovation Challenge",
+      isActive: true,
+      items: {
+        create: [
+          { name: "Innovation", description: "Originality and creativity", weight: 2, maxScore: 10, order: 1 },
+          { name: "Technical Complexity", description: "Technical depth and challenge", weight: 2, maxScore: 10, order: 2 },
+          { name: "Impact", description: "Potential impact and usefulness", weight: 1.5, maxScore: 10, order: 3 },
+          { name: "Presentation", description: "Clarity and quality of presentation", weight: 1, maxScore: 10, order: 4 },
+        ],
+      },
+    },
+  });
 
   const hackathon2 = await prisma.hackathon.create({
+      // Add rubric for hackathon2
     data: {
       title: "Web3 Buildathon",
       tagline: "Decentralize everything",
@@ -420,8 +439,26 @@ Topics include: DeFi protocols, NFT marketplaces, DAO tooling, Layer 2 solutions
       },
     },
   });
+  // Add rubric for hackathon2
+  await prisma.rubric.create({
+    data: {
+      hackathonId: hackathon2.id,
+      name: "Web3 Rubric",
+      description: "Rubric for Web3 Buildathon",
+      isActive: true,
+      items: {
+        create: [
+          { name: "Decentralization", description: "Use of blockchain/Web3 principles", weight: 2, maxScore: 10, order: 1 },
+          { name: "Technical Implementation", description: "Smart contract and backend quality", weight: 2, maxScore: 10, order: 2 },
+          { name: "User Experience", description: "Ease of use and design", weight: 1.5, maxScore: 10, order: 3 },
+          { name: "Real-world Use Case", description: "Practicality and impact", weight: 1, maxScore: 10, order: 4 },
+        ],
+      },
+    },
+  });
 
   const hackathon3 = await prisma.hackathon.create({
+      // Add rubric for hackathon3
     data: {
       title: "HealthTech Innovation Sprint",
       tagline: "Code for better health",
@@ -481,8 +518,26 @@ Challenge areas: Telemedicine platforms, Mental health apps, Medical data visual
       },
     },
   });
+  // Add rubric for hackathon3
+  await prisma.rubric.create({
+    data: {
+      hackathonId: hackathon3.id,
+      name: "HealthTech Rubric",
+      description: "Rubric for HealthTech Innovation Sprint",
+      isActive: true,
+      items: {
+        create: [
+          { name: "Healthcare Impact", description: "Potential to improve health outcomes", weight: 2, maxScore: 10, order: 1 },
+          { name: "Technical Execution", description: "Quality of technical implementation", weight: 2, maxScore: 10, order: 2 },
+          { name: "Feasibility", description: "Practicality and scalability", weight: 1.5, maxScore: 10, order: 3 },
+          { name: "Presentation", description: "Clarity and persuasiveness", weight: 1, maxScore: 10, order: 4 },
+        ],
+      },
+    },
+  });
 
   const hackathon4 = await prisma.hackathon.create({
+      // Add rubric for hackathon4
     data: {
       title: "Green Earth Hackathon 2024",
       tagline: "Tech for a sustainable future",
@@ -531,6 +586,23 @@ Over 500 participants, 120+ projects submitted.`,
           { title: "Opening Ceremony", startTime: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), endTime: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), type: "ceremony" },
           { title: "Project Submissions", startTime: new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000 - 2 * 60 * 60 * 1000), endTime: new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000), type: "milestone" },
           { title: "Winners Announced", startTime: new Date(now.getTime() - 27 * 24 * 60 * 60 * 1000), endTime: new Date(now.getTime() - 27 * 24 * 60 * 60 * 1000), type: "ceremony" },
+        ],
+      },
+    },
+  });
+  // Add rubric for hackathon4
+  await prisma.rubric.create({
+    data: {
+      hackathonId: hackathon4.id,
+      name: "Sustainability Rubric",
+      description: "Rubric for Green Earth Hackathon",
+      isActive: true,
+      items: {
+        create: [
+          { name: "Environmental Impact", description: "Potential to help the environment", weight: 2, maxScore: 10, order: 1 },
+          { name: "Technical Solution", description: "Technical quality and innovation", weight: 2, maxScore: 10, order: 2 },
+          { name: "Scalability", description: "Ability to scale and sustain", weight: 1.5, maxScore: 10, order: 3 },
+          { name: "Presentation", description: "Communication and clarity", weight: 1, maxScore: 10, order: 4 },
         ],
       },
     },
