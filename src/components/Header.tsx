@@ -10,10 +10,14 @@ export default function Header() {
   const [isChangingRole, setIsChangingRole] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
-  const roles = ['PARTICIPANT', 'ORGANISER', 'JUDGE', 'MENTOR', 'SPONSOR'];
+  // Only PARTICIPANT and ORGANISER can be self-selected.
+  // JUDGE, MENTOR, and SPONSOR are assigned via invitation only.
+  const switchableRoles = ['PARTICIPANT', 'ORGANISER'];
   const currentRole = (session?.user as any)?.role || 'PARTICIPANT';
+  const canSwitch = switchableRoles.includes(currentRole);
 
   async function handleRoleChange(newRole: string) {
+    if (!switchableRoles.includes(newRole)) return;
     setIsChangingRole(true);
     try {
       const res = await fetch('/api/users/role', {
@@ -58,30 +62,47 @@ export default function Header() {
 
       {/* Right: user actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {/* Role switcher */}
-        <select
-          value={currentRole}
-          onChange={(e) => handleRoleChange(e.target.value)}
-          disabled={isChangingRole}
-          style={{
-            background: 'var(--bg-raised)',
-            border: '1px solid var(--border-default)',
+        {/* Role switcher - only for self-selectable roles */}
+        {canSwitch ? (
+          <select
+            value={currentRole}
+            onChange={(e) => handleRoleChange(e.target.value)}
+            disabled={isChangingRole}
+            style={{
+              background: 'var(--bg-raised)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-display)',
+              fontSize: '0.7rem',
+              padding: '0.35rem 0.6rem',
+              outline: 'none',
+              cursor: 'pointer',
+              letterSpacing: '0.03em',
+            }}
+          >
+            {switchableRoles.map((r) => (
+              <option key={r} value={r} style={{ background: 'var(--bg-raised)' }}>
+                {r.charAt(0) + r.slice(1).toLowerCase()}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span style={{
+            background: 'var(--accent-dim)',
+            border: '1px solid var(--border-accent)',
             borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
+            color: 'var(--accent)',
             fontFamily: 'var(--font-display)',
-            fontSize: '0.7rem',
+            fontSize: '0.65rem',
+            fontWeight: 600,
             padding: '0.35rem 0.6rem',
-            outline: 'none',
-            cursor: 'pointer',
-            letterSpacing: '0.03em',
-          }}
-        >
-          {roles.map((r) => (
-            <option key={r} value={r} style={{ background: 'var(--bg-raised)' }}>
-              {r.charAt(0) + r.slice(1).toLowerCase()}
-            </option>
-          ))}
-        </select>
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+          }}>
+            {currentRole}
+          </span>
+        )}
 
         {/* User info + menu */}
         <div style={{ position: 'relative' }}>

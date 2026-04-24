@@ -15,8 +15,12 @@ export default async function DashboardRouterPage() {
     redirect('/organiser/dashboard');
   }
 
-  if (role === 'JUDGE' || role === 'MENTOR') {
+  if (role === 'JUDGE') {
     redirect('/judge/dashboard');
+  }
+
+  if (role === 'MENTOR') {
+    redirect('/mentor/dashboard');
   }
 
   if (role === 'SPONSOR') {

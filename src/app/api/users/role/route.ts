@@ -22,6 +22,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validatedData = updateRoleSchema.parse(body);
 
+    // Only PARTICIPANT and ORGANISER can be self-selected.
+    // JUDGE, MENTOR, and SPONSOR roles are assigned via staff invitations only.
+    const selfSelectableRoles = ['PARTICIPANT', 'ORGANISER'];
+    if (!selfSelectableRoles.includes(validatedData.role)) {
+      return NextResponse.json(
+        { error: 'This role can only be assigned via invitation' },
+        { status: 403 }
+      );
+    }
+
     // Update user role
     const user = await prisma.user.update({
       where: { email: session.user.email },

@@ -25,10 +25,40 @@ export async function POST(
       if (ticket.status !== 'OPEN') {
         return { error: 'Ticket already claimed/resolved', status: 400 as const };
       }
+
+      const membership = await tx.teamMember.findFirst({
+        where: {
+          userId: ticket.creatorId,
+          team: {
+            hackathonId: ticket.hackathonId,
+          },
+        },
+        select: {
+          teamId: true,
+        },
+      });
+
       const updated = await tx.helpTicket.update({
         where: { id: params.ticketId },
         data: { status: 'IN_PROGRESS', assignedToId: mentor.id },
       });
+
+      if (membership?.teamId) {
+        await tx.teamMentor.upsert({
+          where: {
+            teamId_mentorId: {
+              teamId: membership.teamId,
+              mentorId: mentor.id,
+            },
+          },
+          update: {},
+          create: {
+            teamId: membership.teamId,
+            mentorId: mentor.id,
+          },
+        });
+      }
+
       return { data: updated };
     });
 
@@ -41,4 +71,3 @@ export async function POST(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

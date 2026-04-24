@@ -35,6 +35,12 @@ type Participant = {
   skills?: string[];
 };
 
+type HackathonOption = {
+  id: string;
+  title: string;
+  status?: string;
+};
+
 const COMPLEMENTARY_SKILLS: Record<string, string[]> = {
   React: ['UI/UX', 'TypeScript', 'CSS'],
   'Next.js': ['Node.js', 'TypeScript', 'React'],
@@ -72,8 +78,9 @@ export default function MyTeamPage() {
   const searchParams = useSearchParams();
   const initialHackathonId = searchParams.get('hackathonId') || '';
   const inviteRequestId = searchParams.get('inviteRequestId') || '';
-  const [hackathons, setHackathons] = useState<any[]>([]);
+  const [hackathons, setHackathons] = useState<HackathonOption[]>([]);
   const [hackathonId, setHackathonId] = useState(initialHackathonId);
+  const [myUserId, setMyUserId] = useState('');
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeam, setMyTeam] = useState<Team | null>(null);
   const [incoming, setIncoming] = useState<JoinRequest[]>([]);
@@ -110,73 +117,127 @@ export default function MyTeamPage() {
   const [ticketFeedback, setTicketFeedback] = useState('');
   const [activeTab, setActiveTab] = useState<'team' | 'discover' | 'invites'>('team');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [bootLoading, setBootLoading] = useState(true);
+  const [teamLoading, setTeamLoading] = useState(false);
 
   const isLead = myTeam && myTeam.members.some((m) => m.role === 'leader');
 
   useEffect(() => {
     async function boot() {
-      const [hRes, pRes] = await Promise.all([
-        fetch('/api/hackathons?limit=50'),
-        fetch('/api/users/profile'),
-      ]);
-      const hData = await hRes.json();
-      const pData = await pRes.json();
-      setHackathons(hData.data || []);
-      setMySkills(pData?.user?.profile?.skills || []);
-      if (!hackathonId && hData.data?.[0]?.id) setHackathonId(hData.data[0].id);
+      setBootLoading(true);
+      try {
+        const [myTeamRes, pRes] = await Promise.all([
+          fetch('/api/users/my-team'),
+          fetch('/api/users/profile'),
+        ]);
+        const myTeamData = await myTeamRes.json();
+        const pData = await pRes.json();
+        const memberships = Array.isArray(myTeamData?.data) ? myTeamData.data : [];
+        const uniqueHackathons = memberships.reduce((acc: HackathonOption[], item: any) => {
+          if (!acc.some((existing) => existing.id === item.hackathonId)) {
+            acc.push({
+              id: item.hackathonId,
+              title: item.hackathonTitle,
+              status: item.hackathonStatus,
+            });
+          }
+          return acc;
+        }, []);
+
+        setHackathons(uniqueHackathons);
+        setMySkills(pData?.user?.profile?.skills || []);
+        setMyUserId(pData?.user?.id || '');
+
+        if (initialHackathonId) {
+          const hasCurrent = uniqueHackathons.some((h) => h.id === initialHackathonId);
+          if (!hasCurrent) {
+            const hackathonRes = await fetch(`/api/hackathons/${initialHackathonId}`);
+            const hackathonData = await hackathonRes.json();
+            if (hackathonRes.ok && hackathonData?.data?.id) {
+              setHackathons((prev) => {
+                if (prev.some((h) => h.id === hackathonData.data.id)) return prev;
+                return [
+                  ...prev,
+                  {
+                    id: hackathonData.data.id,
+                    title: hackathonData.data.title,
+                    status: hackathonData.data.status,
+                  },
+                ];
+              });
+            }
+          }
+          setHackathonId(initialHackathonId);
+        } else if (uniqueHackathons[0]?.id) {
+          setHackathonId(uniqueHackathons[0].id);
+        }
+      } finally {
+        setBootLoading(false);
+      }
     }
     boot();
   }, []);
 
+  useEffect(() => {
+    if (!initialHackathonId || initialHackathonId === hackathonId) return;
+    setHackathonId(initialHackathonId);
+  }, [initialHackathonId, hackathonId]);
+
   const loadTeams = useCallback(async () => {
-    if (!hackathonId) return;
+    if (!hackathonId || !myUserId) return;
+    setTeamLoading(true);
     setError('');
-    const regRes = await fetch(`/api/hackathons/${hackathonId}/register`);
-    const regData = await regRes.json();
-    const registered = !!regData?.data?.registered;
-    setIsRegistered(registered);
+    try {
+      const [regRes, tRes] = await Promise.all([
+        fetch(`/api/hackathons/${hackathonId}/register`),
+        fetch(`/api/hackathons/${hackathonId}/teams`),
+      ]);
+      const regData = await regRes.json();
+      const tData = await tRes.json();
+      const registered = !!regData?.data?.registered;
+      const allTeams = tData.data || [];
+      const mine = allTeams.find((t: Team) => t.members.some((m) => m.user.id === myUserId)) || null;
 
-    const tRes = await fetch(`/api/hackathons/${hackathonId}/teams`);
-    const tData = await tRes.json();
-    const allTeams = tData.data || [];
-    setTeams(allTeams);
+      setIsRegistered(registered);
+      setTeams(allTeams);
+      setMyTeam(mine);
 
-    const pRes = await fetch('/api/users/profile');
-    const pData = await pRes.json();
-    const me = pData.user?.id;
-    const mine = allTeams.find((t: Team) => t.members.some((m) => m.user.id === me)) || null;
-    setMyTeam(mine);
+      if (mine) {
+        const [incomingRes, outgoingRes, mentorRes] = await Promise.all([
+          fetch(`/api/teams/${mine.id}/requests?type=incoming`),
+          fetch(`/api/teams/${mine.id}/requests?type=outgoing`),
+          fetch(`/api/teams/${mine.id}/chat`),
+        ]);
+        const [incomingData, outgoingData, mentorData] = await Promise.all([
+          incomingRes.json(),
+          outgoingRes.json(),
+          mentorRes.json(),
+        ]);
 
-    if (mine) {
-      const incomingRes = await fetch(`/api/teams/${mine.id}/requests?type=incoming`);
-      const incomingData = await incomingRes.json();
-      setIncoming(incomingData.data || []);
-
-      const outgoingRes = await fetch(`/api/teams/${mine.id}/requests?type=outgoing`);
-      const outgoingData = await outgoingRes.json();
-      setOutgoing(outgoingData.data || []);
-
-      const stored = localStorage.getItem(`ghost-slots:${mine.id}`);
-      setGhostSlots(stored ? JSON.parse(stored) : []);
-      setInvites([]);
-
-      const mentorRes = await fetch(`/api/teams/${mine.id}/chat`);
-      const mentorData = await mentorRes.json();
-      setAssignedMentor(mentorRes.ok ? mentorData?.data?.mentors?.[0] || null : null);
-    } else {
-      const invitesRes = await fetch('/api/teams/invites');
-      const invitesData = await invitesRes.json();
-      setInvites(invitesData.data || []);
-      setIncoming([]);
-      setOutgoing([]);
-      setGhostSlots([]);
-      setAssignedMentor(null);
+        const stored = localStorage.getItem(`ghost-slots:${mine.id}`);
+        setIncoming(incomingData.data || []);
+        setOutgoing(outgoingData.data || []);
+        setGhostSlots(stored ? JSON.parse(stored) : []);
+        setInvites([]);
+        setAssignedMentor(mentorRes.ok ? mentorData?.data?.mentors?.[0] || null : null);
+      } else {
+        const invitesRes = await fetch('/api/teams/invites');
+        const invitesData = await invitesRes.json();
+        setInvites(invitesData.data || []);
+        setIncoming([]);
+        setOutgoing([]);
+        setGhostSlots([]);
+        setAssignedMentor(null);
+      }
+    } finally {
+      setTeamLoading(false);
     }
-  }, [hackathonId]);
+  }, [hackathonId, myUserId]);
 
   useEffect(() => {
+    if (bootLoading) return;
     loadTeams();
-  }, [loadTeams]);
+  }, [bootLoading, loadTeams]);
 
   useEffect(() => {
     async function autoAcceptInvite() {
@@ -203,6 +264,11 @@ export default function MyTeamPage() {
   function goToRegistration() {
     if (!hackathonId) return;
     router.push(`/participant/hackathons/${hackathonId}/register`);
+  }
+
+  function handleHackathonChange(nextHackathonId: string) {
+    setHackathonId(nextHackathonId);
+    router.replace(`/participant/my-team?hackathonId=${nextHackathonId}`, { scroll: false });
   }
 
   useEffect(() => {
@@ -489,6 +555,27 @@ export default function MyTeamPage() {
 
   const currentHackathon = hackathons.find((h) => h.id === hackathonId);
 
+  if (bootLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
+        <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+      </div>
+    );
+  }
+
+  if (!hackathonId) {
+    return (
+      <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+          <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>No hackathon selected</p>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+            Open team page from specific hackathon card, or join a hackathon first.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
       {/* Header */}
@@ -510,15 +597,23 @@ export default function MyTeamPage() {
           <select
             className="org-input"
             value={hackathonId}
-            onChange={(e) => setHackathonId(e.target.value)}
+            onChange={(e) => handleHackathonChange(e.target.value)}
             style={{ width: 200 }}
           >
+            {!hackathons.length && <option value="">Select hackathon</option>}
             {hackathons.map((h) => (
               <option key={h.id} value={h.id}>{h.title}</option>
             ))}
           </select>
         </div>
       </div>
+
+      {teamLoading && (
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '0.85rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: 16, height: 16, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Loading team data...</p>
+        </div>
+      )}
 
       {/* Auto-processing invite */}
       {inviteAutoProcessing && (

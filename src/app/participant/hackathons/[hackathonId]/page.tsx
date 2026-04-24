@@ -7,6 +7,9 @@ import Link from 'next/link';
 
 interface Hackathon {
   id: string; title: string; tagline?: string; description: string; status: string;
+  shortDescription?: string;
+  bannerUrl?: string;
+  logoUrl?: string;
   startDate: string; endDate: string; registrationDeadline: string; submissionDeadline: string;
   location?: string; isVirtual: boolean; prize?: string; rules?: string;
   maxTeamSize: number; minTeamSize: number; theme?: string; hostName?: string; eligibilityDomain?: string;
@@ -18,6 +21,20 @@ interface Hackathon {
 }
 
 const TABS = ['Overview', 'Timeline', 'Prizes', 'Rules'] as const;
+
+function stripRichText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 export default function HackathonDetailPage() {
   const params = useParams();
@@ -62,7 +79,18 @@ export default function HackathonDetailPage() {
   const daysLeft = Math.max(0, Math.ceil((new Date(hackathon.registrationDeadline).getTime() - Date.now()) / 86400000));
   const meals = [hackathon.breakfastProvided && 'Breakfast', hackathon.lunchProvided && 'Lunch', hackathon.dinnerProvided && 'Dinner', hackathon.swagProvided && 'Swag'].filter(Boolean).join(' \u00b7 ') || 'TBA';
   const sponsors = hackathon.sponsorDetails || [];
-  const rulesLines = (hackathon.rules || '').split('\n').filter(Boolean);
+  const cleanedDescription = stripRichText(hackathon.shortDescription || hackathon.description);
+  const rulesLines = (hackathon.rules || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: 1100, margin: '0 auto' }}>
@@ -72,6 +100,11 @@ export default function HackathonDetailPage() {
         borderRadius: 'var(--radius-lg)', padding: '2rem', marginBottom: '1.25rem',
         position: 'relative', overflow: 'hidden',
       }}>
+        {hackathon.bannerUrl && (
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.25 }}>
+            <img src={hackathon.bannerUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+        )}
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 80% at 0% 100%, var(--accent-dim), transparent)', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
@@ -90,8 +123,13 @@ export default function HackathonDetailPage() {
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 3vw, 2rem)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: '0.35rem' }}>
             {hackathon.title}
           </h1>
+          {hackathon.logoUrl && (
+            <div style={{ width: 64, height: 64, marginBottom: '0.6rem', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-default)', background: 'var(--bg-raised)' }}>
+              <img src={hackathon.logoUrl} alt={`${hackathon.title} logo`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          )}
           {hackathon.tagline && <p style={{ fontSize: '1rem', color: 'var(--accent)', marginBottom: '0.5rem', fontFamily: 'var(--font-display)', fontWeight: 500 }}>{hackathon.tagline}</p>}
-          <p className="org-text" style={{ maxWidth: 600, marginBottom: '1rem' }}>{hackathon.description}</p>
+          <p className="org-text" style={{ maxWidth: 600, marginBottom: '1rem' }}>{cleanedDescription}</p>
 
           {/* Quick Stats */}
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>

@@ -104,9 +104,26 @@ export async function PUT(
 
     body.rules = mergeHackathonMeta(body.rules ?? hackathon.rules, meta);
 
+    // Whitelist only fields that exist in the Prisma schema
+    const ALLOWED_FIELDS = new Set([
+      'title', 'tagline', 'description', 'shortDescription',
+      'bannerUrl', 'logoUrl', 'status', 'startDate', 'endDate',
+      'registrationDeadline', 'submissionDeadline', 'maxTeamSize',
+      'minTeamSize', 'location', 'isVirtual', 'prize', 'rules',
+      'contactEmail', 'hostName', 'theme', 'eligibilityDomain',
+      'breakfastProvided', 'lunchProvided', 'dinnerProvided', 'swagProvided',
+      'sponsorDetails', 'judgeDetails', 'mentorDetails',
+      'themedTracks', 'targetBatches', 'allowedDepartments',
+      'allowCrossYearTeams', 'submissionRequirements',
+      'mealSchedule', 'rubricItems', 'internalMentors',
+    ]);
+    const data = Object.fromEntries(
+      Object.entries(body).filter(([k]) => ALLOWED_FIELDS.has(k))
+    );
+
     const updatedHackathon = await prisma.hackathon.update({
       where: { id: params.hackathonId },
-      data: body,
+      data,
     });
 
     return NextResponse.json({

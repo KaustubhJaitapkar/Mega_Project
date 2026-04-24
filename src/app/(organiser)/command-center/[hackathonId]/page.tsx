@@ -581,6 +581,47 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import EditHackathonModal from '@/components/organiser/EditHackathonModal';
+
+interface HackathonData {
+  id: string;
+  title: string;
+  tagline?: string;
+  description: string;
+  shortDescription: string;
+  bannerUrl?: string;
+  logoUrl?: string;
+  startDate: string;
+  endDate: string;
+  registrationDeadline: string;
+  submissionDeadline: string;
+  isVirtual: boolean;
+  location?: string;
+  maxTeamSize: number;
+  minTeamSize: number;
+  prize?: string;
+  rules?: string;
+  hostName?: string;
+  contactEmail?: string;
+  theme?: string;
+  eligibilityDomain?: string;
+  status: string;
+  breakfastProvided?: boolean;
+  lunchProvided?: boolean;
+  dinnerProvided?: boolean;
+  swagProvided?: boolean;
+  allowCrossYearTeams?: boolean;
+  themedTracks?: string[];
+  targetBatches?: string[];
+  allowedDepartments?: string[];
+  submissionRequirements?: string[];
+  sponsorDetails?: any[];
+  judgeDetails?: any[];
+  mentorDetails?: any[];
+  mealSchedule?: any[];
+  rubricItems?: any[];
+  internalMentors?: any[];
+}
 
 interface Stats {
   totalTeams: number;
@@ -612,6 +653,34 @@ interface Announcement {
   createdAt: string;
 }
 
+const TRACK_NAMES: Record<string, string> = {
+  'ai-ml': 'AI / ML',
+  'web3': 'Web3 & Blockchain',
+  'fintech': 'FinTech',
+  'healthtech': 'HealthTech',
+  'edtech': 'EdTech',
+  'cleantech': 'CleanTech',
+  'iot': 'IoT & Hardware',
+  'gaming': 'Gaming',
+  'social': 'Social Impact',
+  'open': 'Open Innovation',
+};
+
+const TRACK_ICONS: Record<string, string> = {
+  'ai-ml': '🤖', 'web3': '⛓️', 'fintech': '💰', 'healthtech': '🏥',
+  'edtech': '📚', 'cleantech': '🌱', 'iot': '📡', 'gaming': '🎮',
+  'social': '🤝', 'open': '🔓',
+};
+
+const SUBMISSION_LABELS: Record<string, string> = {
+  'github': 'GitHub Repository',
+  'demo': 'Live Demo Link',
+  'video': 'Video Pitch',
+  'presentation': 'Presentation PDF',
+  'readme': 'README Documentation',
+  'demo-video': 'Demo Video',
+};
+
 const STAT_CARDS = [
   { key: 'totalTeams',      label: 'Total Teams',    color: '#6366f1' },
   { key: 'submittedCount',  label: 'Submissions',    color: '#0ea5e9' },
@@ -625,6 +694,8 @@ export default function CommandCenterPage() {
   const params = useParams();
   const hackathonId = params.hackathonId as string;
   const [stats, setStats] = useState<Stats | null>(null);
+  const [hackathonData, setHackathonData] = useState<HackathonData | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '', isUrgent: false });
   const [announcementChannel, setAnnouncementChannel] = useState('website');
@@ -662,7 +733,7 @@ export default function CommandCenterPage() {
   const [isSavingControls, setIsSavingControls] = useState(false);
   const [isPublishingHackathon, setIsPublishingHackathon] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [activeTab, setActiveTab] = useState<'monitor' | 'comms' | 'controls' | 'certificates'>('monitor');
+  const [activeTab, setActiveTab] = useState<'monitor' | 'manage' | 'comms' | 'controls' | 'certificates'>('monitor');
 
   const showFeedback = (message: string) => {
     setFeedback(message);
@@ -686,6 +757,7 @@ export default function CommandCenterPage() {
         setStats(statsData.data);
         setAnnouncements(announcementsData.data || []);
         setSubmissions(submissionsData.data || []);
+        setHackathonData(hackathonData.data);
         setTeams(hackathonData.data?.teams || []);
         setTimelineEvents(hackathonData.data?.timelines || []);
         setStaff({ judges: staffData.data?.judges || [], mentors: staffData.data?.mentors || [] });
@@ -1053,6 +1125,140 @@ export default function CommandCenterPage() {
           color: #1e293b;
         }
 
+        .cc-hackathon-preview {
+          background: #ffffff;
+          border: 1.5px solid #f1f5f9;
+          border-radius: 12px;
+          padding: 20px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .cc-preview-banner {
+          width: 100%;
+          height: 100px;
+          border-radius: 8px;
+          overflow: hidden;
+          margin-bottom: 12px;
+        }
+        .cc-preview-banner img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .cc-preview-logo {
+          width: 48px;
+          height: 48px;
+          border-radius: 10px;
+          overflow: hidden;
+          flex-shrink: 0;
+          border: 1.5px solid #e2e8f0;
+        }
+        .cc-preview-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .cc-preview-info { flex: 1; min-width: 0; }
+        .cc-preview-title {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 16px;
+          font-weight: 700;
+          color: #0f172a;
+          letter-spacing: -0.3px;
+        }
+        .cc-preview-tagline {
+          font-size: 12px;
+          color: #64748b;
+          margin-top: 2px;
+        }
+        .cc-preview-meta {
+          display: flex;
+          gap: 16px;
+          margin-top: 6px;
+        }
+        .cc-preview-meta-item {
+          font-family: 'DM Mono', monospace;
+          font-size: 10px;
+          color: #94a3b8;
+          letter-spacing: 0.3px;
+        }
+        .cc-preview-meta-item span {
+          color: #1e293b;
+          font-weight: 500;
+        }
+        .cc-edit-btn {
+          padding: 8px 16px;
+          border-radius: 8px;
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          color: #6366f1;
+          font-family: 'DM Mono', monospace;
+          font-size: 10px;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          transition: all 0.15s;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+        .cc-edit-btn:hover {
+          background: #eef2ff;
+          border-color: #c7d2fe;
+        }
+
+        .cc-quick-stat {
+          background: #ffffff;
+          border: 1.5px solid #f1f5f9;
+          border-radius: 10px;
+          padding: 14px 16px;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .cc-quick-stat-label {
+          display: block;
+          font-family: 'DM Mono', monospace;
+          font-size: 9px;
+          letter-spacing: 1px;
+          color: #94a3b8;
+          text-transform: uppercase;
+          margin-bottom: 4px;
+        }
+        .cc-quick-stat-value {
+          display: block;
+          font-family: 'DM Mono', monospace;
+          font-size: 22px;
+          font-weight: 500;
+        }
+
+        .cc-zone-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .cc-zone-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          flex-shrink: 0;
+        }
+        .cc-zone-title {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 15px;
+          font-weight: 700;
+          color: #0f172a;
+          letter-spacing: -0.3px;
+        }
+        .cc-zone-desc {
+          font-size: 11px;
+          color: #94a3b8;
+          margin-top: 1px;
+        }
+
         @keyframes fadeSlideIn {
           from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
@@ -1095,6 +1301,7 @@ export default function CommandCenterPage() {
           <nav style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
             {[
               { id: 'monitor', icon: '◈', label: 'Monitor' },
+              { id: 'manage',  icon: '◇', label: 'Manage' },
               { id: 'comms',   icon: '◉', label: 'Comms' },
               { id: 'controls',icon: '◎', label: 'Controls' },
             ].map((item) => (
@@ -1165,16 +1372,48 @@ export default function CommandCenterPage() {
                 Command Center
               </h1>
               <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                ID: <span style={{ color: '#6366f1' }}>{hackathonId}</span>
+                {hackathonData?.title || 'Loading...'} · <span style={{ color: '#6366f1' }}>{hackathonId}</span>
               </p>
             </div>
 
-            <div style={{ display: 'flex', borderBottom: 'none', gap: 0 }}>
-              {(['monitor', 'comms', 'controls', 'certificates'] as const).map((t) => (
+            <div style={{ display: 'flex', borderBottom: 'none', gap: 0, alignItems: 'center' }}>
+              {(['monitor', 'manage', 'comms', 'controls', 'certificates'] as const).map((t) => (
                 <button key={t} className={`tab-btn ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
                   {t.toUpperCase()}
                 </button>
               ))}
+              <a
+                href={`/participant/hackathons/${hackathonId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  marginLeft: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 16px',
+                  background: '#f8fafc',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: 8,
+                  fontFamily: '"DM Mono", monospace',
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                  color: '#6366f1',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#eef2ff';
+                  e.currentTarget.style.borderColor = '#c7d2fe';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#f8fafc';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                }}
+              >
+                ↗ VIEW PUBLIC PAGE
+              </a>
             </div>
 
             {feedback && (
@@ -1193,149 +1432,684 @@ export default function CommandCenterPage() {
 
           <div style={{ padding: '28px', flex: 1, overflowY: 'auto' }}>
 
-            {/* ── MONITOR TAB ── */}
-            {activeTab === 'monitor' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-                  {/* Team Distribution */}
-                  <div className="card-cc">
-                    <p className="section-label">Team Distribution</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {Object.entries(stats?.teamDistribution || {}).map(([size, count]) => (
-                        <div key={size} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ width: 52, fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#94a3b8', textAlign: 'right', flexShrink: 0 }}>SIZE {size}</span>
-                          <div style={{ flex: 1, height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                            <div style={{ width: `${(Number(count) / maxDistribution) * 100}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', borderRadius: 4, transition: 'width 0.8s ease' }} />
-                          </div>
-                          <span style={{ width: 24, fontFamily: '"DM Mono", monospace', fontSize: 11, color: '#6366f1', textAlign: 'right', fontWeight: 500 }}>{count}</span>
-                        </div>
-                      ))}
+            {/* ── MANAGE TAB ── */}
+            {activeTab === 'manage' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {/* Hackathon Preview with Edit Button */}
+                <div className="cc-hackathon-preview">
+                  {hackathonData?.bannerUrl && (
+                    <div className="cc-preview-banner">
+                      <img src={hackathonData.bannerUrl} alt="Banner" />
                     </div>
-                  </div>
-
-                  {/* Skill Heatmap */}
-                  <div className="card-cc">
-                    <p className="section-label">Skill Heatmap</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                      {(stats?.skillHeatmap || []).map((s) => {
-                        const intensity = s.count / maxSkill;
-                        return (
-                          <div key={s.skill} style={{
-                            padding: '8px 10px', borderRadius: 8,
-                            background: `rgba(99,102,241,${0.04 + intensity * 0.12})`,
-                            border: `1.5px solid rgba(99,102,241,${0.08 + intensity * 0.18})`,
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          }}>
-                            <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: '#475569' }}>{s.skill}</span>
-                            <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 11, color: '#6366f1', fontWeight: 500 }}>{s.count}</span>
-                          </div>
-                        );
-                      })}
+                  )}
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    {hackathonData?.logoUrl && (
+                      <div className="cc-preview-logo">
+                        <img src={hackathonData.logoUrl} alt="Logo" />
+                      </div>
+                    )}
+                    <div className="cc-preview-info" style={{ flex: 1 }}>
+                      <h3 className="cc-preview-title">{hackathonData?.title || 'Loading...'}</h3>
+                      <p className="cc-preview-tagline">{hackathonData?.tagline || hackathonData?.shortDescription}</p>
+                      <div className="cc-preview-meta">
+                        <span className="cc-preview-meta-item">
+                          Status: <span>{hackathonData?.status}</span>
+                        </span>
+                        <span className="cc-preview-meta-item">
+                          Dates: <span>{hackathonData?.startDate ? new Date(hackathonData.startDate).toLocaleDateString() : '—'}</span>
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Submissions Table */}
-                <div className="card-cc">
-                  <p className="section-label">Submission Monitoring</p>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ background: '#f8fafc' }}>
-                          {['Team', 'Status', 'GitHub', 'Live URL', 'Health'].map((h) => (
-                            <th key={h} style={{ textAlign: 'left', padding: '9px 14px', fontFamily: '"DM Mono", monospace', fontSize: 9, letterSpacing: 1.5, color: '#94a3b8', borderBottom: '1.5px solid #f1f5f9', whiteSpace: 'nowrap' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {submissions.length === 0 ? (
-                          <tr><td colSpan={5} style={{ padding: '28px 14px', textAlign: 'center', color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 11 }}>NO SUBMISSIONS YET</td></tr>
-                        ) : submissions.map((s) => {
-                          const health = s.isHealthy
-                            ? { label: 'HEALTHY', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' }
-                            : s.healthCheckAt
-                              ? { label: 'BROKEN', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' }
-                              : { label: 'CHECKING', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
-                          return (
-                            <tr key={s.id} style={{ borderBottom: '1px solid #f8fafc' }}>
-                              <td style={{ padding: '11px 14px', fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{s.team?.name}</td>
-                              <td style={{ padding: '11px 14px' }}>
-                                <span className="status-pill" style={{ background: '#eff6ff', color: '#3b82f6', border: '1.5px solid #bfdbfe' }}>
-                                  <span className="status-dot" style={{ background: '#3b82f6' }} />{s.status}
-                                </span>
-                              </td>
-                              <td style={{ padding: '11px 14px' }}>
-                                {s.githubUrl ? <a href={s.githubUrl} target="_blank" style={{ color: '#6366f1', fontFamily: '"DM Mono", monospace', fontSize: 10, textDecoration: 'none', fontWeight: 500 }}>→ REPO</a> : <span style={{ color: '#e2e8f0' }}>—</span>}
-                              </td>
-                              <td style={{ padding: '11px 14px' }}>
-                                {s.liveUrl ? <a href={s.liveUrl} target="_blank" style={{ color: '#0ea5e9', fontFamily: '"DM Mono", monospace', fontSize: 10, textDecoration: 'none', fontWeight: 500 }}>→ LIVE</a> : <span style={{ color: '#e2e8f0' }}>—</span>}
-                              </td>
-                              <td style={{ padding: '11px 14px' }}>
-                                <span className="status-pill" style={{ background: health.bg, color: health.color, border: `1.5px solid ${health.border}` }}>
-                                  <span className="status-dot" style={{ background: health.color }} />{health.label}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Teams + Timeline */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-                  <div className="card-cc">
-                    <p className="section-label">Team Roster</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
-                      {teams.length === 0 ? (
-                        <p style={{ color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 11, textAlign: 'center', padding: 16 }}>NO TEAMS YET</p>
-                      ) : teams.map((t) => (
-                        <div key={t.id} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 9, border: '1.5px solid #f1f5f9' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{t.name}</span>
-                            <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 10 }}>{t.members?.length || 0}</span>
-                          </div>
-                          <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                            {t.members?.map((m: any) => m.user.name).join(', ') || 'No members'}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Timeline */}
-                  <div className="card-cc">
-                    <p className="section-label">Timeline Events</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                      <input className="cc-input" placeholder="Event title" value={timelineForm.title} onChange={(e) => setTimelineForm((p) => ({ ...p, title: e.target.value }))} />
-                      <input className="cc-input" placeholder="Type" value={timelineForm.type} onChange={(e) => setTimelineForm((p) => ({ ...p, type: e.target.value }))} />
-                      <input className="cc-input" placeholder="Description" value={timelineForm.description} onChange={(e) => setTimelineForm((p) => ({ ...p, description: e.target.value }))} style={{ gridColumn: 'span 2' }} />
-                      <input type="datetime-local" className="cc-input" value={timelineForm.startTime} onChange={(e) => setTimelineForm((p) => ({ ...p, startTime: e.target.value }))} />
-                      <input type="datetime-local" className="cc-input" value={timelineForm.endTime} onChange={(e) => setTimelineForm((p) => ({ ...p, endTime: e.target.value }))} />
-                    </div>
-                    <button className="cc-btn cc-btn-secondary" onClick={saveTimelineEvent} style={{ marginBottom: 12 }}>
-                      {timelineForm.id ? '↑ UPDATE EVENT' : '+ ADD EVENT'}
+                    <button className="cc-edit-btn" onClick={() => setShowEditModal(true)} style={{ flexShrink: 0 }}>
+                      ✎ EDIT DETAILS
                     </button>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
-                      {timelineEvents.length === 0 ? (
-                        <p style={{ color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 11, textAlign: 'center', padding: 12 }}>NO EVENTS</p>
-                      ) : timelineEvents.map((ev) => (
-                        <div key={ev.id} style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1.5px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                          <div>
-                            <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{ev.title}</p>
-                            <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8', marginTop: 3 }}>{new Date(ev.startTime).toLocaleDateString()} · {ev.type}</p>
+                  </div>
+                </div>
+
+                {/* Zone A: Stats Overview */}
+                <div>
+                  <div className="cc-zone-header">
+                    <div className="cc-zone-icon" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>◈</div>
+                    <div>
+                      <h3 className="cc-zone-title">Overview</h3>
+                      <p className="cc-zone-desc">Key metrics at a glance</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
+                    <div className="cc-quick-stat">
+                      <span className="cc-quick-stat-label">Teams</span>
+                      <span className="cc-quick-stat-value" style={{ color: '#6366f1' }}>{stats?.totalTeams ?? 0}</span>
+                    </div>
+                    <div className="cc-quick-stat">
+                      <span className="cc-quick-stat-label">Participants</span>
+                      <span className="cc-quick-stat-value" style={{ color: '#10b981' }}>{stats?.participantsCount ?? 0}</span>
+                    </div>
+                    <div className="cc-quick-stat">
+                      <span className="cc-quick-stat-label">Submissions</span>
+                      <span className="cc-quick-stat-value" style={{ color: '#0ea5e9' }}>{stats?.submittedCount ?? 0}</span>
+                    </div>
+                    <div className="cc-quick-stat">
+                      <span className="cc-quick-stat-label">Judges</span>
+                      <span className="cc-quick-stat-value" style={{ color: '#8b5cf6' }}>{staff.judges.length}</span>
+                    </div>
+                    <div className="cc-quick-stat">
+                      <span className="cc-quick-stat-label">Mentors</span>
+                      <span className="cc-quick-stat-value" style={{ color: '#f59e0b' }}>{staff.mentors.length}</span>
+                    </div>
+                    <div className="cc-quick-stat">
+                      <span className="cc-quick-stat-label">Avg Score</span>
+                      <span className="cc-quick-stat-value" style={{ color: '#ec4899' }}>{stats?.averageScore?.toFixed(1) ?? '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Zone B: Hackathon Management */}
+                <div>
+                  <div className="cc-zone-header">
+                    <div className="cc-zone-icon" style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1' }}>⚙</div>
+                    <div>
+                      <h3 className="cc-zone-title">Management</h3>
+                      <p className="cc-zone-desc">Edit details, manage timeline, control settings</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                    {/* Quick Edit Card */}
+                    <div className="card-cc">
+                      <p className="section-label">Hackathon Details</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {[
+                          { label: 'Title', value: hackathonData?.title },
+                          { label: 'Tagline', value: hackathonData?.tagline },
+                          { label: 'Short Desc', value: hackathonData?.shortDescription },
+                          { label: 'Theme', value: hackathonData?.theme },
+                          { label: 'Format', value: hackathonData?.isVirtual ? 'Virtual' : 'In-Person' },
+                          { label: 'Venue / Location', value: hackathonData?.location },
+                          { label: 'Team Size', value: hackathonData ? `${hackathonData.minTeamSize}–${hackathonData.maxTeamSize} members` : null },
+                          { label: 'Prize Pool', value: hackathonData?.prize },
+                          { label: 'Host', value: hackathonData?.hostName },
+                          { label: 'Contact', value: hackathonData?.contactEmail },
+                        ].filter(item => item.value).map((item) => (
+                          <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 10px', background: '#f8fafc', borderRadius: 6, gap: 8 }}>
+                            <span style={{ fontSize: 11, color: '#64748b', fontFamily: '"DM Mono", monospace', flexShrink: 0 }}>{item.label}</span>
+                            <span style={{ fontSize: 12, fontWeight: 500, color: '#1e293b', textAlign: 'right', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.value}</span>
                           </div>
-                          <button className="cc-btn cc-btn-ghost" style={{ width: 'auto', padding: '4px 10px', fontSize: 10 }} onClick={() => setTimelineForm({ id: ev.id, title: ev.title || '', description: ev.description || '', type: ev.type || 'general', startTime: new Date(ev.startTime).toISOString().slice(0, 16), endTime: new Date(ev.endTime).toISOString().slice(0, 16) })}>
-                            EDIT
+                        ))}
+                        <button className="cc-btn cc-btn-primary" onClick={() => setShowEditModal(true)} style={{ marginTop: 4 }}>
+                          ✎ EDIT ALL DETAILS
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Schedule Card */}
+                    <div className="card-cc">
+                      <p className="section-label">Schedule</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {hackathonData && [
+                          { label: 'Registration Deadline', value: hackathonData.registrationDeadline, color: '#3b82f6' },
+                          { label: 'Hackathon Start', value: hackathonData.startDate, color: '#10b981' },
+                          { label: 'Submission Deadline', value: hackathonData.submissionDeadline, color: '#f59e0b' },
+                          { label: 'Hackathon End', value: hackathonData.endDate, color: '#8b5cf6' },
+                        ].map((item) => (
+                          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 6 }}>
+                            <div style={{ width: 4, height: 32, borderRadius: 2, background: item.color, flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: 10, color: '#94a3b8', fontFamily: '"DM Mono", monospace', letterSpacing: 0.5 }}>{item.label.toUpperCase()}</p>
+                              <p style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>
+                                {new Date(item.value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                              <p style={{ fontSize: 9, color: '#94a3b8', fontFamily: '"DM Mono", monospace' }}>
+                                {new Date(item.value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tracks & Eligibility Card */}
+                    <div className="card-cc">
+                      <p className="section-label">Tracks & Eligibility</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {/* Themed Tracks */}
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: '"DM Mono", monospace', letterSpacing: 0.5 }}>THEMED TRACKS</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                            {hackathonData?.themedTracks && hackathonData.themedTracks.length > 0 ? (
+                              hackathonData.themedTracks.map((t: string) => (
+                                <span key={t} style={{ padding: '3px 8px', background: '#eef2ff', borderRadius: 4, fontSize: 10, color: '#6366f1', fontFamily: '"DM Mono", monospace' }}>
+                                  {TRACK_ICONS[t] || '🎯'} {TRACK_NAMES[t] || t}
+                                </span>
+                              ))
+                            ) : <span style={{ fontSize: 11, color: '#94a3b8' }}>None specified</span>}
+                          </div>
+                        </div>
+                        {/* Target Batches */}
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: '"DM Mono", monospace', letterSpacing: 0.5 }}>TARGET BATCHES</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                            {hackathonData?.targetBatches && hackathonData.targetBatches.length > 0 ? (
+                              hackathonData.targetBatches.map((b: string) => (
+                                <span key={b} style={{ padding: '3px 8px', background: '#f0fdf4', borderRadius: 4, fontSize: 10, color: '#16a34a', fontFamily: '"DM Mono", monospace' }}>{b}</span>
+                              ))
+                            ) : <span style={{ fontSize: 11, color: '#94a3b8' }}>All years</span>}
+                          </div>
+                        </div>
+                        {/* Allowed Departments */}
+                        <div>
+                          <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: '"DM Mono", monospace', letterSpacing: 0.5 }}>DEPARTMENTS</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                            {hackathonData?.allowedDepartments && hackathonData.allowedDepartments.length > 0 ? (
+                              hackathonData.allowedDepartments.map((d: string) => (
+                                <span key={d} style={{ padding: '3px 8px', background: '#fef3c7', borderRadius: 4, fontSize: 10, color: '#92400e', fontFamily: '"DM Mono", monospace' }}>{d}</span>
+                              ))
+                            ) : <span style={{ fontSize: 11, color: '#94a3b8' }}>All departments</span>}
+                          </div>
+                        </div>
+                        {/* Eligibility Domain */}
+                        {hackathonData?.eligibilityDomain && (
+                          <div style={{ padding: '6px 10px', background: '#f5f3ff', borderRadius: 6, border: '1px solid #ede9fe' }}>
+                            <span style={{ fontSize: 10, color: '#7c3aed', fontFamily: '"DM Mono", monospace', letterSpacing: 0.5 }}>ELIGIBILITY</span>
+                            <p style={{ fontSize: 11, color: '#5b21b6', marginTop: 2 }}>{hackathonData.eligibilityDomain}</p>
+                          </div>
+                        )}
+                        {/* Cross-Year Teams */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: hackathonData?.allowCrossYearTeams ? '#f0fdf4' : '#f8fafc', borderRadius: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: hackathonData?.allowCrossYearTeams ? '#16a34a' : '#cbd5e1' }} />
+                          <span style={{ fontSize: 11, color: '#64748b' }}>Cross-year teams {hackathonData?.allowCrossYearTeams ? 'allowed' : 'not allowed'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Timeline Management */}
+                    <div className="card-cc">
+                      <p className="section-label">Timeline Management</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                        <input className="cc-input" placeholder="Event title" value={timelineForm.title} onChange={(e) => setTimelineForm((p) => ({ ...p, title: e.target.value }))} />
+                        <input className="cc-input" placeholder="Type" value={timelineForm.type} onChange={(e) => setTimelineForm((p) => ({ ...p, type: e.target.value }))} />
+                        <input className="cc-input" placeholder="Description" value={timelineForm.description} onChange={(e) => setTimelineForm((p) => ({ ...p, description: e.target.value }))} style={{ gridColumn: 'span 2' }} />
+                        <input type="datetime-local" className="cc-input" value={timelineForm.startTime} onChange={(e) => setTimelineForm((p) => ({ ...p, startTime: e.target.value }))} />
+                        <input type="datetime-local" className="cc-input" value={timelineForm.endTime} onChange={(e) => setTimelineForm((p) => ({ ...p, endTime: e.target.value }))} />
+                      </div>
+                      <button className="cc-btn cc-btn-primary" onClick={saveTimelineEvent} style={{ marginBottom: 12 }}>
+                        {timelineForm.id ? '↑ UPDATE EVENT' : '+ ADD EVENT'}
+                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
+                        {timelineEvents.length === 0 ? (
+                          <p style={{ color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 11, textAlign: 'center', padding: 12 }}>NO EVENTS</p>
+                        ) : timelineEvents.slice(0, 5).map((ev) => (
+                          <div key={ev.id} style={{ padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, fontWeight: 600, color: '#1e293b' }}>{ev.title}</p>
+                              <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8' }}>{new Date(ev.startTime).toLocaleDateString()}</p>
+                            </div>
+                            <button className="cc-btn cc-btn-ghost" style={{ width: 'auto', padding: '3px 8px', fontSize: 9 }} onClick={() => setTimelineForm({ id: ev.id, title: ev.title || '', description: ev.description || '', type: ev.type || 'general', startTime: new Date(ev.startTime).toISOString().slice(0, 16), endTime: new Date(ev.endTime).toISOString().slice(0, 16) })}>
+                              EDIT
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Submission Requirements Card */}
+                    <div className="card-cc">
+                      <p className="section-label">Submission Requirements</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {hackathonData?.submissionRequirements && hackathonData.submissionRequirements.length > 0 ? (
+                          hackathonData.submissionRequirements.map((req: string) => (
+                            <div key={req} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f0fdf4', borderRadius: 6 }}>
+                              <span style={{ color: '#16a34a', fontSize: 12 }}>✓</span>
+                              <span style={{ fontSize: 11, color: '#166534' }}>{SUBMISSION_LABELS[req] || req}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ fontSize: 11, color: '#94a3b8', padding: '8px 0' }}>No requirements specified</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Judging Rubric Card */}
+                    <div className="card-cc">
+                      <p className="section-label">Judging Rubric</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {hackathonData?.rubricItems && hackathonData.rubricItems.length > 0 ? (
+                          <>
+                            {hackathonData.rubricItems.slice(0, 5).map((item: any, idx: number) => (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#f8fafc', borderRadius: 6 }}>
+                                <span style={{ fontSize: 11, color: '#475569' }}>{item.name}</span>
+                                <span style={{ fontSize: 11, fontFamily: '"DM Mono", monospace', color: '#6366f1', fontWeight: 600 }}>{item.weight}%</span>
+                              </div>
+                            ))}
+                            <div style={{ fontSize: 10, color: '#94a3b8', textAlign: 'center', paddingTop: 4 }}>
+                              {hackathonData.rubricItems.length} criteria total
+                            </div>
+                          </>
+                        ) : (
+                          <p style={{ fontSize: 11, color: '#94a3b8', padding: '8px 0' }}>No rubric defined</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sponsors Card */}
+                    <div className="card-cc">
+                      <p className="section-label">Sponsors ({hackathonData?.sponsorDetails?.length || 0})</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {hackathonData?.sponsorDetails && hackathonData.sponsorDetails.length > 0 ? (
+                          hackathonData.sponsorDetails.map((s: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                              {s.logoUrl && <img src={s.logoUrl} alt={s.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'contain' }} />}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</p>
+                                {s.tier && <span style={{ fontSize: 9, color: '#6366f1', fontFamily: '"DM Mono", monospace' }}>{s.tier}</span>}
+                              </div>
+                              {s.website && <a href={s.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: '#6366f1', textDecoration: 'none' }}>↗</a>}
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ fontSize: 11, color: '#94a3b8', padding: '8px 0' }}>No sponsors added</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* External Judges from Form */}
+                    <div className="card-cc">
+                      <p className="section-label">External Judges ({hackathonData?.judgeDetails?.length || 0})</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {hackathonData?.judgeDetails && hackathonData.judgeDetails.length > 0 ? (
+                          hackathonData.judgeDetails.map((j: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                              <div style={{ width: 28, height: 28, borderRadius: 6, background: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontSize: 11, fontWeight: 600 }}>
+                                {j.name?.charAt(0) || '?'}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{j.name}</p>
+                                <p style={{ fontSize: 9, color: '#94a3b8', fontFamily: '"DM Mono", monospace' }}>{j.email}{j.company ? ` · ${j.company}` : ''}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ fontSize: 11, color: '#94a3b8', padding: '8px 0' }}>No external judges added</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Internal Mentors from Form */}
+                    <div className="card-cc">
+                      <p className="section-label">Internal Mentors ({hackathonData?.internalMentors?.length || 0})</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {hackathonData?.internalMentors && hackathonData.internalMentors.length > 0 ? (
+                          hackathonData.internalMentors.map((m: any, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                              <div style={{ width: 28, height: 28, borderRadius: 6, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', fontSize: 11, fontWeight: 600 }}>
+                                {m.name?.charAt(0) || '?'}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{m.name}</p>
+                                <p style={{ fontSize: 9, color: '#94a3b8', fontFamily: '"DM Mono", monospace' }}>
+                                  {m.department}{m.expertise ? ` · ${m.expertise}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ fontSize: 11, color: '#94a3b8', padding: '8px 0' }}>No internal mentors assigned</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Meals & Perks Card */}
+                    <div className="card-cc">
+                      <p className="section-label">Meals & Perks</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                          {[
+                            { label: 'Breakfast', provided: hackathonData?.breakfastProvided, icon: '🌅' },
+                            { label: 'Lunch', provided: hackathonData?.lunchProvided, icon: '☀️' },
+                            { label: 'Dinner', provided: hackathonData?.dinnerProvided, icon: '🌙' },
+                            { label: 'Swag', provided: hackathonData?.swagProvided, icon: '👕' },
+                          ].map((meal) => (
+                            <div key={meal.label} style={{
+                              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+                              background: meal.provided ? '#f0fdf4' : '#f8fafc',
+                              borderRadius: 6, border: `1px solid ${meal.provided ? '#bbf7d0' : '#e2e8f0'}`,
+                            }}>
+                              <span style={{ fontSize: 14 }}>{meal.icon}</span>
+                              <span style={{ fontSize: 11, color: meal.provided ? '#166534' : '#94a3b8' }}>{meal.label}</span>
+                              <span style={{ marginLeft: 'auto', fontSize: 10, color: meal.provided ? '#16a34a' : '#cbd5e1' }}>
+                                {meal.provided ? '✓' : '—'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {hackathonData?.mealSchedule && hackathonData.mealSchedule.length > 0 && (
+                          <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+                            <span style={{ fontSize: 9, color: '#94a3b8', fontFamily: '"DM Mono", monospace', letterSpacing: 0.5 }}>MEAL SCHEDULE ({hackathonData.mealSchedule.length} slots)</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                              {hackathonData.mealSchedule.slice(0, 4).map((meal: any, idx: number) => (
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: '#f8fafc', borderRadius: 4 }}>
+                                  <span style={{ fontSize: 10, color: '#475569' }}>{meal.name}</span>
+                                  <span style={{ fontSize: 9, color: '#94a3b8', fontFamily: '"DM Mono", monospace' }}>Day {meal.day}</span>
+                                </div>
+                              ))}
+                              {hackathonData.mealSchedule.length > 4 && (
+                                <span style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>+{hackathonData.mealSchedule.length - 4} more</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Zone C: Personnel */}
+                <div>
+                  <div className="cc-zone-header">
+                    <div className="cc-zone-icon" style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }}>👥</div>
+                    <div>
+                      <h3 className="cc-zone-title">Personnel</h3>
+                      <p className="cc-zone-desc">Manage mentors, judges, and staff</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                    {/* Staff Stats */}
+                    <div className="card-cc">
+                      <p className="section-label">Staff Overview</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div style={{ padding: '14px 16px', background: '#eef2ff', borderRadius: 10, border: '1.5px solid #c7d2fe', textAlign: 'center' }}>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#6366f1', letterSpacing: 1, marginBottom: 4 }}>JUDGES</p>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 28, fontWeight: 500, color: '#4f46e5' }}>{staff.judges.length}</p>
+                        </div>
+                        <div style={{ padding: '14px 16px', background: '#f0fdf4', borderRadius: 10, border: '1.5px solid #bbf7d0', textAlign: 'center' }}>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#16a34a', letterSpacing: 1, marginBottom: 4 }}>MENTORS</p>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 28, fontWeight: 500, color: '#15803d' }}>{staff.mentors.length}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Add Staff */}
+                    <div className="card-cc">
+                      <p className="section-label">Invite Staff</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <input className="cc-input" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} placeholder="Email address" />
+                        <select className="cc-select" value={staffType} onChange={(e) => setStaffType(e.target.value as any)}>
+                          <option value="JUDGE">Judge</option>
+                          <option value="MENTOR">Mentor</option>
+                        </select>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <button className="cc-btn cc-btn-secondary" onClick={addStaff} disabled={staffLoading}>+ ADD</button>
+                          <button className="cc-btn cc-btn-primary" onClick={sendStaffInvite} disabled={staffLoading}>
+                            ✉ INVITE
                           </button>
                         </div>
-                      ))}
+                        <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8', textAlign: 'center', marginTop: 4 }}>
+                          Invite sends credentials via email
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Judges List */}
+                    <div className="card-cc">
+                      <p className="section-label">Judges ({staff.judges.length})</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+                        {staff.judges.length === 0 ? (
+                          <p style={{ color: '#94a3b8', fontFamily: '"DM Mono", monospace', fontSize: 10, textAlign: 'center', padding: 16 }}>NO JUDGES</p>
+                        ) : staff.judges.map((judge) => (
+                          <div key={judge.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, background: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1', fontSize: 11 }}>
+                              {judge.name?.charAt(0) || '?'}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{judge.name}</p>
+                              <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{judge.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Mentors List */}
+                    <div className="card-cc">
+                      <p className="section-label">Mentors ({staff.mentors.length})</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+                        {staff.mentors.length === 0 ? (
+                          <p style={{ color: '#94a3b8', fontFamily: '"DM Mono", monospace', fontSize: 10, textAlign: 'center', padding: 16 }}>NO MENTORS</p>
+                        ) : staff.mentors.map((mentor) => (
+                          <div key={mentor.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', fontSize: 11 }}>
+                              {mentor.name?.charAt(0) || '?'}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mentor.name}</p>
+                              <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mentor.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <button className="cc-btn cc-btn-secondary" onClick={autoAssignMentors} disabled={staffLoading} style={{ marginTop: 10 }}>
+                        ⇄ AUTO-ASSIGN MENTORS
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             )}
+
+            {/* ── MONITOR TAB ── */}
+            {activeTab === 'monitor' && (() => {
+              const now = Date.now();
+              const deadlines = hackathonData ? [
+                { label: 'Registration Closes', date: new Date(hackathonData.registrationDeadline), color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+                { label: 'Submission Deadline', date: new Date(hackathonData.submissionDeadline), color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+                { label: 'Hackathon Ends', date: new Date(hackathonData.endDate), color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe' },
+              ] : [];
+              const formatCountdown = (date: Date) => {
+                const diff = date.getTime() - now;
+                if (diff <= 0) return { text: 'PASSED', urgent: false, done: true };
+                const d = Math.floor(diff / 86400000);
+                const h = Math.floor((diff % 86400000) / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                if (d > 0) return { text: `${d}d ${h}h`, urgent: d <= 1, done: false };
+                if (h > 0) return { text: `${h}h ${m}m`, urgent: true, done: false };
+                return { text: `${m}m`, urgent: true, done: false };
+              };
+
+              const totalTeams = stats?.totalTeams ?? 0;
+              const submittedCount = stats?.submittedCount ?? 0;
+              const submissionRate = totalTeams > 0 ? Math.round((submittedCount / totalTeams) * 100) : 0;
+              const healthyCount = stats?.healthyCount ?? 0;
+              const healthRate = submittedCount > 0 ? Math.round((healthyCount / submittedCount) * 100) : 0;
+              const openTickets = stats?.openTickets ?? 0;
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                  {/* Row 1: Deadline Countdowns */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                    {deadlines.map((dl) => {
+                      const cd = formatCountdown(dl.date);
+                      return (
+                        <div key={dl.label} className="card-cc" style={{ borderColor: cd.done ? '#f1f5f9' : cd.urgent ? dl.border : '#f1f5f9' }}>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, letterSpacing: 1.5, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 10 }}>{dl.label}</p>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 24, fontWeight: 500, color: cd.done ? '#cbd5e1' : dl.color, lineHeight: 1 }}>
+                            {cd.text}
+                          </p>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8', marginTop: 6 }}>
+                            {dl.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {dl.date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {cd.urgent && !cd.done && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '2px 8px', background: dl.bg, border: `1px solid ${dl.border}`, borderRadius: 10, fontFamily: '"DM Mono", monospace', fontSize: 9, color: dl.color }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: dl.color }} />
+                              SOON
+                            </span>
+                          )}
+                          {cd.done && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '2px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8' }}>
+                              PASSED
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Row 2: Participation Health */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                    {/* Submission Progress */}
+                    <div className="card-cc">
+                      <p className="section-label">Submission Progress</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                            <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: '#475569' }}>Teams submitted</span>
+                            <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 13, fontWeight: 500, color: '#6366f1' }}>{submittedCount} / {totalTeams}</span>
+                          </div>
+                          <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ width: `${submissionRate}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', borderRadius: 4, transition: 'width 0.8s ease' }} />
+                          </div>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8', marginTop: 4 }}>{submissionRate}% SUBMISSION RATE</p>
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                            <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: '#475569' }}>Healthy submissions</span>
+                            <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 13, fontWeight: 500, color: '#10b981' }}>{healthyCount} / {submittedCount}</span>
+                          </div>
+                          <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ width: `${healthRate}%`, height: '100%', background: 'linear-gradient(90deg, #10b981, #34d399)', borderRadius: 4, transition: 'width 0.8s ease' }} />
+                          </div>
+                          <p style={{ fontFamily: '"DM Mono", monospace', fontSize: 9, color: '#94a3b8', marginTop: 4 }}>{healthRate}% PASS HEALTH CHECK</p>
+                        </div>
+                        {openTickets > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: 8 }}>
+                            <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: '#b91c1c' }}>Open support tickets</span>
+                            <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 16, fontWeight: 500, color: '#ef4444' }}>{openTickets}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Team Distribution */}
+                    <div className="card-cc">
+                      <p className="section-label">Team Size Distribution</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {Object.entries(stats?.teamDistribution || {}).length === 0 ? (
+                          <p style={{ color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 11, textAlign: 'center', padding: 16 }}>NO TEAMS YET</p>
+                        ) : Object.entries(stats?.teamDistribution || {}).map(([size, count]) => (
+                          <div key={size} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ width: 52, fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#94a3b8', textAlign: 'right', flexShrink: 0 }}>SIZE {size}</span>
+                            <div style={{ flex: 1, height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                              <div style={{ width: `${(Number(count) / maxDistribution) * 100}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', borderRadius: 4, transition: 'width 0.8s ease' }} />
+                            </div>
+                            <span style={{ width: 24, fontFamily: '"DM Mono", monospace', fontSize: 11, color: '#6366f1', textAlign: 'right', fontWeight: 500 }}>{count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Skill Heatmap */}
+                    <div className="card-cc">
+                      <p className="section-label">Skill Heatmap</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                        {(stats?.skillHeatmap || []).length === 0 ? (
+                          <p style={{ color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 11, textAlign: 'center', padding: 16, gridColumn: 'span 2' }}>NO DATA YET</p>
+                        ) : (stats?.skillHeatmap || []).map((s) => {
+                          const intensity = s.count / maxSkill;
+                          return (
+                            <div key={s.skill} style={{
+                              padding: '8px 10px', borderRadius: 8,
+                              background: `rgba(99,102,241,${0.04 + intensity * 0.12})`,
+                              border: `1.5px solid rgba(99,102,241,${0.08 + intensity * 0.18})`,
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            }}>
+                              <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: '#475569' }}>{s.skill}</span>
+                              <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 11, color: '#6366f1', fontWeight: 500 }}>{s.count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Submissions Table */}
+                  <div className="card-cc">
+                    <p className="section-label">Submissions</p>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {['Team', 'Members', 'Status', 'GitHub', 'Live URL', 'Health', 'Submitted'].map((h) => (
+                              <th key={h} style={{ textAlign: 'left', padding: '9px 14px', fontFamily: '"DM Mono", monospace', fontSize: 9, letterSpacing: 1.5, color: '#94a3b8', borderBottom: '1.5px solid #f1f5f9', whiteSpace: 'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {submissions.length === 0 ? (
+                            <tr><td colSpan={7} style={{ padding: '32px 14px', textAlign: 'center', color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 11 }}>NO SUBMISSIONS YET</td></tr>
+                          ) : submissions.map((s) => {
+                            const health = s.isHealthy
+                              ? { label: 'HEALTHY', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' }
+                              : s.healthCheckAt
+                                ? { label: 'BROKEN', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' }
+                                : { label: 'CHECKING', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+                            return (
+                              <tr key={s.id} style={{ borderBottom: '1px solid #f8fafc' }}>
+                                <td style={{ padding: '11px 14px', fontFamily: '"DM Sans", sans-serif', fontSize: 13, color: '#1e293b', fontWeight: 600 }}>{s.team?.name}</td>
+                                <td style={{ padding: '11px 14px', fontFamily: '"DM Mono", monospace', fontSize: 11, color: '#6366f1' }}>{s.team?.members?.length ?? '—'}</td>
+                                <td style={{ padding: '11px 14px' }}>
+                                  <span className="status-pill" style={{ background: '#eff6ff', color: '#3b82f6', border: '1.5px solid #bfdbfe' }}>
+                                    <span className="status-dot" style={{ background: '#3b82f6' }} />{s.status}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '11px 14px' }}>
+                                  {s.githubUrl ? <a href={s.githubUrl} target="_blank" style={{ color: '#6366f1', fontFamily: '"DM Mono", monospace', fontSize: 10, textDecoration: 'none', fontWeight: 500 }}>→ REPO</a> : <span style={{ color: '#e2e8f0' }}>—</span>}
+                                </td>
+                                <td style={{ padding: '11px 14px' }}>
+                                  {s.liveUrl ? <a href={s.liveUrl} target="_blank" style={{ color: '#0ea5e9', fontFamily: '"DM Mono", monospace', fontSize: 10, textDecoration: 'none', fontWeight: 500 }}>→ LIVE</a> : <span style={{ color: '#e2e8f0' }}>—</span>}
+                                </td>
+                                <td style={{ padding: '11px 14px' }}>
+                                  <span className="status-pill" style={{ background: health.bg, color: health.color, border: `1.5px solid ${health.border}` }}>
+                                    <span className="status-dot" style={{ background: health.color }} />{health.label}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '11px 14px', fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                                  {s.submittedAt ? new Date(s.submittedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Row 4: Teams */}
+                  <div className="card-cc">
+                    <p className="section-label">Team Roster</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+                      {teams.length === 0 ? (
+                        <p style={{ color: '#cbd5e1', fontFamily: '"DM Mono", monospace', fontSize: 11, textAlign: 'center', padding: 16, gridColumn: '1 / -1' }}>NO TEAMS YET</p>
+                      ) : teams.map((t) => {
+                        const hasSubmission = submissions.some((s: any) => s.team?.id === t.id);
+                        return (
+                          <div key={t.id} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 9, border: `1.5px solid ${hasSubmission ? '#bbf7d0' : '#f1f5f9'}` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                              <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{t.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {hasSubmission && <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 8, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 8 }}>SUBMITTED</span>}
+                                <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 10, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 10 }}>{t.members?.length || 0}</span>
+                              </div>
+                            </div>
+                            <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, color: '#94a3b8' }}>
+                              {t.members?.map((m: any) => m.user.name).join(', ') || 'No members'}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })()}
 
             {/* ── COMMS TAB ── */}
             {activeTab === 'comms' && (
@@ -1621,6 +2395,18 @@ export default function CommandCenterPage() {
           </div>
         </main>
       </div>
+
+      {/* Edit Hackathon Modal */}
+      {showEditModal && hackathonData && (
+        <EditHackathonModal
+          hackathon={hackathonData}
+          onClose={() => setShowEditModal(false)}
+          onSave={(updated) => {
+            setHackathonData(prev => prev ? { ...prev, ...updated } : null);
+            showFeedback('Hackathon details updated');
+          }}
+        />
+      )}
     </>
   );
 }

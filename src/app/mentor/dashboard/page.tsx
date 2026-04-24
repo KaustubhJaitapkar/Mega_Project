@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface Ticket {
   id: string;
@@ -18,19 +18,36 @@ interface Ticket {
 }
 
 interface AssignedTeam {
+  assignedAt?: string;
   team?: {
     id: string;
     name: string;
     description?: string;
-    hackathon?: { title: string };
+    hackathon?: { id?: string; title: string };
     members?: Array<{ user?: { name: string; profile?: { skills?: string[] } } }>;
     submission?: { technologies?: string[] };
   };
 }
 
+interface ChatMessage {
+  id: string;
+  content: string;
+  createdAt: string;
+  isFromMentor: boolean;
+  user?: { id: string; name: string; image?: string | null } | null;
+  mentor?: { id: string; name: string; image?: string | null } | null;
+}
+
 export default function MentorDashboardPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [assignedTeams, setAssignedTeams] = useState<AssignedTeam[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatContent, setChatContent] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatRefreshing, setChatRefreshing] = useState(false);
+  const [chatSending, setChatSending] = useState(false);
+  const [chatError, setChatError] = useState('');
   const [category, setCategory] = useState('');
   const [activeTicketId, setActiveTicketId] = useState('');
   const [resolution, setResolution] = useState('');
@@ -38,6 +55,7 @@ export default function MentorDashboardPage() {
   const [noticeType, setNoticeType] = useState<'success' | 'error'>('success');
   const [resolving, setResolving] = useState(false);
   const [claiming, setClaiming] = useState('');
+  const lastChatSigRef = useRef('');
 
   const showNotice = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
     setNotice(msg);
@@ -66,9 +84,73 @@ export default function MentorDashboardPage() {
     return () => clearInterval(timer);
   }, [loadTickets, loadAssignedTeams]);
 
+  useEffect(() => {
+    if (!assignedTeams.length) {
+      setSelectedTeamId('');
+      return;
+    }
+    if (!selectedTeamId || !assignedTeams.some((entry) => entry.team?.id === selectedTeamId)) {
+      setSelectedTeamId(assignedTeams[0]?.team?.id || '');
+    }
+  }, [assignedTeams, selectedTeamId]);
+
+  useEffect(() => {
+    setChatMessages([]);
+    setChatError('');
+    lastChatSigRef.current = '';
+  }, [selectedTeamId]);
+
   const openQueue = useMemo(() => tickets.filter((t) => t.status === 'OPEN'), [tickets]);
   const inProgress = useMemo(() => tickets.filter((t) => t.status === 'IN_PROGRESS'), [tickets]);
   const resolved = useMemo(() => tickets.filter((t) => t.status === 'RESOLVED').slice(0, 10), [tickets]);
+  const selectedTeam = useMemo(
+    () => assignedTeams.find((entry) => entry.team?.id === selectedTeamId),
+    [assignedTeams, selectedTeamId]
+  );
+
+  const loadChat = useCallback(async (opts?: { refreshing?: boolean }) => {
+    if (!selectedTeamId) {
+      setChatMessages([]);
+      setChatError('');
+      lastChatSigRef.current = '';
+      return;
+    }
+
+    if (opts?.refreshing) setChatRefreshing(true);
+    else setChatLoading(true);
+
+    try {
+      const res = await fetch(`/api/teams/${selectedTeamId}/chat`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) {
+        setChatError(data.error || 'Failed to load chat');
+        return;
+      }
+
+      const nextMessages: ChatMessage[] = data.data?.messages || [];
+      const nextSig = nextMessages.length
+        ? `${nextMessages.length}:${nextMessages[nextMessages.length - 1]?.id}`
+        : '0:empty';
+
+      if (nextSig !== lastChatSigRef.current) {
+        setChatMessages(nextMessages);
+        lastChatSigRef.current = nextSig;
+      }
+      setChatError('');
+    } catch {
+      setChatError('Failed to load chat');
+    } finally {
+      setChatLoading(false);
+      setChatRefreshing(false);
+    }
+  }, [selectedTeamId]);
+
+  useEffect(() => {
+    if (!selectedTeamId) return;
+    loadChat();
+    const timer = setInterval(() => loadChat(), 4000);
+    return () => clearInterval(timer);
+  }, [selectedTeamId, loadChat]);
 
   async function claim(ticketId: string) {
     setClaiming(ticketId);
@@ -77,7 +159,7 @@ export default function MentorDashboardPage() {
       const data = await res.json();
       showNotice(res.ok ? 'Ticket claimed' : data.error || 'Claim failed', res.ok ? 'success' : 'error');
       if (res.ok) setActiveTicketId(ticketId);
-      loadTickets();
+      await Promise.all([loadTickets(), loadAssignedTeams()]);
     } finally {
       setClaiming('');
     }
@@ -97,9 +179,47 @@ export default function MentorDashboardPage() {
         setResolution('');
         setActiveTicketId('');
       }
-      loadTickets();
+      await loadTickets();
     } finally {
       setResolving(false);
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!selectedTeamId || !chatContent.trim()) return;
+    const draft = chatContent.trim();
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimistic: ChatMessage = {
+      id: optimisticId,
+      content: draft,
+      createdAt: new Date().toISOString(),
+      isFromMentor: true,
+      mentor: { id: 'mentor', name: 'You' },
+    };
+
+    setChatMessages((prev) => [...prev, optimistic]);
+    setChatContent('');
+    setChatSending(true);
+    try {
+      const res = await fetch(`/api/teams/${selectedTeamId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: draft }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setChatError(data.error || 'Failed to send message');
+        setChatMessages((prev) => prev.filter((msg) => msg.id !== optimisticId));
+        return;
+      }
+
+      setChatMessages((prev) => prev.map((msg) => (msg.id === optimisticId ? data.data : msg)));
+      setChatError('');
+    } catch {
+      setChatError('Failed to send message');
+      setChatMessages((prev) => prev.filter((msg) => msg.id !== optimisticId));
+    } finally {
+      setChatSending(false);
     }
   }
 
@@ -113,9 +233,9 @@ export default function MentorDashboardPage() {
   }
 
   function getPriorityColor(p: string) {
-    if (p === 'high') return { bg: 'bg-red-100', text: 'text-red-700' };
-    if (p === 'low') return { bg: 'bg-gray-100', text: 'text-gray-600' };
-    return { bg: 'bg-blue-100', text: 'text-blue-700' };
+    if (p === 'high') return '#ef4444';
+    if (p === 'low') return '#64748b';
+    return '#818cf8';
   }
 
   function getCategoryIcon(c: string) {
@@ -124,37 +244,80 @@ export default function MentorDashboardPage() {
     return '?';
   }
 
+  function formatChatTime(dateStr: string) {
+    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
   return (
-    <div className="p-8 space-y-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Mentor Dashboard</h1>
-          <p className="text-gray-500 mt-1">Help teams solve problems and unblock their progress.</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>
+            Mentor
+          </p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 2vw, 1.8rem)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Dashboard
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.35rem' }}>
+            Help teams solve problems and unblock their progress.
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">Queue:</span>
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-amber-100 text-amber-700">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Queue:</span>
+          <span style={{
+            padding: '0.25rem 0.6rem', borderRadius: 999,
+            background: 'rgba(232, 164, 74, 0.12)', color: 'var(--accent)',
+            fontFamily: 'var(--font-display)', fontSize: '0.68rem', fontWeight: 600,
+          }}>
             {openQueue.length} open
           </span>
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-700">
+          <span style={{
+            padding: '0.25rem 0.6rem', borderRadius: 999,
+            background: 'rgba(129, 140, 248, 0.12)', color: '#818cf8',
+            fontFamily: 'var(--font-display)', fontSize: '0.68rem', fontWeight: 600,
+          }}>
             {inProgress.length} active
           </span>
         </div>
       </div>
 
+      {/* Notice */}
       {notice && (
-        <div className={`p-3 rounded-lg text-sm font-medium ${
-          noticeType === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-        }`}>
+        <div style={{
+          padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem',
+          fontSize: '0.82rem', fontWeight: 500,
+          background: noticeType === 'success' ? 'rgba(62, 207, 142, 0.1)' : 'var(--error-dim)',
+          border: `1px solid ${noticeType === 'success' ? 'var(--success)' : 'var(--error)'}`,
+          color: noticeType === 'success' ? 'var(--success)' : 'var(--error)',
+        }}>
           {notice}
         </div>
       )}
 
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid var(--accent)', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Open Tickets</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--accent)', marginTop: '0.25rem' }}>{openQueue.length}</p>
+        </div>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid #818cf8', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>In Progress</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: '#818cf8', marginTop: '0.25rem' }}>{inProgress.length}</p>
+        </div>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid #3ecf8e', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>My Teams</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: '#3ecf8e', marginTop: '0.25rem' }}>{assignedTeams.length}</p>
+        </div>
+      </div>
+
       {/* Filter */}
-      <div className="card flex gap-3 items-end">
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem', marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
         <div>
-          <label className="block text-xs text-gray-500 mb-1 font-medium uppercase tracking-wider">Filter by category</label>
-          <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <label style={{ display: 'block', fontFamily: 'var(--font-display)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
+            Filter by category
+          </label>
+          <select className="org-input" value={category} onChange={(e) => setCategory(e.target.value)} style={{ minWidth: 160 }}>
             <option value="">All categories</option>
             <option value="technical">Technical</option>
             <option value="general">General</option>
@@ -163,39 +326,53 @@ export default function MentorDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Three Column Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
         {/* Open Queue */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Open Queue</h2>
-            <span className="text-xs text-gray-400">{openQueue.length} tickets</span>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Open Queue</p>
+            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{openQueue.length} tickets</span>
           </div>
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: 500, overflowY: 'auto' }}>
             {openQueue.map((t) => {
               const pc = getPriorityColor(t.priority);
               return (
-                <div key={t.id} className="p-4 border rounded-lg hover:border-indigo-200 transition-colors">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                <div key={t.id} style={{
+                  padding: '0.85rem', border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-md)', background: 'var(--bg-raised)',
+                  transition: 'border-color 0.15s',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{
+                        fontSize: '0.6rem', fontFamily: 'monospace',
+                        padding: '0.15rem 0.35rem', borderRadius: 'var(--radius-sm)',
+                        background: 'var(--bg-elevated)', color: 'var(--text-muted)',
+                      }}>
                         {getCategoryIcon(t.category)}
                       </span>
-                      <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${pc.bg} ${pc.text}`}>
+                      <span style={{
+                        fontSize: '0.55rem', fontWeight: 600, textTransform: 'uppercase',
+                        padding: '0.1rem 0.35rem', borderRadius: 'var(--radius-sm)',
+                        background: `${pc}15`, color: pc,
+                      }}>
                         {t.priority}
                       </span>
                     </div>
-                    <span className="text-xs text-gray-400">{timeSince(t.createdAt)}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{timeSince(t.createdAt)}</span>
                   </div>
-                  <p className="font-semibold text-gray-900 text-sm mb-1">{t.title}</p>
-                  <p className="text-xs text-gray-500 mb-2 line-clamp-2">{t.description}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">
-                      by {t.creator?.name || 'Unknown'} &middot; {t.hackathon?.title || ''}
+                  <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{t.title}</p>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.description}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                      {t.creator?.name || 'Unknown'} &middot; {t.hackathon?.title || ''}
                     </span>
                     <button
-                      className="btn btn-primary text-xs px-3 py-1.5"
+                      className="org-btn-primary"
                       onClick={() => claim(t.id)}
                       disabled={claiming === t.id}
+                      style={{ fontSize: '0.68rem', padding: '0.3rem 0.65rem' }}
                     >
                       {claiming === t.id ? 'Claiming...' : 'Claim'}
                     </button>
@@ -204,49 +381,60 @@ export default function MentorDashboardPage() {
               );
             })}
             {openQueue.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-400">No open tickets</p>
-                <p className="text-xs text-gray-300 mt-1">New requests will appear here</p>
+              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No open tickets</p>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.25rem', opacity: 0.6 }}>New requests will appear here</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Active / In Progress */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">In Progress</h2>
-            <span className="text-xs text-gray-400">{inProgress.length} active</span>
+        {/* In Progress */}
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>In Progress</p>
+            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{inProgress.length} active</span>
           </div>
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: 500, overflowY: 'auto' }}>
             {inProgress.map((t) => {
               const isActive = activeTicketId === t.id || !activeTicketId;
               return (
-                <div key={t.id} className={`p-4 border rounded-lg ${isActive ? 'border-indigo-300 bg-indigo-50/50' : ''}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                <div key={t.id} style={{
+                  padding: '0.85rem',
+                  border: `1px solid ${isActive ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
+                  borderRadius: 'var(--radius-md)',
+                  background: isActive ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <span style={{
+                      fontSize: '0.55rem', fontWeight: 600, textTransform: 'uppercase',
+                      padding: '0.1rem 0.35rem', borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(129, 140, 248, 0.12)', color: '#818cf8',
+                    }}>
                       In Progress
                     </span>
-                    <span className="text-xs text-gray-400">{timeSince(t.createdAt)}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{timeSince(t.createdAt)}</span>
                   </div>
-                  <p className="font-semibold text-gray-900 text-sm mb-1">{t.title}</p>
-                  <p className="text-xs text-gray-500 mb-3">{t.description}</p>
+                  <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.2rem' }}>{t.title}</p>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>{t.description}</p>
 
                   {isActive && (
-                    <div className="space-y-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                       <textarea
-                        className="input min-h-[60px] text-sm"
+                        className="org-input"
                         placeholder="Write your resolution notes..."
                         value={activeTicketId === t.id ? resolution : ''}
                         onChange={(e) => {
                           setActiveTicketId(t.id);
                           setResolution(e.target.value);
                         }}
+                        style={{ minHeight: 60, fontSize: '0.78rem', resize: 'vertical' as const }}
                       />
                       <button
-                        className="btn btn-primary w-full text-sm"
+                        className="org-btn-primary"
                         onClick={() => resolveTicket(t.id)}
                         disabled={resolving}
+                        style={{ width: '100%', fontSize: '0.75rem' }}
                       >
                         {resolving ? 'Resolving...' : 'Resolve Ticket'}
                       </button>
@@ -254,7 +442,7 @@ export default function MentorDashboardPage() {
                   )}
 
                   {!isActive && (
-                    <p className="text-xs text-gray-400">
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
                       Claimed by {t.assignedTo?.name || 'another mentor'}
                     </p>
                   )}
@@ -262,20 +450,22 @@ export default function MentorDashboardPage() {
               );
             })}
             {inProgress.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-400">No active tickets</p>
-                <p className="text-xs text-gray-300 mt-1">Claim a ticket from the queue</p>
+              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No active tickets</p>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.25rem', opacity: 0.6 }}>Claim a ticket from the queue</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column: Teams & Recent */}
-        <div className="space-y-6">
+        {/* Right Column: Teams & Resolved */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Assigned Teams */}
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">My Teams</h2>
-            <div className="space-y-3 max-h-[240px] overflow-y-auto">
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+              My Teams
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: 240, overflowY: 'auto' }}>
               {assignedTeams.map((entry) => {
                 const teamSkills = [
                   ...new Set([
@@ -283,27 +473,56 @@ export default function MentorDashboardPage() {
                     ...(entry.team?.submission?.technologies || []),
                   ]),
                 ];
+                const isSelected = entry.team?.id === selectedTeamId;
                 return (
-                  <div key={entry.team?.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-semibold text-sm text-gray-900">{entry.team?.name || 'Team'}</p>
+                  <div key={entry.team?.id} style={{
+                    padding: '0.75rem',
+                    border: `1px solid ${isSelected ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
+                    borderRadius: 'var(--radius-md)',
+                    background: isSelected ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTeamId(entry.team?.id || '')}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {entry.team?.name || 'Team'}
+                      </button>
                       <Link
                         href={`/mentor/teams/${entry.team?.id}/chat`}
-                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                        style={{ fontSize: '0.68rem', color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}
                       >
-                        Chat &rarr;
+                        Full Chat &rarr;
                       </Link>
                     </div>
-                    <p className="text-xs text-gray-500 mb-2">{entry.team?.hackathon?.title || ''}</p>
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>{entry.team?.hackathon?.title || ''}</p>
                     {teamSkills.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem' }}>
                         {teamSkills.slice(0, 5).map((skill) => (
-                          <span key={skill} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium">
+                          <span key={skill} style={{
+                            fontSize: '0.58rem', padding: '0.1rem 0.3rem',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--bg-elevated)', color: 'var(--text-muted)', fontWeight: 500,
+                          }}>
                             {skill}
                           </span>
                         ))}
                         {teamSkills.length > 5 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-400">
+                          <span style={{
+                            fontSize: '0.58rem', padding: '0.1rem 0.3rem',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--bg-elevated)', color: 'var(--text-muted)',
+                          }}>
                             +{teamSkills.length - 5}
                           </span>
                         )}
@@ -313,28 +532,150 @@ export default function MentorDashboardPage() {
                 );
               })}
               {assignedTeams.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">No teams assigned yet</p>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>No teams assigned yet</p>
               )}
             </div>
           </div>
 
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.5rem' }}>
+              <div>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Team Chat
+                </p>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                  {selectedTeam?.team?.name || 'Select team'}
+                </p>
+              </div>
+              <button
+                className="org-btn-secondary"
+                onClick={() => loadChat({ refreshing: true })}
+                disabled={chatRefreshing || !selectedTeamId}
+                style={{ fontSize: '0.68rem', padding: '0.3rem 0.65rem' }}
+              >
+                {chatRefreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+
+            {chatError && (
+              <div style={{
+                padding: '0.55rem 0.7rem',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: '0.75rem',
+                fontSize: '0.72rem',
+                background: 'var(--error-dim)',
+                color: 'var(--error)',
+                border: '1px solid var(--error)',
+              }}>
+                {chatError}
+              </div>
+            )}
+
+            <div style={{
+              minHeight: 260,
+              maxHeight: 320,
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.45rem',
+              padding: '0.2rem 0.1rem 0.8rem',
+            }}>
+              {!selectedTeamId ? (
+                <div style={{ display: 'grid', placeItems: 'center', minHeight: 220, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  No team assigned yet.
+                </div>
+              ) : chatLoading && chatMessages.length === 0 ? (
+                <div style={{ display: 'grid', placeItems: 'center', minHeight: 220, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  Loading conversation...
+                </div>
+              ) : chatMessages.length === 0 ? (
+                <div style={{ display: 'grid', placeItems: 'center', minHeight: 220, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  No messages yet.
+                </div>
+              ) : (
+                chatMessages.map((msg) => {
+                  const isMentor = msg.isFromMentor;
+                  const senderName = isMentor ? msg.mentor?.name || 'Mentor' : msg.user?.name || 'Team';
+                  return (
+                    <div key={msg.id} style={{ display: 'flex', justifyContent: isMentor ? 'flex-end' : 'flex-start' }}>
+                      <div style={{
+                        maxWidth: '88%',
+                        borderRadius: 14,
+                        padding: '0.62rem 0.75rem',
+                        background: isMentor ? 'var(--accent)' : 'var(--bg-raised)',
+                        color: isMentor ? 'var(--text-inverse)' : 'var(--text-primary)',
+                        border: isMentor ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+                      }}>
+                        <p style={{ fontSize: '0.63rem', opacity: 0.8, marginBottom: '0.22rem' }}>{senderName}</p>
+                        <p style={{ fontSize: '0.78rem', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
+                        <p style={{ fontSize: '0.6rem', opacity: 0.75, marginTop: '0.24rem' }}>{formatChatTime(msg.createdAt)}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <textarea
+                className="org-input"
+                placeholder={selectedTeamId ? 'Reply to team...' : 'Select a team to chat'}
+                value={chatContent}
+                onChange={(e) => setChatContent(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!chatSending && chatContent.trim()) sendChatMessage();
+                  }
+                }}
+                disabled={!selectedTeamId || chatSending}
+                rows={3}
+                style={{ resize: 'vertical' as const, minHeight: 84 }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  Replies go straight to team conversation.
+                </p>
+                <button
+                  className="org-btn-primary"
+                  onClick={sendChatMessage}
+                  disabled={!selectedTeamId || chatSending || !chatContent.trim()}
+                  style={{ fontSize: '0.72rem', padding: '0.38rem 0.8rem' }}
+                >
+                  {chatSending ? 'Sending...' : 'Send'}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Recently Resolved */}
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Recently Resolved</h2>
-            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+              Recently Resolved
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: 200, overflowY: 'auto' }}>
               {resolved.map((t) => (
-                <div key={t.id} className="p-2 border rounded flex items-center justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-700 truncate">{t.title}</p>
-                    <p className="text-xs text-gray-400">{t.resolvedAt ? timeSince(t.resolvedAt) : ''}</p>
+                <div key={t.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '0.5rem 0.6rem', border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)', background: 'var(--bg-raised)',
+                }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</p>
+                    <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{t.resolvedAt ? timeSince(t.resolvedAt) : ''}</p>
                   </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-semibold flex-shrink-0">
+                  <span style={{
+                    fontSize: '0.55rem', fontWeight: 600, textTransform: 'uppercase',
+                    padding: '0.1rem 0.35rem', borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(62, 207, 142, 0.12)', color: '#3ecf8e',
+                    flexShrink: 0, marginLeft: '0.5rem',
+                  }}>
                     DONE
                   </span>
                 </div>
               ))}
               {resolved.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">No resolved tickets yet</p>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>No resolved tickets yet</p>
               )}
             </div>
           </div>
