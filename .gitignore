@@ -13,7 +13,6 @@ out/
 *.tgz
 
 # Prisma
-prisma/migrations/
 *.db
 
 # Production

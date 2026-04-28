@@ -494,6 +494,7 @@ model Attendance {
   breakfastRedeemed Boolean @default(false)
   lunchRedeemed   Boolean   @default(false)
   swagCollected   Boolean   @default(false)
+  eventMarks      Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

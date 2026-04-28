@@ -1,19 +1,31 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface Hackathon { id: string; title: string; status: string }
+interface MealSlot { id: string; name: string; startTime: string; endTime: string; day: number }
 interface ScanResult { action: string; userName: string; userEmail: string; time: string; alreadyDone: boolean }
 interface AttendanceRow {
   id: string; checkInTime: string | null; breakfastRedeemed: boolean; lunchRedeemed: boolean; swagCollected: boolean;
   user: { id: string; name: string; email: string };
+  eventMarks?: Record<string, string> | null;
 }
+
+type AttendanceOption = {
+  id: string;
+  label: string;
+  action: 'CHECK_IN' | 'BREAKFAST' | 'LUNCH' | 'SWAG' | 'EVENT';
+  eventId?: string;
+  color: string;
+};
 
 export default function ScanPage() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [hackathonId, setHackathonId] = useState('');
+  const [mealSchedule, setMealSchedule] = useState<MealSlot[]>([]);
   const [scanInput, setScanInput] = useState('');
+  const [selectedOptionId, setSelectedOptionId] = useState('');
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState('');
@@ -21,9 +33,14 @@ export default function ScanPage() {
   const [stats, setStats] = useState({ checkedIn: 0, breakfast: 0, lunch: 0, swag: 0 });
   const [recentLog, setRecentLog] = useState<ScanResult[]>([]);
   const [cameraActive, setCameraActive] = useState(false);
+  const [fileScanBusy, setFileScanBusy] = useState(false);
+  const [newEventName, setNewEventName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const selectedOptionRef = useRef<string>('CHECK_IN');
+  const actionOptionsRef = useRef<AttendanceOption[]>([]);
   const scannerContainerId = 'qr-reader';
+  const fileScannerId = 'qr-file-reader';
 
   useEffect(() => {
     (async () => {
@@ -54,26 +71,69 @@ export default function ScanPage() {
   useEffect(() => { loadAttendees(); const t = setInterval(loadAttendees, 5000); return () => clearInterval(t); }, [loadAttendees]);
   useEffect(() => { inputRef.current?.focus(); }, [hackathonId]);
 
-  const handleAction = useCallback(async (action: string, userId: string) => {
-    if (!hackathonId || !userId) return;
-    setLoading(action); setError(''); setLastResult(null);
+  useEffect(() => {
+    if (!hackathonId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/hackathons/${hackathonId}`);
+        const data = await res.json();
+        const schedule = (data.data?.mealSchedule || []) as MealSlot[];
+        setMealSchedule(Array.isArray(schedule) ? schedule : []);
+        const firstEvent = Array.isArray(schedule) && schedule.length > 0 ? `EVENT:${schedule[0].id}` : '';
+        setSelectedOptionId(firstEvent);
+      } catch { /* silent */ }
+    })();
+  }, [hackathonId]);
+
+  const actionOptions: AttendanceOption[] = useMemo(() => ([
+    ...mealSchedule.map((meal) => ({
+      id: `EVENT:${meal.id}`,
+      label: meal.name || `Event Day ${meal.day}`,
+      action: 'EVENT' as const,
+      eventId: meal.id,
+      color: '#38bdf8',
+    })),
+  ]), [mealSchedule]);
+
+  const selectedOption = actionOptions.find((opt) => opt.id === selectedOptionId) || actionOptions[0];
+
+  useEffect(() => {
+    selectedOptionRef.current = selectedOptionId;
+  }, [selectedOptionId]);
+
+  useEffect(() => {
+    actionOptionsRef.current = actionOptions;
+  }, [actionOptions]);
+
+  const handleAction = useCallback(async (action: AttendanceOption, opts: { qrToken?: string; userId?: string }) => {
+    if (!hackathonId || (!opts.qrToken && !opts.userId)) return;
+    if (action.action === 'EVENT' && !action.eventId) {
+      setError('Select a valid attendance event');
+      return;
+    }
+    setLoading(action.id); setError(''); setLastResult(null);
     try {
       const res = await fetch(`/api/hackathons/${hackathonId}/attendance`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action }),
+        body: JSON.stringify({
+          action: action.action,
+          eventId: action.eventId,
+          ...(opts.qrToken ? { qrToken: opts.qrToken } : { userId: opts.userId }),
+        }),
       });
       const data = await res.json();
       if (res.ok) {
-        const existing = attendees.find((a) => a.user.id === userId);
-        const alreadyDone =
-          (action === 'CHECK_IN' && !!existing?.checkInTime) ||
-          (action === 'BREAKFAST' && existing?.breakfastRedeemed) ||
-          (action === 'LUNCH' && existing?.lunchRedeemed) ||
-          (action === 'SWAG' && existing?.swagCollected);
+        const existing = data.user?.id ? attendees.find((a) => a.user.id === data.user?.id) : null;
+        const alreadyDoneLocal =
+          (action.action === 'CHECK_IN' && !!existing?.checkInTime) ||
+          (action.action === 'BREAKFAST' && existing?.breakfastRedeemed) ||
+          (action.action === 'LUNCH' && existing?.lunchRedeemed) ||
+          (action.action === 'SWAG' && existing?.swagCollected);
+        const alreadyDone = !!data.alreadyDone || alreadyDoneLocal;
         const result: ScanResult = {
-          action,
-          userName: existing?.user.name || data.data?.user?.name || userId,
-          userEmail: existing?.user.email || data.data?.user?.email || '',
+          action: action.label,
+          userName: existing?.user.name || data.user?.name || data.user?.email || 'Unknown',
+          userEmail: existing?.user.email || data.user?.email || '',
           time: new Date().toLocaleTimeString(),
           alreadyDone,
         };
@@ -88,26 +148,37 @@ export default function ScanPage() {
   const handleScan = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!scanInput.trim()) return;
-    const parts = scanInput.trim().split(':');
-    const userId = parts[0];
-    if (parts[1] && parts[1] !== hackathonId) { setError('QR code is for a different hackathon'); setScanInput(''); return; }
-    handleAction('CHECK_IN', userId);
-  }, [scanInput, hackathonId, handleAction]);
+    const options = actionOptionsRef.current;
+    const optionId = selectedOptionRef.current;
+    const option = options.find((opt) => opt.id === optionId) || options[0];
+    if (!option) { setError('Add an attendance event first'); return; }
+    handleAction(option, { qrToken: scanInput.trim() });
+  }, [scanInput, handleAction]);
 
   // Camera scanner
   const startCamera = useCallback(async () => {
     if (cameraActive) return;
     try {
+      if (!document.getElementById(scannerContainerId)) {
+        setError('Scanner container not ready');
+        return;
+      }
+      if (scannerRef.current) {
+        try { await scannerRef.current.stop(); } catch { /* silent */ }
+        try { await scannerRef.current.clear(); } catch { /* silent */ }
+        scannerRef.current = null;
+      }
       const html5QrCode = new Html5Qrcode(scannerContainerId);
       scannerRef.current = html5QrCode;
       await html5QrCode.start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-          const parts = decodedText.trim().split(':');
-          const userId = parts[0];
-          if (parts[1] && parts[1] !== hackathonId) { setError('QR code is for a different hackathon'); return; }
-          handleAction('CHECK_IN', userId);
+          const options = actionOptionsRef.current;
+          const optionId = selectedOptionRef.current;
+          const option = options.find((opt) => opt.id === optionId) || options[0];
+          if (!option) { setError('Add an attendance event first'); return; }
+          handleAction(option, { qrToken: decodedText.trim() });
         },
         () => {} // ignore errors during scanning
       );
@@ -115,24 +186,65 @@ export default function ScanPage() {
     } catch (err) {
       setError('Camera access denied or not available');
     }
-  }, [cameraActive, hackathonId, handleAction]);
+  }, [cameraActive, handleAction]);
 
   const stopCamera = useCallback(async () => {
     if (scannerRef.current && cameraActive) {
       try { await scannerRef.current.stop(); } catch { /* silent */ }
+      try { await scannerRef.current.clear(); } catch { /* silent */ }
       scannerRef.current = null;
       setCameraActive(false);
     }
   }, [cameraActive]);
 
+  const handleFileCapture = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const options = actionOptionsRef.current;
+    const optionId = selectedOptionRef.current;
+    const option = options.find((opt) => opt.id === optionId) || options[0];
+    if (!option) { setError('Add an attendance event first'); setFileScanBusy(false); e.target.value = ''; return; }
+    setFileScanBusy(true);
+    try {
+      const fileScanner = new Html5Qrcode(fileScannerId);
+      const decodedText = await fileScanner.scanFile(file, false);
+      try { await fileScanner.clear(); } catch { /* silent */ }
+      handleAction(option, { qrToken: decodedText.trim() });
+    } catch {
+      setError('Unable to read QR from the captured image');
+    } finally {
+      setFileScanBusy(false);
+      e.target.value = '';
+    }
+  }, [actionOptions, selectedOptionId, handleAction]);
+
   useEffect(() => { return () => { stopCamera(); }; }, [stopCamera]);
 
-  const actionButtons = [
-    { action: 'CHECK_IN', label: 'Check In', color: '#3ecf8e' },
-    { action: 'BREAKFAST', label: 'Breakfast', color: '#f59e0b' },
-    { action: 'LUNCH', label: 'Lunch', color: '#e8a44a' },
-    { action: 'SWAG', label: 'Swag', color: '#818cf8' },
-  ];
+  const addAttendanceEvent = useCallback(async () => {
+    if (!hackathonId || !newEventName.trim()) return;
+    const newEvent: MealSlot = {
+      id: crypto.randomUUID(),
+      name: newEventName.trim(),
+      day: 1,
+      startTime: '09:00',
+      endTime: '10:00',
+    };
+    const nextSchedule = [...mealSchedule, newEvent];
+    try {
+      const res = await fetch(`/api/hackathons/${hackathonId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mealSchedule: nextSchedule }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Failed to add event');
+        return;
+      }
+      setMealSchedule(nextSchedule);
+      setNewEventName('');
+    } catch { setError('Failed to add event'); }
+  }, [hackathonId, mealSchedule, newEventName]);
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
@@ -146,22 +258,6 @@ export default function ScanPage() {
         </select>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        {[
-          { label: 'Checked In', value: stats.checkedIn, color: '#3ecf8e' },
-          { label: 'Breakfast', value: stats.breakfast, color: '#f59e0b' },
-          { label: 'Lunch', value: stats.lunch, color: '#e8a44a' },
-          { label: 'Swag', value: stats.swag, color: '#818cf8' },
-          { label: 'Total', value: attendees.length, color: 'var(--text-secondary)' },
-        ].map((s) => (
-          <div key={s.label} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: `3px solid ${s.color}`, borderRadius: 'var(--radius-lg)', padding: '0.85rem' }}>
-            <p style={statLabel}>{s.label}</p>
-            <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 700, color: s.color }}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
         {/* Left: Scanner + Manual */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -173,35 +269,71 @@ export default function ScanPage() {
                 {cameraActive ? 'Stop Camera' : 'Start Camera'}
               </button>
             </div>
-            <div id={scannerContainerId} style={{
-              width: '100%', minHeight: cameraActive ? 250 : 0,
-              borderRadius: 'var(--radius-md)', overflow: 'hidden',
-              background: cameraActive ? '#000' : 'var(--bg-raised)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {!cameraActive && <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', padding: '2rem', textAlign: 'center' }}>Click &quot;Start Camera&quot; to scan QR codes with your device camera.</p>}
+            <div style={{ position: 'relative' }}>
+              <div id={scannerContainerId} style={{
+                width: '100%', minHeight: cameraActive ? 250 : 0,
+                borderRadius: 'var(--radius-md)', overflow: 'hidden',
+                background: cameraActive ? '#000' : 'var(--bg-raised)',
+              }} />
+              {!cameraActive && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  pointerEvents: 'none',
+                }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', padding: '2rem', textAlign: 'center' }}>
+                    Click &quot;Start Camera&quot; to scan QR codes with your device camera.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.6rem' }}>
+              <label className="org-btn-secondary" style={{ fontSize: '0.65rem', padding: '0.3rem 0.6rem', cursor: fileScanBusy ? 'not-allowed' : 'pointer', opacity: fileScanBusy ? 0.6 : 1 }}>
+                Capture QR
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileCapture}
+                  disabled={fileScanBusy}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Scan from a camera snapshot</span>
             </div>
           </div>
 
           {/* Manual Input */}
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
             <p style={{ ...statLabel, marginBottom: '0.6rem' }}>Manual Entry</p>
+            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
+              <select value={selectedOptionId} onChange={(e) => setSelectedOptionId(e.target.value)} className="org-input" style={{ flex: 1, fontSize: '0.78rem' }}>
+                {actionOptions.length === 0 && <option value="">Add an attendance event</option>}
+                {actionOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
             <form onSubmit={handleScan} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
-              <input ref={inputRef} value={scanInput} onChange={(e) => setScanInput(e.target.value)} placeholder="userId:hackathonId" autoComplete="off" className="org-input" style={{ flex: 1, fontSize: '0.78rem' }} />
+              <input ref={inputRef} value={scanInput} onChange={(e) => setScanInput(e.target.value)} placeholder="QR code text or user ID" autoComplete="off" className="org-input" style={{ flex: 1, fontSize: '0.78rem' }} />
               <button type="submit" disabled={!scanInput.trim() || !!loading} className="org-btn-primary" style={{ fontSize: '0.65rem' }}>
                 {loading ? '...' : 'Submit'}
               </button>
             </form>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.35rem' }}>
-              {actionButtons.map((btn) => (
-                <button key={btn.action} disabled={!!loading || !scanInput.trim()} onClick={() => scanInput.trim() && handleAction(btn.action, scanInput.trim().split(':')[0])} style={{
-                  padding: '0.5rem', background: 'var(--bg-raised)', border: `1px solid ${btn.color}30`,
-                  borderRadius: 'var(--radius-sm)', color: btn.color, fontFamily: 'var(--font-display)',
-                  fontSize: '0.68rem', fontWeight: 600, cursor: 'pointer',
-                  opacity: !!loading || !scanInput.trim() ? 0.4 : 1,
-                }}>{btn.label}</button>
-              ))}
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+              Selected: {selectedOption?.label || 'None'}
+            </p>
+          </div>
+
+          {/* Add Attendance Event */}
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
+            <p style={{ ...statLabel, marginBottom: '0.6rem' }}>Add Attendance Event</p>
+            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
+              <input className="org-input" value={newEventName} onChange={(e) => setNewEventName(e.target.value)} placeholder="Event name" style={{ flex: 1 }} />
             </div>
+            <button className="org-btn-secondary" onClick={addAttendanceEvent} disabled={!newEventName.trim()} style={{ fontSize: '0.7rem' }}>
+              Add Event
+            </button>
           </div>
 
           {/* Last Result */}
@@ -223,7 +355,7 @@ export default function ScanPage() {
                 <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{lastResult.time}</span>
               </div>
               <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{lastResult.userName}</p>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lastResult.action.replace('_', ' ')} &middot; {lastResult.userEmail}</p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lastResult.action} &middot; {lastResult.userEmail}</p>
             </div>
           )}
 
@@ -233,10 +365,10 @@ export default function ScanPage() {
               <p style={statLabel}>Recent Activity</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: 200, overflowY: 'auto' }}>
                 {recentLog.map((entry, i) => {
-                  const actionColor = entry.action === 'CHECK_IN' ? '#3ecf8e' : entry.action === 'BREAKFAST' ? '#f59e0b' : entry.action === 'LUNCH' ? '#e8a44a' : '#818cf8';
+                  const actionColor = entry.action === 'Check In' ? '#3ecf8e' : entry.action === 'Breakfast' ? '#f59e0b' : entry.action === 'Lunch' ? '#e8a44a' : entry.action === 'Swag' ? '#818cf8' : '#38bdf8';
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.5rem', background: 'var(--bg-raised)', borderRadius: 'var(--radius-sm)' }}>
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.5rem', fontWeight: 600, padding: '0.1rem 0.3rem', borderRadius: 3, background: `${actionColor}15`, color: actionColor }}>{entry.action.replace('_', ' ')}</span>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.5rem', fontWeight: 600, padding: '0.1rem 0.3rem', borderRadius: 3, background: `${actionColor}15`, color: actionColor }}>{entry.action}</span>
                       <span style={{ flex: 1, fontSize: '0.72rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.userName}</span>
                       <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{entry.time}</span>
                     </div>
@@ -256,9 +388,13 @@ export default function ScanPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  {['Name', 'CI', 'B', 'L', 'S', 'Actions'].map((h) => (
-                    <th key={h} style={{ padding: '0.5rem 0.6rem', textAlign: h === 'Name' ? 'left' : h === 'Actions' ? 'right' : 'center', ...statLabel, fontWeight: 500 }}>{h}</th>
+                  <th style={{ padding: '0.5rem 0.6rem', textAlign: 'left', ...statLabel, fontWeight: 500 }}>Name</th>
+                  {mealSchedule.map((event) => (
+                    <th key={event.id} style={{ padding: '0.5rem 0.6rem', textAlign: 'center', ...statLabel, fontWeight: 500 }}>
+                      {event.name || 'Event'}
+                    </th>
                   ))}
+                  <th style={{ padding: '0.5rem 0.6rem', textAlign: 'right', ...statLabel, fontWeight: 500 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,17 +404,17 @@ export default function ScanPage() {
                       <p style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)' }}>{a.user.name}</p>
                       <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{a.user.email}</p>
                     </td>
-                    {[a.checkInTime, a.breakfastRedeemed, a.lunchRedeemed, a.swagCollected].map((done, i) => {
-                      const colors = ['#3ecf8e', '#f59e0b', '#e8a44a', '#818cf8'];
-                      return <td key={i} style={{ padding: '0.4rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: done ? colors[i] : 'var(--text-muted)' }}>{done ? '\u2713' : '\u2014'}</td>;
+                    {mealSchedule.map((event) => {
+                      const marks = a.eventMarks || {};
+                      const done = !!marks[event.id];
+                      return (
+                        <td key={event.id} style={{ padding: '0.4rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: done ? '#38bdf8' : 'var(--text-muted)' }}>
+                          {done ? '\u2713' : '\u2014'}
+                        </td>
+                      );
                     })}
-                    <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end' }}>
-                        {!a.checkInTime && <button onClick={() => handleAction('CHECK_IN', a.user.id)} disabled={!!loading} style={miniBtn('#3ecf8e')}>CI</button>}
-                        {!a.breakfastRedeemed && <button onClick={() => handleAction('BREAKFAST', a.user.id)} disabled={!!loading} style={miniBtn('#f59e0b')}>B</button>}
-                        {!a.lunchRedeemed && <button onClick={() => handleAction('LUNCH', a.user.id)} disabled={!!loading} style={miniBtn('#e8a44a')}>L</button>}
-                        {!a.swagCollected && <button onClick={() => handleAction('SWAG', a.user.id)} disabled={!!loading} style={miniBtn('#818cf8')}>S</button>}
-                      </div>
+                    <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                      Use scanner
                     </td>
                   </tr>
                 ))}
@@ -288,6 +424,7 @@ export default function ScanPage() {
           </div>
         </div>
       </div>
+      <div id={fileScannerId} style={{ display: 'none' }} />
     </div>
   );
 }

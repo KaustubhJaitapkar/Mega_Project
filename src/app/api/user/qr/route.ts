@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import QRCode from 'qrcode';
+import jwt from 'jsonwebtoken';
 
 export async function GET(req: Request) {
   try {
@@ -18,7 +19,15 @@ export async function GET(req: Request) {
     }
 
     const userId = (session.user as any).id;
-    const qrData = `${userId}:${hackathonId}`;
+    const secret = process.env.QR_SECRET || process.env.NEXTAUTH_SECRET;
+    if (!secret) {
+      return NextResponse.json({ error: 'QR secret not configured' }, { status: 500 });
+    }
+
+    const qrData = jwt.sign(
+      { userId, hackathonId, type: 'attendance' },
+      secret
+    );
 
     const qrDataUrl = await QRCode.toDataURL(qrData, {
       width: 256,
