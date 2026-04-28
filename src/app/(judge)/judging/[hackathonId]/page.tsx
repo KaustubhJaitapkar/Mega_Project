@@ -18,6 +18,7 @@ interface Submission {
 interface RubricItem {
   id: string;
   name: string;
+  description?: string;
   maxScore: number;
   weight: number;
   description?: string;
@@ -39,6 +40,7 @@ export default function JudgingPage() {
   const [blindMode, setBlindMode] = useState(false);
   const [gitActivity, setGitActivity] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -72,6 +74,7 @@ export default function JudgingPage() {
         setRubricItems(rubricItems);
       } catch (err) {
         console.error('Failed to fetch data:', err);
+        setLoadError('Failed to load judging data. Please refresh the page.');
       } finally {
         setIsLoading(false);
       }
@@ -225,6 +228,15 @@ export default function JudgingPage() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-root)' }}>
         <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-root)', gap: '1rem' }}>
+        <p style={{ color: '#f87171', fontSize: '0.9rem' }}>{loadError}</p>
+        <button className="org-btn-primary" onClick={() => window.location.reload()}>Retry</button>
       </div>
     );
   }

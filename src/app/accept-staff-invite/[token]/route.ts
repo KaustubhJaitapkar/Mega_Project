@@ -24,6 +24,14 @@ export async function GET(
       return NextResponse.redirect(loginUrl);
     }
 
+    // Verify the logged-in user's email matches the invite target
+    if (session.user.email.toLowerCase() !== invite.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: 'This invite was sent to a different email address' },
+        { status: 403 }
+      );
+    }
+
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

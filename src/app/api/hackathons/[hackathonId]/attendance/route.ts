@@ -188,6 +188,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Only the hackathon organizer may view attendance records
+    const actor = await prisma.user.findUnique({ where: { email: session.user.email } });
+    const hackathon = await prisma.hackathon.findUnique({ where: { id: params.hackathonId } });
+    if (!actor || !hackathon || hackathon.organiserId !== actor.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const attendances = await prisma.attendance.findMany({
       where: { hackathonId: params.hackathonId },
       include: {

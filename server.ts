@@ -2,7 +2,6 @@ import { createServer } from 'http';
 import next from 'next';
 import { parse } from 'url';
 import { initSocket } from './src/lib/socket';
-import { Server as SocketIOServer } from 'socket.io';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = '0.0.0.0';
@@ -17,25 +16,8 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  const io: SocketIOServer = initSocket(httpServer);
-
-  io.on('connection', (socket) => {
-    console.log('Socket connected:', socket.id);
-
-    socket.on('join-room', (roomId: string) => {
-      socket.join(roomId);
-      console.log(`Socket ${socket.id} joined room: ${roomId}`);
-    });
-
-    socket.on('leave-room', (roomId: string) => {
-      socket.leave(roomId);
-      console.log(`Socket ${socket.id} left room: ${roomId}`);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Socket disconnected:', socket.id);
-    });
-  });
+  // All socket logic (auth, rooms, events) lives in initSocket
+  initSocket(httpServer);
 
   httpServer.listen(port, () => {
     console.log(`> Server ready on http://${hostname}:${port}`);

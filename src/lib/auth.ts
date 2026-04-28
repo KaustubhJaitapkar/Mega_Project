@@ -14,12 +14,12 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_ID || '',
       clientSecret: process.env.GITHUB_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      allowDangerousEmailAccountLinking: true,
+      allowDangerousEmailAccountLinking: false,
     }),
     EmailProvider({
       server: {
@@ -75,7 +75,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string | null })?.role || null;
+        token.role = (user as { role?: string | null })?.role || 'PARTICIPANT';
       }
 
       // Persist role changes made via `useSession().update(...)`
@@ -99,7 +99,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         (session.user as { id: string }).id = token.id as string;
-        (session.user as { role: string | null }).role = (token.role as string | null) || null;
+        (session.user as { role: string }).role = (token.role as string) || 'PARTICIPANT';
       }
       return session;
     },

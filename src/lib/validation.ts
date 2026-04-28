@@ -64,9 +64,28 @@ export const hackathonCreateSchema = z.object({
   lunchProvided: z.boolean().default(false),
   dinnerProvided: z.boolean().default(false),
   swagProvided: z.boolean().default(false),
-  sponsorDetails: z.any().optional(),
-  judgeDetails: z.any().optional(),
-  mentorDetails: z.any().optional(),
+  sponsorDetails: z.array(
+    z.object({
+      name: z.string(),
+      logoUrl: z.string().optional(),
+      tier: z.string().optional(),
+      website: z.string().url().optional().or(z.literal('')),
+    })
+  ).optional(),
+  judgeDetails: z.array(
+    z.object({
+      name: z.string(),
+      email: z.string().email().optional().or(z.literal('')),
+      company: z.string().optional(),
+    })
+  ).optional(),
+  mentorDetails: z.array(
+    z.object({
+      name: z.string(),
+      email: z.string().email().optional().or(z.literal('')),
+      expertise: z.string().optional(),
+    })
+  ).optional(),
   // New fields
   themedTracks: z.array(z.string()).optional().default([]),
   targetBatches: z.array(z.string()).optional().default([]),
@@ -139,7 +158,7 @@ export const rubricCreateSchema = z.object({
 // Score validation
 export const scoreSchema = z.object({
   score: z.number().min(0, 'Score cannot be negative'),
-  comment: z.string().optional(),
+  comment: z.string().max(2000).optional(),
 });
 
 // Ticket validation
@@ -161,8 +180,8 @@ export const timelineCreateSchema = z.object({
 
 // Announcement validation
 export const announcementCreateSchema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters'),
-  content: z.string().min(10, 'Content must be at least 10 characters'),
+  title: z.string().min(3, 'Title must be at least 3 characters').max(200),
+  content: z.string().min(10, 'Content must be at least 10 characters').max(5000),
   isUrgent: z.boolean().default(false),
 });
 

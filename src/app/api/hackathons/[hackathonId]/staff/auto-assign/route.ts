@@ -208,6 +208,6 @@ Return ONLY a JSON array of matches with no additional text:
     });
   } catch (error) {
     console.error('Auto-assign error:', error);
-    return NextResponse.json({ error: 'Internal server error', details: String(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

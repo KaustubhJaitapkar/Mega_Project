@@ -15,10 +15,12 @@ export default function ParticipantDashboardPage() {
   const [activeHackathon, setActiveHackathon] = useState<Hackathon | null>(null);
   const [announcements, setAnnouncements] = useState<Array<{ id: string; title: string; createdAt: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [now, setNow] = useState(Date.now());
   const [registeredIds, setRegisteredIds] = useState<string[]>([]);
   const [qrCode, setQrCode] = useState('');
   const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState('');
   const [myAttendance, setMyAttendance] = useState<{ checkInTime: string | null; breakfastRedeemed: boolean; lunchRedeemed: boolean; swagCollected: boolean } | null>(null);
 
   useEffect(() => {
@@ -37,8 +39,11 @@ export default function ParticipantDashboardPage() {
           registered.find((h: Hackathon) => h.status === 'ONGOING') ||
           registered.find((h: Hackathon) => h.status === 'REGISTRATION') || registered[0] || null
         );
-      } catch { /* silent */ }
-      finally { setIsLoading(false); }
+      } catch {
+        setLoadError('Failed to load dashboard data. Please refresh the page.');
+      } finally {
+        setIsLoading(false);
+      }
     })();
   }, []);
 
@@ -47,30 +52,40 @@ export default function ParticipantDashboardPage() {
   useEffect(() => {
     if (!activeHackathon) return;
     (async () => {
-      const res = await fetch(`/api/hackathons/${activeHackathon.id}/announcements`);
-      setAnnouncements(((await res.json()).data || []).slice(0, 3));
+      try {
+        const res = await fetch(`/api/hackathons/${activeHackathon.id}/announcements`);
+        setAnnouncements(((await res.json()).data || []).slice(0, 3));
+      } catch {
+        // Announcements are non-critical; fail silently
+      }
     })();
   }, [activeHackathon]);
 
   useEffect(() => {
     if (!activeHackathon) return;
     setQrLoading(true);
+    setQrError('');
     (async () => {
       try {
-        const [qrRes, attRes] = await Promise.all([
+        const [qrRes, profileRes] = await Promise.all([
           fetch(`/api/user/qr?hackathonId=${activeHackathon.id}`),
-          fetch(`/api/hackathons/${activeHackathon.id}/attendance`),
+          fetch('/api/users/profile'),
         ]);
         const qrData = await qrRes.json();
         if (qrData.data?.qrCode) setQrCode(qrData.data.qrCode);
-        const attData = await attRes.json();
-        const profileRes = await fetch('/api/users/profile');
         const profile = await profileRes.json();
         const userId = profile.user?.id;
-        const myAtt = (attData.data || []).find((a: any) => a.user?.id === userId);
-        if (myAtt) setMyAttendance(myAtt);
-      } catch { /* silent */ }
-      finally { setQrLoading(false); }
+        if (userId) {
+          const attRes = await fetch(`/api/hackathons/${activeHackathon.id}/attendance`);
+          const attData = await attRes.json();
+          const myAtt = (attData.data || []).find((a: any) => a.user?.id === userId);
+          if (myAtt) setMyAttendance(myAtt);
+        }
+      } catch {
+        setQrError('Could not load check-in status. Please refresh.');
+      } finally {
+        setQrLoading(false);
+      }
     })();
   }, [activeHackathon]);
 
@@ -84,6 +99,13 @@ export default function ParticipantDashboardPage() {
   if (isLoading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
       <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+    </div>;
+  }
+
+  if (loadError) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+      <p style={{ color: '#f87171', marginBottom: '1rem' }}>{loadError}</p>
+      <button className="org-btn-primary" onClick={() => window.location.reload()}>Retry</button>
     </div>;
   }
 
@@ -141,6 +163,10 @@ export default function ParticipantDashboardPage() {
               {qrLoading ? (
                 <div style={{ width: 120, height: 120, background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ width: 20, height: 20, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+                </div>
+              ) : qrError ? (
+                <div style={{ width: 120, height: 120, background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', color: '#f87171', textAlign: 'center', padding: '0.5rem' }}>
+                  {qrError}
                 </div>
               ) : qrCode ? (
                 <img src={qrCode} alt="Check-in QR" style={{ width: 120, height: 120, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }} />

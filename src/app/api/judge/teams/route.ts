@@ -45,8 +45,9 @@ export async function GET(req: Request) {
 
         return {
           id: team.id,
-          name: blindMode ? anonymousMap[team.id] || team.name : team.name,
-          realName: team.name,
+          name: blindMode ? anonymousMap[team.id] || `Team ${team.id.slice(-4)}` : team.name,
+          // realName is intentionally omitted in blind mode to prevent de-anonymization
+          ...(blindMode ? {} : { realName: team.name }),
           submissionId: team.submission?.id || null,
           scored: scoreCount > 0,
         };

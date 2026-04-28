@@ -13,6 +13,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Only organisers can enumerate users
+    const requestingUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { role: true },
+    });
+    if (!requestingUser || requestingUser.role !== 'ORGANISER') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const role = searchParams.get('role');
     const q = searchParams.get('q')?.trim();

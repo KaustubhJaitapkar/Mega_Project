@@ -19,6 +19,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const VALID_CERT_TYPES = ['PARTICIPANT', 'WINNER', 'RUNNER_UP', 'BEST_PROJECT'] as const;
+    if (!VALID_CERT_TYPES.includes(type)) {
+      return NextResponse.json(
+        { error: `Invalid type. Must be one of: ${VALID_CERT_TYPES.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
     const cert = await prisma.certificate.create({
       data: {
         hackathonId,

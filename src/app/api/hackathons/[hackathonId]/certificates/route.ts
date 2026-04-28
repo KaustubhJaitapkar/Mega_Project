@@ -1,14 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateCertificate } from '@/lib/certificate';
+import { requireOrganizerOf, isErrorResponse } from '@/lib/api-auth';
+
+const VALID_CERT_TYPES = ['PARTICIPANT', 'WINNER', 'RUNNER_UP', 'BEST_PROJECT'] as const;
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { hackathonId: string } }
 ) {
   try {
+    const userOrError = await requireOrganizerOf(params.hackathonId);
+    if (isErrorResponse(userOrError)) return userOrError;
+
     const body = await req.json();
     const { userId, type, mode } = body;
+
+    if (type && !VALID_CERT_TYPES.includes(type)) {
+      return NextResponse.json(
+        { error: `Invalid type. Must be one of: ${VALID_CERT_TYPES.join(', ')}` },
+        { status: 400 }
+      );
+    }
 
     if (mode === 'auto') {
       const hackathon = await prisma.hackathon.findUnique({

@@ -120,7 +120,7 @@ export default function MyTeamPage() {
   const [bootLoading, setBootLoading] = useState(true);
   const [teamLoading, setTeamLoading] = useState(false);
 
-  const isLead = myTeam && myTeam.members.some((m) => m.role === 'leader');
+  const isLead = myTeam && myTeam.members.some((m) => m.user.id === myUserId && m.role === 'leader');
 
   useEffect(() => {
     async function boot() {

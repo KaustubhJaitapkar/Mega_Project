@@ -2,12 +2,16 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { requireOrganizerOf, isErrorResponse } from '@/lib/api-auth';
 
 export async function GET(
   req: Request,
   { params }: { params: { hackathonId: string } }
 ) {
   try {
+    const userOrError = await requireOrganizerOf(params.hackathonId);
+    if (isErrorResponse(userOrError)) return userOrError;
+
     const q = new URL(req.url).searchParams.get('q') || '';
     const hackathon = await prisma.hackathon.findUnique({
       where: { id: params.hackathonId },
@@ -24,7 +28,7 @@ export async function GET(
     if (q) {
       candidates = await prisma.user.findMany({
         where: {
-          email: { contains: q, mode: 'insensitive' },
+          email: { contains: q.slice(0, 100), mode: 'insensitive' },
         },
         select: { id: true, name: true, email: true, role: true },
         take: 10,

@@ -89,7 +89,7 @@ export default function RoleSelection() {
     PARTICIPANT: '/participant/dashboard',
     ORGANISER: '/organiser/dashboard',
     JUDGE: '/judge/dashboard',
-    MENTOR: '/judge/dashboard',
+    MENTOR: '/mentor/dashboard',
     SPONSOR: '/sponsor/dashboard',
   };
 

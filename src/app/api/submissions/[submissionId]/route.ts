@@ -5,16 +5,23 @@ import { authOptions } from '@/lib/auth';
 import { submissionSchema } from '@/lib/validation';
 import { ZodError } from 'zod';
 import { validateSubmission } from '@/lib/submission';
+import { getAuthUser } from '@/lib/api-auth';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { submissionId: string } }
 ) {
   try {
+    const currentUser = await getAuthUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const submission = await prisma.submission.findUnique({
       where: { id: params.submissionId },
       include: {
         team: { include: { members: { include: { user: true } } } },
+        hackathon: { select: { organiserId: true } },
         scores: {
           include: {
             rubricItem: true,
@@ -31,7 +38,17 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ data: submission });
+    // Allow: team members, hackathon organizer, judges
+    const isMember = submission.team.members.some((m) => m.userId === currentUser.id);
+    const isOrganizer = submission.hackathon?.organiserId === currentUser.id;
+    const isJudge = currentUser.role === 'JUDGE';
+
+    if (!isMember && !isOrganizer && !isJudge) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { hackathon: _h, ...submissionData } = submission as any;
+    return NextResponse.json({ data: submissionData });
   } catch (error) {
     console.error('Get submission error:', error);
     return NextResponse.json(

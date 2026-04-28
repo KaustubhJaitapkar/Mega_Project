@@ -693,26 +693,17 @@ export default function MentorDashboardPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: 500, overflowY: 'auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: 500, overflowY: 'auto' }}>
             {inProgress.map((t) => {
-              const isActive = activeTicketId === t.id || !activeTicketId;
+              const isActive = activeTicketId === t.id;
               return (
                 <div key={t.id} style={{
                   padding: '0.85rem',
                   border: `1px solid ${isActive ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
                   borderRadius: 'var(--radius-md)',
                   background: isActive ? 'var(--accent-dim)' : 'var(--bg-raised)',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                    <span style={{
-                      fontSize: '0.55rem', fontWeight: 600, textTransform: 'uppercase',
-                      padding: '0.1rem 0.35rem', borderRadius: 'var(--radius-sm)',
-                      background: 'rgba(129, 140, 248, 0.12)', color: '#818cf8',
-                    }}>
-                <div key={t.id} style={{
-                  padding: '0.85rem',
-                  border: `1px solid ${isActive ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
-                  borderRadius: 'var(--radius-md)',
-                  background: isActive ? 'var(--accent-dim)' : 'var(--bg-raised)',
-                }}>
+                  cursor: isActive ? 'default' : 'pointer',
+                }}
+                onClick={() => !isActive && setActiveTicketId(t.id)}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                     <span style={{
                       fontSize: '0.55rem', fontWeight: 600, textTransform: 'uppercase',
@@ -736,12 +727,8 @@ export default function MentorDashboardPage() {
                         className="org-input"
                         className="org-input"
                         placeholder="Write your resolution notes..."
-                        value={activeTicketId === t.id ? resolution : ''}
-                        onChange={(e) => {
-                          setActiveTicketId(t.id);
-                          setResolution(e.target.value);
-                        }}
-                        style={{ minHeight: 60, fontSize: '0.78rem', resize: 'vertical' as const }}
+                        value={resolution}
+                        onChange={(e) => setResolution(e.target.value)}
                         style={{ minHeight: 60, fontSize: '0.78rem', resize: 'vertical' as const }}
                       />
                       <button
@@ -759,8 +746,7 @@ export default function MentorDashboardPage() {
 
                   {!isActive && (
                     <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                      Claimed by {t.assignedTo?.name || 'another mentor'}
+                      Click to open · Claimed by {t.assignedTo?.name || 'another mentor'}
                     </p>
                   )}
                 </div>
