@@ -49,6 +49,7 @@ export const hackathonCreateSchema = z.object({
   maxTeamSize: z.number().int().min(1).default(5),
   minTeamSize: z.number().int().min(1).default(1),
   location: z.string().optional(),
+  venue: z.string().optional(),
   isVirtual: z.boolean().default(true),
   prize: z.string().optional(),
   rules: z.string().optional(),
@@ -66,6 +67,39 @@ export const hackathonCreateSchema = z.object({
   sponsorDetails: z.any().optional(),
   judgeDetails: z.any().optional(),
   mentorDetails: z.any().optional(),
+  // New fields
+  themedTracks: z.array(z.string()).optional().default([]),
+  targetBatches: z.array(z.string()).optional().default([]),
+  allowedDepartments: z.array(z.string()).optional().default([]),
+  allowCrossYearTeams: z.boolean().default(false),
+  submissionRequirements: z.array(z.string()).optional().default([]),
+  mealSchedule: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      startTime: z.string(),
+      endTime: z.string(),
+      day: z.number(),
+    })
+  ).optional().default([]),
+  rubricItems: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      description: z.string().optional(),
+      weight: z.number(),
+      maxScore: z.number(),
+    })
+  ).optional().default([]),
+  internalMentors: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+      department: z.string().optional(),
+      expertise: z.string().optional(),
+    })
+  ).optional().default([]),
 });
 
 // Team validation

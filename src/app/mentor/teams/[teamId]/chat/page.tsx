@@ -34,6 +34,7 @@ export default function MentorTeamChatPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const endRef = useRef<HTMLDivElement | null>(null);
+  const lastMessageSigRef = useRef('');
 
   const activeMentor = useMemo(() => mentors[0], [mentors]);
 
@@ -43,32 +44,41 @@ export default function MentorTeamChatPage() {
     }
   }, [session, router]);
 
-  useEffect(() => {
-    async function loadChat() {
-      if (!teamId) {
-        setError('Team not selected');
-        setLoading(false);
+  async function loadChat() {
+    if (!teamId) {
+      setError('Team not selected');
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/teams/${teamId}/chat`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to load chat');
         return;
       }
-      try {
-        const res = await fetch(`/api/teams/${teamId}/chat`);
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || 'Failed to load chat');
-          return;
-        }
-        setTeamName(data.data.team?.name || '');
-        setMentors(data.data.mentors || []);
-        setMessages(data.data.messages || []);
-      } catch (err) {
-        setError('Failed to load chat');
-      } finally {
-        setLoading(false);
-      }
-    }
+      const nextMessages: Message[] = data.data.messages || [];
+      const nextSig = nextMessages.length
+        ? `${nextMessages.length}:${nextMessages[nextMessages.length - 1]?.id}`
+        : '0:empty';
 
+      setTeamName(data.data.team?.name || '');
+      setMentors(data.data.mentors || []);
+      if (lastMessageSigRef.current !== nextSig) {
+        setMessages(nextMessages);
+        lastMessageSigRef.current = nextSig;
+      }
+      setError('');
+    } catch {
+      setError('Failed to load chat');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
     loadChat();
-    const interval = setInterval(loadChat, 3000);
+    const interval = setInterval(() => loadChat(), 4000);
     return () => clearInterval(interval);
   }, [teamId]);
 
@@ -78,23 +88,38 @@ export default function MentorTeamChatPage() {
 
   async function sendMessage() {
     if (!content.trim() || !teamId) return;
+    const draft = content.trim();
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimistic: Message = {
+      id: optimisticId,
+      content: draft,
+      createdAt: new Date().toISOString(),
+      isFromMentor: true,
+      mentor: {
+        id: (session?.user as any)?.id || 'mentor',
+        name: session?.user?.name || 'Mentor',
+      },
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    setContent('');
     setSending(true);
     try {
       const res = await fetch(`/api/teams/${teamId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: draft }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Failed to send message');
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         return;
       }
-      setMessages((prev) => [...prev, data.data]);
-      setContent('');
+      setMessages((prev) => prev.map((m) => (m.id === optimisticId ? data.data : m)));
       setError('');
-    } catch (err) {
+    } catch {
       setError('Failed to send message');
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
     } finally {
       setSending(false);
     }
@@ -171,6 +196,12 @@ export default function MentorTeamChatPage() {
             placeholder="Type your message..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!sending && content.trim()) sendMessage();
+              }
+            }}
             rows={3}
           />
           <div className="flex justify-end">

@@ -117,12 +117,91 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validatedData = hackathonCreateSchema.parse(body);
 
-    const { organiserId: _ignore, ...hackathonData } = validatedData as any;
+    const {
+      organiserId: _ignore,
+      title,
+      description,
+      shortDescription,
+      tagline,
+      startDate,
+      endDate,
+      registrationDeadline,
+      submissionDeadline,
+      maxTeamSize,
+      minTeamSize,
+      location,
+      isVirtual,
+      prize,
+      rules,
+      bannerUrl,
+      logoUrl,
+      contactEmail,
+      hostName,
+      theme,
+      eligibilityDomain,
+      breakfastProvided,
+      lunchProvided,
+      dinnerProvided,
+      swagProvided,
+      sponsorDetails,
+      judgeDetails,
+      mentorDetails,
+      themedTracks,
+      targetBatches,
+      allowedDepartments,
+      allowCrossYearTeams,
+      submissionRequirements,
+      mealSchedule,
+      rubricItems,
+      internalMentors,
+      venue,
+    } = validatedData as any;
+
+    const optionalString = (value?: string) => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : undefined;
+    };
+    const resolvedLocation = optionalString(venue || location);
+
     const hackathon = await prisma.hackathon.create({
       data: {
-        ...hackathonData,
+        title,
+        description,
+        shortDescription,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        registrationDeadline: new Date(registrationDeadline),
+        submissionDeadline: new Date(submissionDeadline),
+        maxTeamSize,
+        minTeamSize,
+        isVirtual,
         sponsorIds: [],
         organiserId: user.id,
+        ...(optionalString(tagline) && { tagline: optionalString(tagline) }),
+        ...(resolvedLocation && { location: resolvedLocation }),
+        ...(optionalString(prize) && { prize: optionalString(prize) }),
+        ...(optionalString(rules) && { rules: optionalString(rules) }),
+        ...(optionalString(bannerUrl) && { bannerUrl: optionalString(bannerUrl) }),
+        ...(optionalString(logoUrl) && { logoUrl: optionalString(logoUrl) }),
+        ...(optionalString(contactEmail) && { contactEmail: optionalString(contactEmail) }),
+        ...(optionalString(hostName) && { hostName: optionalString(hostName) }),
+        ...(optionalString(theme) && { theme: optionalString(theme) }),
+        ...(optionalString(eligibilityDomain) && { eligibilityDomain: optionalString(eligibilityDomain) }),
+        breakfastProvided,
+        lunchProvided,
+        dinnerProvided,
+        swagProvided,
+        themedTracks,
+        targetBatches,
+        allowedDepartments,
+        allowCrossYearTeams,
+        submissionRequirements,
+        ...(Array.isArray(sponsorDetails) && sponsorDetails.length > 0 && { sponsorDetails }),
+        ...(Array.isArray(judgeDetails) && judgeDetails.length > 0 && { judgeDetails }),
+        ...(Array.isArray(mentorDetails) && mentorDetails.length > 0 && { mentorDetails }),
+        ...(Array.isArray(mealSchedule) && mealSchedule.length > 0 && { mealSchedule }),
+        ...(Array.isArray(rubricItems) && rubricItems.length > 0 && { rubricItems }),
+        ...(Array.isArray(internalMentors) && internalMentors.length > 0 && { internalMentors }),
       },
       include: {
         organiser: { select: { id: true, name: true, email: true } },
@@ -146,7 +225,12 @@ export async function POST(req: NextRequest) {
 
     console.error('Create hackathon error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        ...(process.env.NODE_ENV !== 'production' && error instanceof Error
+          ? { detail: error.message }
+          : {}),
+      },
       { status: 500 }
     );
   }

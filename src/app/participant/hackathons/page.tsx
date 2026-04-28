@@ -5,8 +5,25 @@ import HackathonCard from '@/components/HackathonCard';
 
 interface Hackathon {
   id: string; title: string; description: string;
+  shortDescription?: string;
+  bannerUrl?: string;
+  logoUrl?: string;
   startDate: string; endDate: string; location?: string; isVirtual: boolean;
   _count: { teams: number; submissions: number };
+}
+
+function stripRichText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export default function ExploreHackathonsPage() {
@@ -27,7 +44,8 @@ export default function ExploreHackathonsPage() {
   const filtered = hackathons.filter((h) => {
     if (!search.trim()) return true;
     const term = search.toLowerCase();
-    return h.title.toLowerCase().includes(term) || h.description.toLowerCase().includes(term) || (h.location || '').toLowerCase().includes(term);
+    const descriptionText = stripRichText(h.shortDescription || h.description);
+    return h.title.toLowerCase().includes(term) || descriptionText.toLowerCase().includes(term) || (h.location || '').toLowerCase().includes(term);
   });
 
   return (

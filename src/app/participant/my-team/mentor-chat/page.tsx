@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { ArrowLeft, Send, MessageCircle, UserRound, Mail, RefreshCw } from 'lucide-react';
 
 interface Mentor {
   id: string;
@@ -20,6 +21,10 @@ interface Message {
   mentor?: { id: string; name: string; image?: string | null } | null;
 }
 
+function formatTime(ts: string) {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function MentorChatPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -32,9 +37,11 @@ export default function MentorChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const endRef = useRef<HTMLDivElement | null>(null);
+  const lastMessageSigRef = useRef('');
 
   const activeMentor = useMemo(() => mentors[0], [mentors]);
 
@@ -44,32 +51,45 @@ export default function MentorChatPage() {
     }
   }, [session, router]);
 
-  useEffect(() => {
-    async function loadChat() {
-      if (!teamId) {
-        setError('Team not selected');
-        setLoading(false);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/teams/${teamId}/chat`);
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || 'Failed to load chat');
-          return;
-        }
-        setTeamName(data.data.team?.name || '');
-        setMentors(data.data.mentors || []);
-        setMessages(data.data.messages || []);
-      } catch (err) {
-        setError('Failed to load chat');
-      } finally {
-        setLoading(false);
-      }
+  async function loadChat(showRefreshing = false) {
+    if (!teamId) {
+      setError('Team not selected');
+      setLoading(false);
+      return;
     }
 
+    if (showRefreshing) setRefreshing(true);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/chat`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to load chat');
+        return;
+      }
+
+      const nextMessages: Message[] = data.data.messages || [];
+      const nextSig = nextMessages.length
+        ? `${nextMessages.length}:${nextMessages[nextMessages.length - 1]?.id}`
+        : '0:empty';
+
+      setTeamName(data.data.team?.name || '');
+      setMentors(data.data.mentors || []);
+      if (nextSig !== lastMessageSigRef.current) {
+        setMessages(nextMessages);
+        lastMessageSigRef.current = nextSig;
+      }
+      setError('');
+    } catch {
+      setError('Failed to load chat');
+    } finally {
+      setLoading(false);
+      if (showRefreshing) setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
     loadChat();
-    const interval = setInterval(loadChat, 3000);
+    const interval = setInterval(() => loadChat(), 4000);
     return () => clearInterval(interval);
   }, [teamId]);
 
@@ -79,23 +99,39 @@ export default function MentorChatPage() {
 
   async function sendMessage() {
     if (!content.trim() || !teamId) return;
+    const draft = content.trim();
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimistic: Message = {
+      id: optimisticId,
+      content: draft,
+      createdAt: new Date().toISOString(),
+      isFromMentor: false,
+      user: {
+        id: (session?.user as any)?.id || 'me',
+        name: session?.user?.name || 'You',
+      },
+    };
+
+    setMessages((prev) => [...prev, optimistic]);
+    setContent('');
     setSending(true);
     try {
       const res = await fetch(`/api/teams/${teamId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: draft }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Failed to send message');
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         return;
       }
-      setMessages((prev) => [...prev, data.data]);
-      setContent('');
+      setMessages((prev) => prev.map((m) => (m.id === optimisticId ? data.data : m)));
       setError('');
     } catch (err) {
       setError('Failed to send message');
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
     } finally {
       setSending(false);
     }
@@ -103,86 +139,132 @@ export default function MentorChatPage() {
 
   if (loading) {
     return (
-      <div className="p-8 flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div style={{ minHeight: '70vh', display: 'grid', placeItems: 'center' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.75s linear infinite' }} />
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="org-page" style={{ maxWidth: 1160 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
         <div>
-          <h1 className="text-3xl font-bold">Mentor Chat</h1>
-          <p className="text-sm text-gray-600">
-            Team: {teamName || 'Unknown'}{hackathonId ? ` · Hackathon ${hackathonId}` : ''}
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--accent)' }}>
+            Collaboration
+          </p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+            Mentor Chat
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginTop: '0.2rem' }}>
+            Team: {teamName || 'Unknown'}{hackathonId ? ` · Hackathon ${hackathonId.slice(0, 8)}...` : ''}
           </p>
         </div>
-        <button className="btn btn-secondary" onClick={() => router.push('/participant/my-team')}>
-          Back to My Team
+        <button className="org-btn-secondary" onClick={() => router.push('/participant/my-team')}>
+          <ArrowLeft size={15} /> Back to Team
         </button>
       </div>
 
-      <div className="card flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-500">Assigned Mentor</p>
-          <p className="font-semibold">
-            {activeMentor ? activeMentor.name : 'No mentor assigned yet'}
-          </p>
-        </div>
-        {activeMentor?.email && (
-          <span className="text-sm text-gray-500">{activeMentor.email}</span>
-        )}
-      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem' }}>
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="org-card">
+            <p className="org-label" style={{ marginBottom: '0.6rem' }}>Assigned Mentor</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-elevated)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-display)', color: 'var(--accent)', border: '1px solid var(--border-subtle)' }}>
+                {activeMentor?.name?.charAt(0).toUpperCase() || 'M'}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: '0.86rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {activeMentor ? activeMentor.name : 'No mentor assigned'}
+                </p>
+                {activeMentor?.email && (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
+                    <Mail size={12} /> {activeMentor.email}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
 
-      {error && (
-        <div className="card">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
+          <div className="org-card">
+            <p className="org-label" style={{ marginBottom: '0.4rem' }}>Tips</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', lineHeight: 1.5 }}>
+              Share context, blockers, and what you already tried. It gets you faster and better help.
+            </p>
+          </div>
+        </aside>
 
-      <div className="card space-y-4">
-        <div className="max-h-[420px] overflow-y-auto space-y-3 pr-2">
-          {messages.length === 0 ? (
-            <p className="text-sm text-gray-500">No messages yet. Say hello!</p>
-          ) : (
-            messages.map((msg) => {
-              const isMentor = msg.isFromMentor;
-              const senderName = isMentor ? msg.mentor?.name || 'Mentor' : msg.user?.name || 'Team';
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex ${isMentor ? 'justify-start' : 'justify-end'}`}
-                >
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMentor ? 'bg-slate-100 text-slate-900' : 'bg-indigo-600 text-white'}`}>
-                    <p className="text-xs opacity-70 mb-1">{senderName}</p>
-                    <p className="text-sm leading-relaxed">{msg.content}</p>
-                    <p className="text-[10px] opacity-70 mt-2">
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          )}
-          <div ref={endRef} />
-        </div>
-
-        <div className="border-t pt-4 flex flex-col gap-3">
-          <textarea
-            className="input"
-            placeholder="Type your message..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={3}
-          />
-          <div className="flex justify-end">
-            <button className="btn btn-primary" onClick={sendMessage} disabled={sending || !content.trim()}>
-              {sending ? 'Sending...' : 'Send Message'}
+        <section className="org-card" style={{ padding: '0.95rem', display: 'flex', flexDirection: 'column', minHeight: 620 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.45rem 0.6rem 0.8rem', borderBottom: '1px solid var(--border-subtle)' }}>
+            <p style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)', fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <MessageCircle size={14} /> Conversation
+            </p>
+            <button className="org-btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.65rem' }} onClick={() => loadChat(true)} disabled={refreshing}>
+              <RefreshCw size={12} className={refreshing ? 'hf-spin' : ''} /> Refresh
             </button>
           </div>
-        </div>
+
+          {error && (
+            <div className="org-feedback org-feedback-error" style={{ margin: '0.7rem 0.6rem 0' }}>{error}</div>
+          )}
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0.9rem 0.65rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+            {messages.length === 0 ? (
+              <div style={{ height: '100%', minHeight: 240, display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                No messages yet. Start with a clear question.
+              </div>
+            ) : (
+              messages.map((msg) => {
+                const isMentor = msg.isFromMentor;
+                const senderName = isMentor ? msg.mentor?.name || 'Mentor' : msg.user?.name || 'Team';
+                return (
+                  <div key={msg.id} style={{ display: 'flex', justifyContent: isMentor ? 'flex-start' : 'flex-end' }}>
+                    <div style={{
+                      maxWidth: '78%',
+                      borderRadius: 14,
+                      padding: '0.68rem 0.82rem',
+                      background: isMentor ? 'var(--bg-raised)' : 'var(--accent)',
+                      color: isMentor ? 'var(--text-primary)' : 'var(--text-inverse)',
+                      border: isMentor ? '1px solid var(--border-subtle)' : '1px solid var(--accent)',
+                    }}>
+                      <p style={{ fontSize: '0.66rem', opacity: 0.75, marginBottom: '0.28rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <UserRound size={11} /> {senderName}
+                      </p>
+                      <p style={{ fontSize: '0.84rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
+                      <p style={{ fontSize: '0.62rem', opacity: 0.75, marginTop: '0.3rem' }}>{formatTime(msg.createdAt)}</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={endRef} />
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0.75rem 0.55rem 0.45rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+            <textarea
+              className="org-input"
+              placeholder="Write a concise question or update... (Enter to send, Shift+Enter for newline)"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!sending && content.trim()) sendMessage();
+                }
+              }}
+              rows={3}
+              style={{ resize: 'vertical', minHeight: 88 }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                Keep it specific: blocker, logs, and what you tried.
+              </p>
+              <button className="org-btn-primary" onClick={sendMessage} disabled={sending || !content.trim()}>
+                <Send size={14} /> {sending ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
-  );
+    );
 }

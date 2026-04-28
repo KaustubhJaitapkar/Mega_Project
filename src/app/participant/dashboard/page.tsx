@@ -24,14 +24,13 @@ export default function ParticipantDashboardPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/hackathons?limit=50');
-        const list = (await res.json()).data || [];
+        const [hackRes, regRes] = await Promise.all([
+          fetch('/api/hackathons?limit=50'),
+          fetch('/api/users/registrations'),
+        ]);
+        const list = (await hackRes.json()).data || [];
+        const ids = (await regRes.json()).data || [];
         setHackathons(list);
-        const checks = await Promise.all(list.map(async (h: Hackathon) => {
-          const r = await fetch(`/api/hackathons/${h.id}/register`);
-          return (await r.json())?.data?.registered ? h.id : null;
-        }));
-        const ids = checks.filter(Boolean) as string[];
         setRegisteredIds(ids);
         const registered = list.filter((h: Hackathon) => ids.includes(h.id));
         setActiveHackathon(
