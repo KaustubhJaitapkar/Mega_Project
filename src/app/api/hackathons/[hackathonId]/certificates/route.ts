@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateCertificate } from '@/lib/certificate';
 import { requireOrganizerOf, isErrorResponse } from '@/lib/api-auth';
+import { computeTeamRankings } from '@/lib/scoring';
 
 const VALID_CERT_TYPES = ['PARTICIPANT', 'WINNER', 'RUNNER_UP', 'BEST_PROJECT'] as const;
 
@@ -14,7 +15,7 @@ export async function POST(
     if (isErrorResponse(userOrError)) return userOrError;
 
     const body = await req.json();
-    const { userId, type, mode } = body;
+    const { userId, type, mode, teamId } = body;
 
     if (type && !VALID_CERT_TYPES.includes(type)) {
       return NextResponse.json(
@@ -40,27 +41,12 @@ export async function POST(
         select: { id: true, name: true, members: { select: { userId: true } } },
       });
 
-      const scores = await prisma.score.findMany({
-        where: {
-          submission: {
-            hackathonId: params.hackathonId,
-          },
-        },
-        include: { submission: { select: { teamId: true } } },
-      });
-
-      const totals = new Map<string, number>();
-      teams.forEach((team) => totals.set(team.id, 0));
-      for (const score of scores) {
-        const teamId = score.submission?.teamId;
-        if (!teamId) continue;
-        totals.set(teamId, (totals.get(teamId) || 0) + score.score);
-      }
+      const { scores: teamScores } = await computeTeamRankings(params.hackathonId);
 
       const ranking = teams
         .map((team) => ({
           teamId: team.id,
-          totalScore: totals.get(team.id) || 0,
+          totalScore: teamScores.get(team.id) || 0,
           members: team.members,
         }))
         .sort((a, b) => b.totalScore - a.totalScore);
@@ -136,6 +122,76 @@ export async function POST(
         message: 'Certificates auto-generated',
         data: created,
       });
+    }
+
+    // Team-based certificate generation
+    if (teamId && type) {
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        include: { members: { select: { userId: true } } },
+      });
+
+      if (!team) {
+        return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+      }
+
+      const hackathon = await prisma.hackathon.findUnique({
+        where: { id: params.hackathonId },
+      });
+
+      if (!hackathon) {
+        return NextResponse.json({ error: 'Hackathon not found' }, { status: 404 });
+      }
+
+      const users = await prisma.user.findMany({
+        where: { id: { in: team.members.map((m) => m.userId) } },
+        select: { id: true, name: true, email: true },
+      });
+
+      const created: any[] = [];
+
+      for (const member of team.members) {
+        const existing = await prisma.certificate.findFirst({
+          where: {
+            hackathonId: params.hackathonId,
+            userId: member.userId,
+            type: type as any,
+          },
+        });
+        if (existing) continue;
+
+        const user = users.find((u) => u.id === member.userId);
+        if (!user) continue;
+
+        const certificateUrl = await generateCertificate(
+          user.name,
+          type as any,
+          hackathon.title,
+          new Date()
+        );
+
+        const certificate = await prisma.certificate.create({
+          data: {
+            hackathonId: params.hackathonId,
+            userId: member.userId,
+            teamId,
+            type: type as any,
+            title: `${type.replace('_', ' ')} Certificate - ${hackathon.title}`,
+            certificateUrl,
+          },
+        });
+        created.push(certificate);
+      }
+
+      return NextResponse.json({
+        message: `${type} certificates created for team`,
+        data: created,
+      });
+    }
+
+    // Individual certificate generation (legacy)
+    if (!userId) {
+      return NextResponse.json({ error: 'userId or teamId is required' }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({

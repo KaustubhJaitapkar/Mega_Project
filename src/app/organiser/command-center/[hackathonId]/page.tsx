@@ -427,7 +427,9 @@ function OverviewPanel({ stats, hackathon, submissions }: { stats: Stats | null;
 function ResultsPanel({ hackathonId }: { hackathonId: string }) {
   const [winners, setWinners] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [rankings, setRankings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [announceTitle, setAnnounceTitle] = useState('');
   const [announceContent, setAnnounceContent] = useState('');
@@ -448,6 +450,23 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
     })();
   }, [hackathonId]);
 
+  async function generateResults() {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/hackathons/${hackathonId}/rankings`);
+      const data = await res.json();
+      if (res.ok) {
+        setRankings(data.data || []);
+        const scored = (data.data || []).filter((r: any) => r.totalScore > 0);
+        setFeedback(scored.length > 0 ? `Results generated for ${scored.length} teams` : 'No scored submissions found');
+      } else {
+        setFeedback(data.error || 'Failed to generate results');
+      }
+    } catch { setFeedback('Network error'); }
+    setGenerating(false);
+    setTimeout(() => setFeedback(''), 4000);
+  }
+
   async function announceResults() {
     if (!announceTitle.trim() || !announceContent.trim()) return;
     setSendingAnnounce(true);
@@ -463,19 +482,42 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
     setTimeout(() => setFeedback(''), 3000);
   }
 
-  async function declareWinner(submissionId: string, teamName: string, type: string) {
-    const sub = submissions.find((s) => s.id === submissionId);
-    if (!sub) return;
-    const res = await fetch(`/api/hackathons/${hackathonId}/certificates`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: sub.team?.members?.[0]?.user?.id, type, title: `${type.replace('_', ' ')} - ${teamName}` }),
-    });
-    if (res.ok) {
-      setFeedback(`${type} declared for ${teamName}`);
-      const certRes = await fetch(`/api/hackathons/${hackathonId}/certificates`);
-      setWinners((await certRes.json()).data?.filter((c: any) => ['WINNER', 'RUNNER_UP', 'BEST_PROJECT'].includes(c.type)) || []);
-    }
+  async function declareTeamWinner(teamId: string, teamName: string, type: string) {
+    try {
+      const res = await fetch(`/api/hackathons/${hackathonId}/certificates`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId, type }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setFeedback(`${type.replace('_', ' ')} declared for ${teamName}`);
+        const certRes = await fetch(`/api/hackathons/${hackathonId}/certificates`);
+        setWinners((await certRes.json()).data?.filter((c: any) => ['WINNER', 'RUNNER_UP', 'BEST_PROJECT'].includes(c.type)) || []);
+      } else {
+        setFeedback(data.error || 'Failed to declare winner');
+      }
+    } catch { setFeedback('Network error'); }
     setTimeout(() => setFeedback(''), 3000);
+  }
+
+  async function autoDeclareWinners() {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/hackathons/${hackathonId}/certificates`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'auto' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setFeedback('Winner and Runner-up auto-declared from rankings');
+        const certRes = await fetch(`/api/hackathons/${hackathonId}/certificates`);
+        setWinners((await certRes.json()).data?.filter((c: any) => ['WINNER', 'RUNNER_UP', 'BEST_PROJECT'].includes(c.type)) || []);
+      } else {
+        setFeedback(data.error || 'Failed to auto-declare');
+      }
+    } catch { setFeedback('Network error'); }
+    setGenerating(false);
+    setTimeout(() => setFeedback(''), 4000);
   }
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}>
@@ -484,44 +526,96 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {feedback && <div className="org-feedback org-feedback-success">{feedback}</div>}
+      {feedback && <div className={`org-feedback ${feedback.includes('error') || feedback.includes('Failed') || feedback.includes('No ') ? 'org-feedback-error' : 'org-feedback-success'}`}>{feedback}</div>}
+
+      {/* Generate Results */}
+      <div className="org-section">
+        <p className="org-label" style={{ marginBottom: '0.6rem' }}>Generate Results</p>
+        <p className="org-text" style={{ marginBottom: '0.75rem' }}>Calculate weighted scores from judge evaluations using rubric weights. Rankings are based on normalized scores averaged across all judges.</p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button className="org-btn-primary" onClick={generateResults} disabled={generating}>
+            {generating ? 'Calculating...' : 'Generate Rankings'}
+          </button>
+          {rankings.length > 0 && (
+            <button className="org-btn-secondary" onClick={autoDeclareWinners} disabled={generating}>
+              Auto-Declare Top 2
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Rankings Table */}
+      {rankings.length > 0 && (
+        <div>
+          <p className="org-label" style={{ marginBottom: '0.6rem' }}>Rankings ({rankings.filter((r: any) => r.totalScore > 0).length} scored)</p>
+          {rankings.filter((r: any) => r.totalScore > 0).map((entry: any, idx: number) => (
+            <div key={entry.teamId} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '0.75rem 0.85rem', background: 'var(--bg-raised)',
+              borderRadius: 'var(--radius-sm)', marginBottom: '0.35rem',
+              border: idx === 0 ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{
+                  fontWeight: 700, fontSize: idx < 3 ? '1.1rem' : '0.9rem',
+                  color: idx === 0 ? '#e8a44a' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'var(--text-muted)',
+                  minWidth: 24, textAlign: 'center',
+                }}>
+                  #{entry.rank}
+                </span>
+                <div>
+                  <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{entry.teamName}</p>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{entry.judgeCount} judge{entry.judgeCount !== 1 ? 's' : ''} scored</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)', fontFamily: 'var(--font-display)' }}>
+                  {entry.totalScore.toFixed(2)}
+                </span>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button className="org-btn-primary" onClick={() => declareTeamWinner(entry.teamId, entry.teamName, 'WINNER')} style={{ fontSize: '0.6rem', padding: '0.2rem 0.4rem' }}>Winner</button>
+                  <button className="org-btn-secondary" onClick={() => declareTeamWinner(entry.teamId, entry.teamName, 'RUNNER_UP')} style={{ fontSize: '0.6rem', padding: '0.2rem 0.4rem' }}>Runner-up</button>
+                  <button className="org-btn-secondary" onClick={() => declareTeamWinner(entry.teamId, entry.teamName, 'BEST_PROJECT')} style={{ fontSize: '0.6rem', padding: '0.2rem 0.4rem' }}>Best</button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {rankings.filter((r: any) => r.totalScore === 0).length > 0 && (
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              {rankings.filter((r: any) => r.totalScore === 0).length} team(s) not yet scored
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Declared Winners */}
       <div>
         <p className="org-label" style={{ marginBottom: '0.6rem' }}>Declared Winners ({winners.length})</p>
         {winners.length === 0 ? (
-          <div className="org-empty" style={{ padding: '1.5rem' }}>No winners declared yet. Use the submission list below to declare.</div>
-        ) : winners.map((w) => (
-          <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.85rem', background: 'var(--bg-raised)', borderRadius: 'var(--radius-sm)', marginBottom: '0.35rem' }}>
-            <div>
-              <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{w.user?.name || w.title}</p>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{w.user?.email}</p>
-            </div>
-            <span className={`org-badge ${w.type === 'WINNER' ? 'org-badge-accent' : w.type === 'RUNNER_UP' ? 'org-badge-muted' : 'org-badge-info'}`}>
-              {w.type.replace('_', ' ')}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Submissions to judge */}
-      <div>
-        <p className="org-label" style={{ marginBottom: '0.6rem' }}>Submissions ({submissions.filter((s) => s.submittedAt).length} submitted)</p>
-        {submissions.filter((s) => s.submittedAt).map((sub) => (
-          <div key={sub.id} style={{ background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '0.75rem', marginBottom: '0.4rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="org-empty" style={{ padding: '1.5rem' }}>No winners declared yet. Generate rankings above or use submissions below.</div>
+        ) : (() => {
+          // Group winners by team
+          const byTeam = new Map<string, { type: string; teamName: string; members: any[] }>();
+          for (const w of winners) {
+            const teamName = w.teamId ? (w.title?.split(' - ')?.[1] || w.title) : (w.user?.name || w.title);
+            const key = w.teamId || w.id;
+            if (!byTeam.has(key)) {
+              byTeam.set(key, { type: w.type, teamName, members: [] });
+            }
+            byTeam.get(key)!.members.push(w.user);
+          }
+          return Array.from(byTeam.entries()).map(([key, group]) => (
+            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.85rem', background: 'var(--bg-raised)', borderRadius: 'var(--radius-sm)', marginBottom: '0.35rem' }}>
               <div>
-                <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{sub.team?.name}</p>
-                <p className="org-text" style={{ fontSize: '0.72rem' }}>{sub.technologies?.join(', ') || 'No tech stack'}</p>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{group.teamName}</p>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{group.members.length} member{group.members.length !== 1 ? 's' : ''}</p>
               </div>
-              <div style={{ display: 'flex', gap: '0.3rem' }}>
-                <button className="org-btn-primary" onClick={() => declareWinner(sub.id, sub.team?.name, 'WINNER')} style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem' }}>Winner</button>
-                <button className="org-btn-secondary" onClick={() => declareWinner(sub.id, sub.team?.name, 'RUNNER_UP')} style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem' }}>Runner-up</button>
-                <button className="org-btn-secondary" onClick={() => declareWinner(sub.id, sub.team?.name, 'BEST_PROJECT')} style={{ fontSize: '0.6rem', padding: '0.25rem 0.5rem' }}>Best Project</button>
-              </div>
+              <span className={`org-badge ${group.type === 'WINNER' ? 'org-badge-accent' : group.type === 'RUNNER_UP' ? 'org-badge-muted' : 'org-badge-info'}`}>
+                {group.type.replace('_', ' ')}
+              </span>
             </div>
-          </div>
-        ))}
+          ));
+        })()}
       </div>
 
       {/* Announce Results */}

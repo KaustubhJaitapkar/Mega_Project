@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { parseHackathonMeta } from '@/lib/hackathonMeta';
+import { calculateWeightedScore } from '@/lib/scoring';
 
 export async function POST(req: Request) {
   try {
@@ -65,7 +66,10 @@ export async function POST(req: Request) {
     }
 
     const map = new Map(rubric.items.map((i) => [i.id, i]));
-    let totalObtained = 0;
+    const rubricItemMap = new Map(
+      rubric.items.map((i) => [i.id, { id: i.id, weight: i.weight, maxScore: i.maxScore }])
+    );
+
     for (const row of scores) {
       const item = map.get(row.rubricItemId);
       if (!item) {
@@ -74,8 +78,10 @@ export async function POST(req: Request) {
       if (row.score < 0 || row.score > item.maxScore) {
         return NextResponse.json({ error: `Score out of range for ${item.name}` }, { status: 400 });
       }
-      totalObtained += row.score;
     }
+
+    const weightedTotal = Math.round(calculateWeightedScore(scores, rubricItemMap) * 100) / 100;
+    const rawTotal = scores.reduce((sum, row) => sum + row.score, 0);
 
     await prisma.$transaction([
       prisma.score.deleteMany({
@@ -88,7 +94,7 @@ export async function POST(req: Request) {
             rubricItemId: row.rubricItemId,
             judgerId: judge.id,
             score: row.score,
-            comment: idx === 0 ? `${notes || ''}\nTotal obtained: ${totalObtained}` : '',
+            comment: idx === 0 ? `${notes || ''}\nWeighted total: ${weightedTotal} (raw: ${rawTotal})` : '',
             isSealed: !!seal,
           },
         })
@@ -97,7 +103,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       message: seal ? 'Scores submitted and sealed' : 'Scores saved',
-      data: { totalObtained, sealed: !!seal },
+      data: { weightedTotal, rawTotal, sealed: !!seal },
     });
   } catch (error) {
     console.error('Submit score error:', error);

@@ -21,7 +21,6 @@ interface RubricItem {
   description?: string;
   maxScore: number;
   weight: number;
-  description?: string;
 }
 
 type EmbedMode = 'readme' | 'live' | 'none';
@@ -502,17 +501,19 @@ export default function JudgingPage() {
                   {rubricItems.length > 0 && (
                     <div className="judging-score-total" style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       <div>
-                        <span className="judging-score-total__label">Total Marks Obtained: </span>
-                        <span className="judging-score-total__value">
+                        <span className="judging-score-total__label">Weighted Score: </span>
+                        <span className="judging-score-total__value" style={{ fontWeight: 700 }}>
+                          {weightedTotal.toFixed(2)}
+                        </span>
+                        <span className="judging-score-total__max">/ {rubricItems.reduce((sum, item) => sum + item.weight, 0)}</span>
+                      </div>
+                      <div>
+                        <span className="judging-score-total__label" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Raw Total: </span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                           {rubricItems.reduce((sum, item) => sum + (scores[item.id] ?? 0), 0)}
                         </span>
-                        <span className="judging-score-total__max">/ {rubricItems.reduce((sum, item) => sum + item.maxScore, 0)}</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/ {rubricItems.reduce((sum, item) => sum + item.maxScore, 0)}</span>
                       </div>
-                      {/* <div>
-                        <span className="judging-score-total__label">Weighted Total: </span>
-                        <span className="judging-score-total__value">{weightedTotal.toFixed(2)}</span>
-                        <span className="judging-score-total__max">/ 100</span>
-                      </div> */}
                     </div>
                   )}
                 </div>

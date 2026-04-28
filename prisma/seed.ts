@@ -863,6 +863,108 @@ Over 500 participants, 120+ projects submitted.`,
 
   console.log("  Created registrations, teams, submissions, and certificates.\n");
 
+  // ==================== SCORES ====================
+  console.log("⭐ Creating judge scores for HealthTech submissions...");
+
+  // Fetch rubric items for hackathon3
+  const rubric3 = await prisma.rubric.findFirst({
+    where: { hackathonId: hackathon3.id },
+    include: { items: { orderBy: { order: 'asc' } } },
+  });
+
+  if (rubric3) {
+    const rubricItems = rubric3.items; // [Healthcare Impact, Technical Execution, Feasibility, Presentation]
+    const hackathon3Submissions = await prisma.submission.findMany({
+      where: { hackathonId: hackathon3.id },
+      include: { team: { include: { members: true } } },
+      orderBy: { submittedAt: 'asc' },
+    });
+
+    // Score patterns per team (index 0-4) for 3 judges
+    // Each row: [HealthcareImpact, TechnicalExecution, Feasibility, Presentation]
+    const teamScorePatterns = [
+      // Team 0 (Code Warriors) - highest scores
+      { judge1: [9, 8, 9, 8], judge2: [8, 9, 8, 9], judge3: [9, 9, 8, 8] },
+      // Team 1 (Tech Titans) - high scores
+      { judge1: [8, 7, 8, 7], judge2: [7, 8, 7, 8], judge3: [8, 8, 7, 7] },
+      // Team 2 (Digital Nomads) - good scores
+      { judge1: [7, 6, 7, 6], judge2: [6, 7, 6, 7], judge3: [7, 7, 6, 6] },
+      // Team 3 (Byte Brigade) - average scores
+      { judge1: [5, 5, 6, 5], judge2: [6, 5, 5, 6], judge3: [5, 6, 5, 5] },
+      // Team 4 (Pixel Pirates) - below average
+      { judge1: [4, 3, 4, 3], judge2: [3, 4, 3, 4], judge3: [4, 4, 3, 3] },
+    ];
+
+    for (let subIdx = 0; subIdx < hackathon3Submissions.length; subIdx++) {
+      const submission = hackathon3Submissions[subIdx];
+      const pattern = teamScorePatterns[subIdx];
+      const judgeScores = [pattern.judge1, pattern.judge2, pattern.judge3];
+
+      for (let jIdx = 0; jIdx < judges.length; jIdx++) {
+        const scores = judgeScores[jIdx];
+        for (let itemIdx = 0; itemIdx < rubricItems.length; itemIdx++) {
+          await prisma.score.create({
+            data: {
+              submissionId: submission.id,
+              rubricItemId: rubricItems[itemIdx].id,
+              judgerId: judges[jIdx].id,
+              score: scores[itemIdx],
+              comment: itemIdx === 0
+                ? `Solid submission. ${scores[itemIdx] >= 7 ? 'Strong' : 'Room for improvement'} in key areas.`
+                : '',
+              isSealed: true,
+            },
+          });
+        }
+      }
+    }
+    console.log(`  Created ${hackathon3Submissions.length * judges.length * rubricItems.length} scores for ${hackathon3Submissions.length} submissions.\n`);
+  }
+
+  // Scores for hackathon4 (Green Earth - ENDED)
+  const rubric4 = await prisma.rubric.findFirst({
+    where: { hackathonId: hackathon4.id },
+    include: { items: { orderBy: { order: 'asc' } } },
+  });
+
+  if (rubric4) {
+    const rubricItems4 = rubric4.items;
+    const hackathon4Submissions = await prisma.submission.findMany({
+      where: { hackathonId: hackathon4.id },
+      orderBy: { submittedAt: 'asc' },
+    });
+
+    const endedTeamScores = [
+      { j1: [9, 8, 8, 7], j2: [8, 9, 7, 8] },   // Eco Builders - winner
+      { j1: [7, 7, 7, 6], j2: [8, 7, 6, 7] },    // Green Hackers - runner up
+      { j1: [5, 6, 5, 5], j2: [6, 5, 5, 6] },     // Sustain Innovators
+      { j1: [3, 4, 3, 3], j2: [4, 3, 4, 4] },     // Renew Coders
+    ];
+
+    for (let subIdx = 0; subIdx < hackathon4Submissions.length; subIdx++) {
+      const submission = hackathon4Submissions[subIdx];
+      const pattern = endedTeamScores[subIdx];
+      const judgesForHack4 = [judges[0], judges[2]]; // judge1 and judge3
+
+      for (let jIdx = 0; jIdx < judgesForHack4.length; jIdx++) {
+        const scores = jIdx === 0 ? pattern.j1 : pattern.j2;
+        for (let itemIdx = 0; itemIdx < rubricItems4.length; itemIdx++) {
+          await prisma.score.create({
+            data: {
+              submissionId: submission.id,
+              rubricItemId: rubricItems4[itemIdx].id,
+              judgerId: judgesForHack4[jIdx].id,
+              score: scores[itemIdx],
+              comment: itemIdx === 0 ? 'Evaluated during final judging round.' : '',
+              isSealed: true,
+            },
+          });
+        }
+      }
+    }
+    console.log(`  Created ${hackathon4Submissions.length * 2 * rubricItems4.length} scores for Green Earth hackathon.\n`);
+  }
+
   // ==================== ANNOUNCEMENTS ====================
   console.log("📢 Creating announcements...");
 
@@ -993,6 +1095,8 @@ Over 500 participants, 120+ projects submitted.`,
   console.log(`  • 1 Organiser, ${judges.length} Judges, ${mentors.length} Mentors`);
   console.log(`  • ${participants.length} Participants with realistic profiles`);
   console.log(`  • 8+ Teams across hackathons`);
+  console.log(`  • Rubrics with weighted criteria per hackathon`);
+  console.log(`  • Judge scores for submitted projects (sealed)`);
   console.log(`  • Real GitHub repos linked to submissions`);
   console.log(`  • Attendance records with meal tracking`);
   console.log(`  • Help tickets and mentor assignments`);
