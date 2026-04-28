@@ -62,6 +62,13 @@ enum CertificateType {
   BEST_PROJECT
 }
 
+enum CloneStatus {
+  NOT_CLONED
+  CLONING
+  CLONED
+  FAILED
+}
+
 enum InviteRole {
   JUDGE
   MENTOR
@@ -369,6 +376,10 @@ model Submission {
   isHealthy       Boolean             @default(false)
   healthCheckAt   DateTime?
   submittedAt     DateTime?
+  cloneStatus     CloneStatus         @default(NOT_CLONED)
+  codeCachePath   String?
+  cloneError      String?
+  clonedAt        DateTime?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 

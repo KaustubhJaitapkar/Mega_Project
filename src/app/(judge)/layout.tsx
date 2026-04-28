@@ -23,8 +23,8 @@ export default async function JudgeLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex min-h-screen bg-gray-50 overflow-auto">
+      <div className="flex-1 flex flex-col overflow-auto">
         {children}
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
+import CodeReviewPanel from '@/components/judge/CodeReviewPanel';
 
 interface Submission {
   id: string;
@@ -44,6 +45,7 @@ export default function JudgingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [embedMode, setEmbedMode] = useState<EmbedMode>('none');
   const [iframeError, setIframeError] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -106,6 +108,7 @@ export default function JudgingPage() {
     loadGitActivity();
     setEmbedMode('none');
     setIframeError(false);
+    setShowCode(false);
   }, [selectedSubmission?.id]);
 
   const weightedTotal = rubricItems.reduce((sum, item) => {
@@ -170,6 +173,7 @@ export default function JudgingPage() {
     setFeedback('');
     setEmbedMode('none');
     setIframeError(false);
+    setShowCode(false);
 
     // Fetch existing scores for this team/submission for the current judge
     const team = teamRows[idx];
@@ -250,6 +254,7 @@ export default function JudgingPage() {
       )}
 
       {/* ─── THREE-COLUMN LAYOUT ─── */}
+      <div className="judging-scroll-rail">
       <div className="judging-layout">
 
         {/* ═══ COL 1: QUEUE SIDEBAR ═══ */}
@@ -347,6 +352,14 @@ export default function JudgingPage() {
                     {embedMode === 'readme' ? 'Hide Readme' : 'View Source Code'}
                   </button>
                 )}
+                {selectedSubmission.githubUrl && (
+                  <button
+                    className={`judging-action-btn ${showCode ? 'judging-action-btn--active' : ''}`}
+                    onClick={() => setShowCode((prev) => !prev)}
+                  >
+                    {showCode ? 'Hide Code Review' : 'Open Code Review'}
+                  </button>
+                )}
                 {selectedSubmission.liveUrl && (
                   <a href={selectedSubmission.liveUrl} target="_blank" rel="noopener noreferrer" className="judging-action-btn judging-action-btn--ext">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -381,6 +394,13 @@ export default function JudgingPage() {
                     />
                   )}
                 </div>
+              )}
+              {selectedSubmission && (
+                <CodeReviewPanel
+                  submissionId={selectedSubmission.id}
+                  githubUrl={selectedSubmission.githubUrl}
+                  isOpen={showCode}
+                />
               )}
             </>
           ) : (
@@ -558,6 +578,7 @@ export default function JudgingPage() {
             )}
           </div>
         </div>
+      </div>
       </div>
 
       {/* ─── SEAL CONFIRM MODAL ─── */}

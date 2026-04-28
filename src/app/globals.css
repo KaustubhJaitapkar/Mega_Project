@@ -1090,7 +1090,7 @@ body {
 .judging-shell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   background: var(--bg-root);
   color: var(--text-primary);
   overflow: hidden;
@@ -1174,11 +1174,57 @@ body {
 }
 
 /* Three-Column Layout */
+.judging-scroll-rail {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
 .judging-layout {
   display: grid;
   grid-template-columns: 200px 1fr 380px;
-  flex: 1;
-  overflow: hidden;
+  min-height: 100%;
+  width: max(1180px, 100%);
+  min-width: 1180px;
+  overflow: visible;
+}
+
+.judging-layout::-webkit-scrollbar,
+.judging-shell::-webkit-scrollbar,
+.judging-scroll-rail::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.judging-layout::-webkit-scrollbar-track,
+.judging-shell::-webkit-scrollbar-track,
+.judging-scroll-rail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.judging-layout::-webkit-scrollbar-thumb,
+.judging-shell::-webkit-scrollbar-thumb,
+.judging-scroll-rail::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 999px;
+}
+
+.judging-layout::-webkit-scrollbar-thumb:hover,
+.judging-shell::-webkit-scrollbar-thumb:hover,
+.judging-scroll-rail::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+@media (max-width: 1180px) {
+  .judging-shell {
+    overflow: hidden;
+  }
+
+  .judging-layout {
+    min-width: 1180px;
+  }
 }
 
 /* ─── COL 1: QUEUE SIDEBAR ─── */

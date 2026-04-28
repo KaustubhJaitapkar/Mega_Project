@@ -57,6 +57,7 @@ public/certificates/
 # Cache
 .turbo
 .cache
+code-cache/
 
 # Playwright
 test-results/
