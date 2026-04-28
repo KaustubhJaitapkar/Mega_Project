@@ -70,6 +70,23 @@ export async function POST(
         });
       }
 
+
+      if (membership?.teamId) {
+        await tx.teamMentor.upsert({
+          where: {
+            teamId_mentorId: {
+              teamId: membership.teamId,
+              mentorId: mentor.id,
+            },
+          },
+          update: {},
+          create: {
+            teamId: membership.teamId,
+            mentorId: mentor.id,
+          },
+        });
+      }
+
       return { data: updated };
     });
 
