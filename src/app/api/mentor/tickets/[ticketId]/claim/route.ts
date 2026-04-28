@@ -26,6 +26,17 @@ export async function POST(
         return { error: 'Ticket already claimed/resolved', status: 400 as const };
       }
 
+      // Verify mentor is assigned to this hackathon
+      const hackathonMembership = await tx.hackathon.findFirst({
+        where: {
+          id: ticket.hackathonId,
+          mentors: { some: { id: mentor.id } },
+        },
+      });
+      if (!hackathonMembership) {
+        return { error: 'You are not assigned to this hackathon', status: 403 as const };
+      }
+
       const membership = await tx.teamMember.findFirst({
         where: {
           userId: ticket.creatorId,

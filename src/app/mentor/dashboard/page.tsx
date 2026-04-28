@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
+
+interface Hackathon { id: string; title: string; status: string; startDate: string; endDate: string }
 
 interface Ticket {
   id: string;
@@ -39,6 +42,15 @@ interface ChatMessage {
 }
 
 export default function MentorDashboardPage() {
+  const { data: session } = useSession();
+  const mentorId = (session?.user as any)?.id;
+
+  // Hackathon selection state
+  const [hackathons, setHackathons] = useState<Hackathon[]>([]);
+  const [selectedHackathon, setSelectedHackathon] = useState<Hackathon | null>(null);
+  const [loadingHackathons, setLoadingHackathons] = useState(true);
+
+  // Workspace state (scoped to selected hackathon)
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [assignedTeams, setAssignedTeams] = useState<AssignedTeam[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
@@ -57,6 +69,22 @@ export default function MentorDashboardPage() {
   const [claiming, setClaiming] = useState('');
   const lastChatSigRef = useRef('');
 
+  // Load hackathons where this mentor is assigned
+  useEffect(() => {
+    if (!mentorId) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/hackathons?limit=50');
+        const list = (await res.json()).data || [];
+        const filtered = list.filter((h: any) =>
+          h.mentors?.some((m: any) => m.id === mentorId)
+        );
+        setHackathons(filtered);
+      } catch { /* silent */ }
+      finally { setLoadingHackathons(false); }
+    })();
+  }, [mentorId]);
+
   const showNotice = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
     setNotice(msg);
     setNoticeType(type);
@@ -64,25 +92,29 @@ export default function MentorDashboardPage() {
   }, []);
 
   const loadTickets = useCallback(async () => {
+    if (!selectedHackathon) return;
     const params = new URLSearchParams();
+    params.set('hackathonId', selectedHackathon.id);
     if (category) params.set('category', category);
     const res = await fetch(`/api/mentor/tickets?${params.toString()}`);
     const data = await res.json();
-    setTickets(data.data || []);
-  }, [category]);
+    if (res.ok) setTickets(data.data || []);
+  }, [selectedHackathon, category]);
 
   const loadAssignedTeams = useCallback(async () => {
-    const res = await fetch('/api/mentor/teams');
+    if (!selectedHackathon) return;
+    const res = await fetch(`/api/mentor/teams?hackathonId=${selectedHackathon.id}`);
     const data = await res.json();
-    setAssignedTeams(data.data || []);
-  }, []);
+    if (res.ok) setAssignedTeams(data.data || []);
+  }, [selectedHackathon]);
 
   useEffect(() => {
+    if (!selectedHackathon) return;
     loadTickets();
     loadAssignedTeams();
     const timer = setInterval(loadTickets, 5000);
     return () => clearInterval(timer);
-  }, [loadTickets, loadAssignedTeams]);
+  }, [selectedHackathon, loadTickets, loadAssignedTeams]);
 
   useEffect(() => {
     if (!assignedTeams.length) {
@@ -248,20 +280,98 @@ export default function MentorDashboardPage() {
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
+  // --- Hackathon selector screen ---
+  if (!selectedHackathon) {
+    if (loadingHackathons) return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
+        <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+      </div>
+    );
+
+    return (
+      <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>Mentor</p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 2vw, 1.8rem)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Dashboard
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.35rem' }}>Select a hackathon to manage your queue.</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid #818cf8', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Assigned Events</p>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: '#818cf8', marginTop: '0.25rem' }}>{hackathons.length}</p>
+          </div>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid var(--accent)', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Priority</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>Resolve team blockers</p>
+          </div>
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid #3ecf8e', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Next Step</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>Open an event below</p>
+          </div>
+        </div>
+
+        {hackathons.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>No hackathons assigned yet.</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', opacity: 0.6 }}>Wait for an organiser to invite you.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
+            {hackathons.map((h) => (
+              <button
+                key={h.id}
+                onClick={() => setSelectedHackathon(h)}
+                style={{
+                  background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-lg)', padding: '1.25rem', cursor: 'pointer',
+                  textAlign: 'left', transition: 'border-color 0.2s', color: 'inherit',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-strong)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+              >
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{h.title}</h3>
+                <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                  <span className={`org-badge ${h.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-muted'}`}>{h.status}</span>
+                  <span className="org-badge org-badge-muted">
+                    {new Date(h.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(h.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+                <span className="org-btn-primary" style={{ width: '100%', justifyContent: 'center', display: 'inline-flex' }}>
+                  Open Mentoring Panel
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- Workspace screen (scoped to selected hackathon) ---
   return (
     <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
-      {/* Header */}
+      {/* Header with back button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
+          <button
+            onClick={() => { setSelectedHackathon(null); setTickets([]); setAssignedTeams([]); setChatMessages([]); }}
+            style={{
+              background: 'transparent', border: 'none', color: 'var(--accent)',
+              fontSize: '0.72rem', cursor: 'pointer', padding: 0, marginBottom: '0.4rem',
+              fontFamily: 'var(--font-display)', letterSpacing: '0.05em',
+            }}
+          >
+            &larr; All Events
+          </button>
           <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>
             Mentor
           </p>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 2vw, 1.8rem)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Dashboard
+            {selectedHackathon.title}
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.35rem' }}>
-            Help teams solve problems and unblock their progress.
-          </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Queue:</span>
@@ -366,7 +476,7 @@ export default function MentorDashboardPage() {
                   <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                      {t.creator?.name || 'Unknown'} &middot; {t.hackathon?.title || ''}
+                      {t.creator?.name || 'Unknown'}
                     </span>
                     <button
                       className="org-btn-primary"
@@ -505,7 +615,6 @@ export default function MentorDashboardPage() {
                         Full Chat &rarr;
                       </Link>
                     </div>
-                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>{entry.team?.hackathon?.title || ''}</p>
                     {teamSkills.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem' }}>
                         {teamSkills.slice(0, 5).map((skill) => (

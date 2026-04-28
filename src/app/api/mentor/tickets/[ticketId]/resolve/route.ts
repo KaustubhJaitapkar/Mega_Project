@@ -24,6 +24,17 @@ export async function POST(
       return NextResponse.json({ error: 'Only claimer can resolve ticket' }, { status: 403 });
     }
 
+    // Verify mentor is assigned to this hackathon
+    const hackathonMembership = await prisma.hackathon.findFirst({
+      where: {
+        id: ticket.hackathonId,
+        mentors: { some: { id: mentor.id } },
+      },
+    });
+    if (!hackathonMembership) {
+      return NextResponse.json({ error: 'You are not assigned to this hackathon' }, { status: 403 });
+    }
+
     const updated = await prisma.helpTicket.update({
       where: { id: params.ticketId },
       data: {

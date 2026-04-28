@@ -15,9 +15,25 @@ export async function GET(req: Request) {
     }
 
     const url = new URL(req.url);
+    const hackathonId = url.searchParams.get('hackathonId');
+    if (!hackathonId) {
+      return NextResponse.json({ error: 'hackathonId is required' }, { status: 400 });
+    }
+
+    // Verify mentor is assigned to this hackathon
+    const hackathon = await prisma.hackathon.findFirst({
+      where: {
+        id: hackathonId,
+        mentors: { some: { id: mentor.id } },
+      },
+    });
+    if (!hackathon) {
+      return NextResponse.json({ error: 'You are not assigned to this hackathon' }, { status: 403 });
+    }
+
     const category = url.searchParams.get('category') || undefined;
     const fromMinutes = parseInt(url.searchParams.get('fromMinutes') || '0', 10);
-    const where: any = {};
+    const where: any = { hackathonId };
     if (category) where.category = category;
     if (fromMinutes > 0) where.createdAt = { gte: new Date(Date.now() - fromMinutes * 60_000) };
 
