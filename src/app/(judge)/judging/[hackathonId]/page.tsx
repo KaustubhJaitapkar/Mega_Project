@@ -20,7 +20,6 @@ interface RubricItem {
   name: string;
   description?: string;
   maxScore: number;
-  weight: number;
 }
 
 type EmbedMode = 'readme' | 'live' | 'none';
@@ -113,10 +112,8 @@ export default function JudgingPage() {
     setShowCode(false);
   }, [selectedSubmission?.id]);
 
-  const weightedTotal = rubricItems.reduce((sum, item) => {
-    const val = scores[item.id] || 0;
-    return sum + (val / item.maxScore) * item.weight;
-  }, 0);
+  const totalScore = rubricItems.reduce((sum, item) => sum + (scores[item.id] ?? 0), 0);
+  const maxTotalScore = rubricItems.reduce((sum, item) => sum + item.maxScore, 0);
 
   const allScored = rubricItems.every((item) => scores[item.id] !== undefined && scores[item.id] > 0);
   const notesValid = notes.trim().length > 0;
@@ -445,7 +442,7 @@ export default function JudgingPage() {
                           <div className="judging-rubric__row">
                             <div>
                               <p className="judging-rubric__name">{item.name}</p>
-                              <p className="judging-rubric__weight">Weight: {item.weight}%</p>
+                              <p className="judging-rubric__weight">Max: {item.maxScore} pts</p>
                             </div>
                           </div>
                           {item.description && (
@@ -497,22 +494,15 @@ export default function JudgingPage() {
                     })}
                   </div>
 
-                  {/* Weighted Total */}
+                  {/* Total Score */}
                   {rubricItems.length > 0 && (
                     <div className="judging-score-total" style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       <div>
-                        <span className="judging-score-total__label">Weighted Score: </span>
+                        <span className="judging-score-total__label">Total Score: </span>
                         <span className="judging-score-total__value" style={{ fontWeight: 700 }}>
-                          {weightedTotal.toFixed(2)}
+                          {totalScore.toFixed(2)}
                         </span>
-                        <span className="judging-score-total__max">/ {rubricItems.reduce((sum, item) => sum + item.weight, 0)}</span>
-                      </div>
-                      <div>
-                        <span className="judging-score-total__label" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Raw Total: </span>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                          {rubricItems.reduce((sum, item) => sum + (scores[item.id] ?? 0), 0)}
-                        </span>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/ {rubricItems.reduce((sum, item) => sum + item.maxScore, 0)}</span>
+                        <span className="judging-score-total__max">/ {maxTotalScore}</span>
                       </div>
                     </div>
                   )}
@@ -608,8 +598,8 @@ export default function JudgingPage() {
                 </div>
               ))}
               <div className="judging-modal__score-row judging-modal__score-row--total">
-                <span>Weighted Total</span>
-                <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-display)' }}>{weightedTotal.toFixed(2)}</span>
+                <span>Total</span>
+                <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-display)' }}>{totalScore.toFixed(2)} / {maxTotalScore}</span>
               </div>
             </div>
             <div className="judging-modal__notes">

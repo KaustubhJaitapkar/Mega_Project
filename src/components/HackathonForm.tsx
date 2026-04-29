@@ -50,11 +50,16 @@ interface MealItem {
   day: number;
 }
 
+interface PrizeItem {
+  id: string;
+  title: string;
+  amount: string;
+}
+
 interface RubricItem {
   id: string;
   name: string;
   description: string;
-  weight: number;
   maxScore: number;
 }
 
@@ -174,12 +179,14 @@ export default function HackathonForm() {
 
   // New fields
   const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
+  const [customTrack, setCustomTrack] = useState('');
   const [targetBatches, setTargetBatches] = useState<string[]>([]);
   const [allowedDepartments, setAllowedDepartments] = useState<string[]>([]);
   const [submissionRequirements, setSubmissionRequirements] = useState<string[]>([]);
   const [mealSchedule, setMealSchedule] = useState<MealItem[]>([]);
   const [rubricItems, setRubricItems] = useState<RubricItem[]>([]);
   const [internalMentors, setInternalMentors] = useState<MentorEntry[]>([]);
+  const [prizeDetails, setPrizeDetails] = useState<PrizeItem[]>([]);
 
   // Existing states
   const [timelines, setTimelines] = useState<TimelineEntry[]>([]);
@@ -212,7 +219,7 @@ export default function HackathonForm() {
       case 'submissions':
         return true; // Optional
       case 'judging':
-        return rubricItems.length === 0 || rubricItems.reduce((sum, item) => sum + item.weight, 0) === 100;
+        return true;
       case 'people':
         return true; // Optional
       default:
@@ -227,6 +234,19 @@ export default function HackathonForm() {
         ? prev.filter(t => t !== trackId)
         : [...prev, trackId]
     );
+  };
+
+  // Add custom track
+  const addCustomTrack = () => {
+    if (customTrack.trim() && !selectedTracks.includes(customTrack.trim())) {
+      setSelectedTracks(prev => [...prev, customTrack.trim()]);
+      setCustomTrack('');
+    }
+  };
+
+  // Remove custom track
+  const removeTrack = (trackId: string) => {
+    setSelectedTracks(prev => prev.filter(t => t !== trackId));
   };
 
   // Batch selection toggle
@@ -256,6 +276,21 @@ export default function HackathonForm() {
     );
   };
 
+  const addPrize = () => {
+    setPrizeDetails(prev => ([
+      ...prev,
+      { id: `prize-${Date.now()}`, title: '', amount: '' },
+    ]));
+  };
+
+  const updatePrize = (id: string, field: 'title' | 'amount', value: string) => {
+    setPrizeDetails(prev => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  };
+
+  const removePrize = (id: string) => {
+    setPrizeDetails(prev => prev.filter((p) => p.id !== id));
+  };
+
   async function handleSubmit() {
     setLoading(true);
     setError('');
@@ -272,6 +307,7 @@ export default function HackathonForm() {
         allowCrossYearTeams: form.allowCrossYearTeams,
         submissionRequirements,
         mealSchedule,
+        prizeDetails: prizeDetails.filter((p) => p.title.trim()),
         rubricItems,
         internalMentors,
         sponsorDetails: sponsors.filter(s => s.name),
@@ -325,7 +361,6 @@ export default function HackathonForm() {
               items: rubricItems.map(item => ({
                 name: item.name,
                 description: item.description,
-                weight: item.weight,
                 maxScore: item.maxScore,
               })),
             }),
@@ -645,14 +680,51 @@ export default function HackathonForm() {
                 <button
                   key={track.id}
                   type="button"
-                  className={`hf-track-card ${selectedTracks.includes(track.id) ? 'hf-track-card-active' : ''}`}
-                  onClick={() => toggleTrack(track.id)}
+                  className={`hf-track-card ${selectedTracks.includes(track.label) ? 'hf-track-card-active' : ''}`}
+                  onClick={() => toggleTrack(track.label)}
                 >
                   <span className="hf-track-icon">{track.icon}</span>
                   <span className="hf-track-label">{track.label}</span>
                 </button>
               ))}
             </div>
+            
+            {/* Custom Track Input */}
+            <div style={{ marginTop: '0.75rem' }}>
+              <label className="hf-label">Add Custom Track</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  className="org-input"
+                  value={customTrack}
+                  onChange={e => setCustomTrack(e.target.value)}
+                  placeholder="Enter custom track name (e.g., Healthcare Innovation)"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTrack(); } }}
+                />
+                <button type="button" className="org-btn-secondary" onClick={addCustomTrack} style={{ whiteSpace: 'nowrap' }}>
+                  + Add
+                </button>
+              </div>
+            </div>
+            
+            {/* Show selected custom tracks */}
+            {selectedTracks.some(t => !THEMED_TRACKS.find(tt => tt.label === t)) && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <label className="hf-label">Your Custom Tracks</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {selectedTracks.filter(t => !THEMED_TRACKS.find(tt => tt.label === t)).map(track => (
+                    <span key={track} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      padding: '0.4rem 0.75rem', borderRadius: '999px',
+                      background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)',
+                      color: '#8b5cf6', fontSize: '0.8rem',
+                    }}>
+                      {track}
+                      <button type="button" onClick={() => removeTrack(track)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Target Batches */}
@@ -737,6 +809,36 @@ export default function HackathonForm() {
                 placeholder="Cash, credits, hardware, travel—whatever you are actually offering"
               />
             </div>
+          </div>
+
+          <div className="hf-card" style={{ marginTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <h3 className="hf-card-title" style={{ marginBottom: 0 }}>Prize breakdown</h3>
+              <button type="button" className="org-btn-secondary" onClick={addPrize}>+ Add Prize</button>
+            </div>
+            {prizeDetails.length === 0 ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Add entries like Winner — 5000.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {prizeDetails.map((prize) => (
+                  <div key={prize.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '0.5rem', alignItems: 'center' }}>
+                    <input
+                      className="org-input"
+                      placeholder="Prize title (e.g., Winner)"
+                      value={prize.title}
+                      onChange={(e) => updatePrize(prize.id, 'title', e.target.value)}
+                    />
+                    <input
+                      className="org-input"
+                      placeholder="Amount (e.g., 5000)"
+                      value={prize.amount}
+                      onChange={(e) => updatePrize(prize.id, 'amount', e.target.value)}
+                    />
+                    <button type="button" className="org-btn-ghost" onClick={() => removePrize(prize.id)}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {!form.isVirtual && (
@@ -993,7 +1095,7 @@ export default function HackathonForm() {
           <HfSectionHeader
             icon={<Gavel size={20} strokeWidth={1.75} />}
             title="Judging rubric"
-            desc="Weights should total 100% when you add criteria—judges see this breakdown in their console."
+            desc="Define the criteria and the maximum points for each one."
           />
 
           <JudgingRubric items={rubricItems} onChange={setRubricItems} />
@@ -1117,6 +1219,8 @@ export default function HackathonForm() {
                 <ReviewItem label="Format" value={form.isVirtual ? 'Virtual' : `In-person: ${form.venue || form.location || 'TBA'}`} />
                 <ReviewItem label="Team Size" value={`${form.minTeamSize}–${form.maxTeamSize}`} />
                 <ReviewItem label="Cross-Year Teams" value={form.allowCrossYearTeams ? 'Yes' : 'No'} />
+                <ReviewItem label="Prize Pool" value={form.prize || '—'} />
+                <ReviewItem label="Prize Items" value={`${prizeDetails.filter((p) => p.title.trim()).length} listed`} />
                 <ReviewItem
                   label="Meals"
                   value={[form.breakfastProvided && 'Breakfast', form.lunchProvided && 'Lunch', form.dinnerProvided && 'Dinner', form.swagProvided && 'Swag'].filter(Boolean).join(', ') || 'None'}
@@ -1146,7 +1250,7 @@ export default function HackathonForm() {
                     {rubricItems.map(item => (
                       <div key={item.id} className="hf-review-rubric-item">
                         <span>{item.name || 'Unnamed'}</span>
-                        <span className="hf-review-rubric-weight">{item.weight}%</span>
+                        <span className="hf-review-rubric-weight">{item.maxScore} pts max</span>
                       </div>
                     ))}
                   </div>

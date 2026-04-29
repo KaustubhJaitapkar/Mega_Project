@@ -11,7 +11,7 @@ interface Hackathon {
   bannerUrl?: string;
   logoUrl?: string;
   startDate: string; endDate: string; registrationDeadline: string; submissionDeadline: string;
-  location?: string; isVirtual: boolean; prize?: string; rules?: string;
+  location?: string; isVirtual: boolean; prize?: string; prizeDetails?: Array<{ id?: string; title: string; amount?: number | string }> | string; rules?: string;
   maxTeamSize: number; minTeamSize: number; theme?: string; hostName?: string; eligibilityDomain?: string;
   breakfastProvided: boolean; lunchProvided: boolean; dinnerProvided: boolean; swagProvided: boolean;
   sponsorDetails?: any; judgeDetails?: any;
@@ -34,6 +34,32 @@ function stripRichText(html: string): string {
     .replace(/&gt;/gi, '>')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function formatPrizeAmount(amount?: number | string) {
+  if (amount === undefined || amount === null || amount === '') return '';
+  if (typeof amount === 'number') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+  return amount;
+}
+
+function normalizePrizeDetails(value?: Hackathon['prizeDetails']) {
+  if (!value) return [] as Array<{ id?: string; title: string; amount?: number | string }>;
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 export default function HackathonDetailPage() {
@@ -79,6 +105,7 @@ export default function HackathonDetailPage() {
   const daysLeft = Math.max(0, Math.ceil((new Date(hackathon.registrationDeadline).getTime() - Date.now()) / 86400000));
   const meals = [hackathon.breakfastProvided && 'Breakfast', hackathon.lunchProvided && 'Lunch', hackathon.dinnerProvided && 'Dinner', hackathon.swagProvided && 'Swag'].filter(Boolean).join(' \u00b7 ') || 'TBA';
   const sponsors = hackathon.sponsorDetails || [];
+  const prizeDetails = normalizePrizeDetails(hackathon.prizeDetails);
   const cleanedDescription = stripRichText(hackathon.shortDescription || hackathon.description);
   const rulesLines = (hackathon.rules || '')
     .replace(/<br\s*\/?>/gi, '\n')
@@ -238,6 +265,18 @@ export default function HackathonDetailPage() {
                 <span className="org-badge org-badge-success">Certificate</span>
               </div>
               <p className="org-text">All qualifying teams receive digital certificates.</p>
+              {prizeDetails.length > 0 && (
+                <div style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>
+                  {prizeDetails.map((prize, idx) => (
+                    <div key={prize.id || idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.75rem', background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{prize.title}</span>
+                      {formatPrizeAmount(prize.amount) && (
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{formatPrizeAmount(prize.amount)}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

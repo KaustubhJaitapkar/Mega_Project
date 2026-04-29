@@ -66,14 +66,7 @@ export async function POST(
 
     const body = await req.json();
     const { items, ...rubricData } = body;
-    const validatedData = rubricCreateSchema.parse(body);
-    const totalWeight = (items || []).reduce((sum: number, i: any) => sum + Number(i.weight || 0), 0);
-    if (totalWeight !== 100) {
-      return NextResponse.json(
-        { error: 'Rubric weights must total 100' },
-        { status: 400 }
-      );
-    }
+    rubricCreateSchema.parse(body);
 
     const rubric = await prisma.rubric.create({
       data: {

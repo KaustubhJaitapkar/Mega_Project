@@ -52,6 +52,13 @@ export const hackathonCreateSchema = z.object({
   venue: z.string().optional(),
   isVirtual: z.boolean().default(true),
   prize: z.string().optional(),
+  prizeDetails: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string().min(1, 'Prize title required'),
+      amount: z.string().optional().or(z.literal('')),
+    })
+  ).optional().default([]),
   rules: z.string().optional(),
   tagline: z.string().optional(),
   bannerUrl: z.string().url().optional().or(z.literal('')),
@@ -106,7 +113,6 @@ export const hackathonCreateSchema = z.object({
       id: z.string(),
       name: z.string(),
       description: z.string().optional(),
-      weight: z.number(),
       maxScore: z.number(),
     })
   ).optional().default([]),
@@ -149,7 +155,6 @@ export const rubricCreateSchema = z.object({
     z.object({
       name: z.string(),
       description: z.string().optional(),
-      weight: z.number().default(1),
       maxScore: z.number().default(10),
     })
   ),
@@ -201,4 +206,5 @@ export const hackathonRegistrationSchema = z.object({
   graduatingYear: z.number().int().min(2000),
   courseDuration: z.string().min(2, 'Course duration is required'),
   termsAccepted: z.boolean().refine((v) => v, 'Accept terms to continue'),
+  selectedTrack: z.string().optional(),
 });

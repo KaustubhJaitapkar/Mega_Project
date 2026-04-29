@@ -109,7 +109,7 @@ export async function PUT(
       'title', 'tagline', 'description', 'shortDescription',
       'bannerUrl', 'logoUrl', 'status', 'startDate', 'endDate',
       'registrationDeadline', 'submissionDeadline', 'maxTeamSize',
-      'minTeamSize', 'location', 'isVirtual', 'prize', 'rules',
+      'minTeamSize', 'location', 'isVirtual', 'prize', 'prizeDetails', 'rules',
       'contactEmail', 'hostName', 'theme', 'eligibilityDomain',
       'breakfastProvided', 'lunchProvided', 'dinnerProvided', 'swagProvided',
       'sponsorDetails', 'judgeDetails', 'mentorDetails',

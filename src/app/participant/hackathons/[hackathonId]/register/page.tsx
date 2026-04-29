@@ -8,6 +8,7 @@ const STEPS = [
   { id: 'basic', title: 'Basic Details' },
   { id: 'user', title: 'User Details' },
   { id: 'academic', title: 'Academic Details' },
+  { id: 'track', title: 'Track Selection' },
   { id: 'terms', title: 'Terms & Conditions' },
   { id: 'team', title: 'Team' },
 ];
@@ -19,6 +20,28 @@ const COURSES = ['B.Tech/BE', 'B.Sc', 'BCA', 'MBA', 'M.Tech', 'MCA', 'Other'];
 const DURATIONS = ['2 Years', '3 Years', '4 Years', '5 Years', 'Other'];
 const YEARS = [2026, 2027, 2028, 2029, 2030];
 
+/** Get track display info - handles both predefined IDs and custom track labels */
+function getTrackDisplay(track: string): { icon: string; name: string } {
+  const TRACK_MAP: Record<string, { icon: string; name: string }> = {
+    'ai-ml': { icon: '🤖', name: 'AI/ML' },
+    'web3': { icon: '⛓️', name: 'Web3 & Blockchain' },
+    'fintech': { icon: '💰', name: 'FinTech' },
+    'healthtech': { icon: '🏥', name: 'HealthTech' },
+    'edtech': { icon: '📚', name: 'EdTech' },
+    'cleantech': { icon: '🌱', name: 'CleanTech' },
+    'iot': { icon: '📡', name: 'IoT & Hardware' },
+    'gaming': { icon: '🎮', name: 'Gaming' },
+    'social': { icon: '🤝', name: 'Social Impact' },
+    'open': { icon: '🔓', name: 'Open Innovation' },
+  };
+  if (TRACK_MAP[track]) return TRACK_MAP[track];
+  const normalized = track.toLowerCase();
+  for (const [id, info] of Object.entries(TRACK_MAP)) {
+    if (info.name.toLowerCase() === normalized || id === normalized) return info;
+  }
+  return { icon: '🎯', name: track };
+}
+
 export default function HackathonRegistrationPage() {
   const params = useParams();
   const router = useRouter();
@@ -29,7 +52,8 @@ export default function HackathonRegistrationPage() {
   const [saving, setSaving] = useState(false);
   const [savedRegistration, setSavedRegistration] = useState(false);
   const [error, setError] = useState('');
-  const [hackathonInfo, setHackathonInfo] = useState<{ minTeamSize: number; maxTeamSize: number } | null>(null);
+  const [hackathonInfo, setHackathonInfo] = useState<{ minTeamSize: number; maxTeamSize: number; themedTracks?: string[] } | null>(null);
+  const [selectedTrack, setSelectedTrack] = useState<string>('');
   const [teamName, setTeamName] = useState('');
   const [teamDesc, setTeamDesc] = useState('');
   const [team, setTeam] = useState<any | null>(null);
@@ -63,7 +87,7 @@ export default function HackathonRegistrationPage() {
         const profileData = await profileRes.json();
         setCurrentUserId(profileData?.user?.id || '');
         setSavedRegistration(!!regData.data);
-        if (hackData?.data) setHackathonInfo({ minTeamSize: hackData.data.minTeamSize, maxTeamSize: hackData.data.maxTeamSize });
+        if (hackData?.data) setHackathonInfo({ minTeamSize: hackData.data.minTeamSize, maxTeamSize: hackData.data.maxTeamSize, themedTracks: hackData.data.themedTracks || [] });
         const nameParts = (session?.user?.name || '').split(' ');
         const existing = regData.data;
         setForm((prev) => ({
@@ -78,6 +102,7 @@ export default function HackathonRegistrationPage() {
           graduatingYear: existing?.graduatingYear || 2026, courseDuration: existing?.courseDuration || '4 Years',
           termsAccepted: existing?.termsAccepted || false,
         }));
+        setSelectedTrack(existing?.selectedTrack || '');
         const allTeamsRes = await fetch(`/api/hackathons/${hackathonId}/teams`);
         const allTeamsData = await allTeamsRes.json();
         const myTeam = (allTeamsData.data || []).find((t: any) => (t.members || []).some((m: any) => m.user?.id === profileData?.user?.id));
@@ -139,9 +164,15 @@ export default function HackathonRegistrationPage() {
     if (step.id === 'basic') return form.firstName && form.email && form.phone && form.gender && form.location;
     if (step.id === 'user') return form.instituteName && form.userType && form.domain && form.course;
     if (step.id === 'academic') return form.courseSpecialization && form.courseDuration && form.graduatingYear;
+    if (step.id === 'track') {
+      // Track selection is required if hackathon has themed tracks
+      const hasTracks = hackathonInfo?.themedTracks && hackathonInfo.themedTracks.length > 0;
+      if (hasTracks) return !!selectedTrack;
+      return true;
+    }
     if (step.id === 'terms') return form.termsAccepted;
     return true;
-  }, [form, step.id]);
+  }, [form, step.id, selectedTrack, hackathonInfo]);
 
   async function handleNext() {
     if (step.id === 'terms') {
@@ -156,7 +187,7 @@ export default function HackathonRegistrationPage() {
     setSaving(true); setError('');
     try {
       const res = await fetch(`/api/hackathons/${hackathonId}/registration`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, selectedTrack: selectedTrack || undefined }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed'); return false; }
@@ -351,6 +382,55 @@ export default function HackathonRegistrationPage() {
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TRACK SELECTION */}
+        {step.id === 'track' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <p className="org-label" style={{ marginBottom: '0.25rem' }}>Choose Your Track *</p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              {hackathonInfo?.themedTracks && hackathonInfo.themedTracks.length > 0
+                ? 'Select the track you want to participate in:'
+                : 'This hackathon has no themed tracks defined.'}
+            </p>
+            {hackathonInfo?.themedTracks && hackathonInfo.themedTracks.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {hackathonInfo.themedTracks.map((track) => {
+                  const display = getTrackDisplay(track);
+                  const isSelected = selectedTrack === track;
+                  return (
+                    <button
+                      key={track}
+                      type="button"
+                      onClick={() => setSelectedTrack(track)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        padding: '0.5rem 1rem', borderRadius: 999,
+                        border: '1px solid',
+                        borderColor: isSelected ? 'var(--accent)' : 'var(--border-default)',
+                        background: isSelected ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                        color: isSelected ? 'var(--accent)' : 'var(--text-primary)',
+                        fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'var(--font-display)',
+                      }}
+                    >
+                      <span>{display.icon}</span>
+                      <span>{display.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {selectedTrack && (
+              <p style={{ fontSize: '0.72rem', color: 'var(--accent)', marginTop: '0.25rem' }}>
+                Selected: {getTrackDisplay(selectedTrack).name}
+              </p>
+            )}
+            {hackathonInfo?.themedTracks && hackathonInfo.themedTracks.length > 0 && !selectedTrack && (
+              <p style={{ fontSize: '0.72rem', color: 'var(--error)', marginTop: '0.25rem' }}>
+                Please select a track to continue
+              </p>
+            )}
           </div>
         )}
 

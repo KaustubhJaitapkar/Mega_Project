@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { parseHackathonMeta } from '@/lib/hackathonMeta';
-import { calculateWeightedScore } from '@/lib/scoring';
+import { calculateTotalScore } from '@/lib/scoring';
 
 export async function POST(req: Request) {
   try {
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
 
     const map = new Map(rubric.items.map((i) => [i.id, i]));
     const rubricItemMap = new Map(
-      rubric.items.map((i) => [i.id, { id: i.id, weight: i.weight, maxScore: i.maxScore }])
+      rubric.items.map((i) => [i.id, { id: i.id, maxScore: i.maxScore }])
     );
 
     for (const row of scores) {
@@ -80,8 +80,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const weightedTotal = Math.round(calculateWeightedScore(scores, rubricItemMap) * 100) / 100;
-    const rawTotal = scores.reduce((sum, row) => sum + row.score, 0);
+    const totalScore = Math.round(calculateTotalScore(scores, rubricItemMap) * 100) / 100;
+    const maxTotal = rubric.items.reduce((sum, item) => sum + item.maxScore, 0);
 
     await prisma.$transaction([
       prisma.score.deleteMany({
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
             rubricItemId: row.rubricItemId,
             judgerId: judge.id,
             score: row.score,
-            comment: idx === 0 ? `${notes || ''}\nWeighted total: ${weightedTotal} (raw: ${rawTotal})` : '',
+            comment: idx === 0 ? `${notes || ''}\nTotal: ${totalScore} / ${maxTotal}` : '',
             isSealed: !!seal,
           },
         })
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       message: seal ? 'Scores submitted and sealed' : 'Scores saved',
-      data: { weightedTotal, rawTotal, sealed: !!seal },
+      data: { totalScore, maxTotal, sealed: !!seal },
     });
   } catch (error) {
     console.error('Submit score error:', error);

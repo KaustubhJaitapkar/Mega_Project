@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Save, Image, Calendar, MapPin, Users, Award, FileText, Target } from 'lucide-react';
+import { X, Save, Image, Calendar, MapPin, Users, Award, FileText, Target, Bot, Link as LinkIcon, DollarSign, Activity, BookOpen, Leaf, Cpu, Gamepad2, Globe, Plus, Trash2 } from 'lucide-react';
 
 interface Hackathon {
   id: string;
@@ -42,11 +42,25 @@ interface EditHackathonModalProps {
   onSave: (updated: Partial<Hackathon>) => void;
 }
 
+const THEMED_TRACKS = [
+  { id: 'ai-ml', label: 'AI/ML', icon: <Bot size={20} /> },
+  { id: 'web3', label: 'Web3 & Blockchain', icon: <LinkIcon size={20} /> },
+  { id: 'fintech', label: 'FinTech', icon: <DollarSign size={20} /> },
+  { id: 'healthtech', label: 'HealthTech', icon: <Activity size={20} /> },
+  { id: 'edtech', label: 'EdTech', icon: <BookOpen size={20} /> },
+  { id: 'cleantech', label: 'CleanTech', icon: <Leaf size={20} /> },
+  { id: 'iot', label: 'IoT & Hardware', icon: <Cpu size={20} /> },
+  { id: 'gaming', label: 'Gaming & Entertainment', icon: <Gamepad2 size={20} /> },
+  { id: 'social', label: 'Social Impact', icon: <Users size={20} /> },
+  { id: 'open', label: 'Open Innovation', icon: <Globe size={20} /> },
+];
+
 export default function EditHackathonModal({ hackathon, onClose, onSave }: EditHackathonModalProps) {
   const [form, setForm] = useState<Partial<Hackathon>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState<'basic' | 'schedule' | 'logistics' | 'tracks' | 'assets'>('basic');
+  const [customTrack, setCustomTrack] = useState('');
 
   useEffect(() => {
     setForm({
@@ -83,6 +97,39 @@ export default function EditHackathonModal({ hackathon, onClose, onSave }: EditH
 
   const update = (key: keyof Hackathon, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Toggle predefined track
+  const toggleTrack = (trackId: string) => {
+    const current = form.themedTracks || [];
+    const track = THEMED_TRACKS.find(t => t.id === trackId);
+    if (!track) return;
+    
+    const isSelected = current.includes(track.label);
+    update('themedTracks', isSelected ? current.filter(t => t !== track.label) : [...current, track.label]);
+  };
+
+  // Add custom track
+  const addCustomTrack = () => {
+    if (customTrack.trim()) {
+      const current = form.themedTracks || [];
+      if (!current.includes(customTrack.trim())) {
+        update('themedTracks', [...current, customTrack.trim()]);
+      }
+      setCustomTrack('');
+    }
+  };
+
+  // Remove track (predefined or custom)
+  const removeTrack = (trackLabel: string) => {
+    const current = form.themedTracks || [];
+    update('themedTracks', current.filter(t => t !== trackLabel));
+  };
+
+  // Check if a track is selected
+  const isTrackSelected = (trackId: string) => {
+    const track = THEMED_TRACKS.find(t => t.id === trackId);
+    return track ? (form.themedTracks || []).includes(track.label) : false;
   };
 
   const handleSave = async () => {
@@ -394,30 +441,98 @@ export default function EditHackathonModal({ hackathon, onClose, onSave }: EditH
           {activeSection === 'tracks' && (
             <div className="ehm-section">
               <div className="ehm-field">
-                <label className="ehm-label">Themed Tracks</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  {['ai-ml', 'web3', 'fintech', 'healthtech', 'edtech', 'cleantech', 'iot', 'gaming', 'social', 'open'].map(trackId => {
-                    const trackNames: Record<string, string> = { 'ai-ml': 'AI/ML', 'web3': 'Web3 & Blockchain', 'fintech': 'FinTech', 'healthtech': 'HealthTech', 'edtech': 'EdTech', 'cleantech': 'CleanTech', 'iot': 'IoT & Hardware', 'gaming': 'Gaming', 'social': 'Social Impact', 'open': 'Open Innovation' };
-                    const isSelected = (form.themedTracks || []).includes(trackId);
-                    return (
-                      <label key={trackId} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: isSelected ? 'rgba(99,102,241,0.1)' : '#f8fafc', borderRadius: 8, cursor: 'pointer', border: `1px solid ${isSelected ? '#c7d2fe' : '#e2e8f0'}` }}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {
-                            const current = form.themedTracks || [];
-                            update('themedTracks', isSelected ? current.filter(t => t !== trackId) : [...current, trackId]);
-                          }}
-                        />
-                        <span style={{ fontSize: 13, color: isSelected ? '#4338ca' : '#64748b' }}>{trackNames[trackId]}</span>
-                      </label>
-                    );
-                  })}
+                <label className="ehm-label">Themed Track(s)</label>
+                <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.75rem' }}>Select one or more tracks for your hackathon</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                  {THEMED_TRACKS.map(track => (
+                    <button
+                      key={track.id}
+                      type="button"
+                      onClick={() => toggleTrack(track.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        padding: '0.75rem', borderRadius: '0.5rem',
+                        background: isTrackSelected(track.id) ? 'rgba(99,102,241,0.1)' : '#f8fafc',
+                        border: `1px solid ${isTrackSelected(track.id) ? '#c7d2fe' : '#e2e8f0'}`,
+                        cursor: 'pointer', transition: 'all 0.2s',
+                        color: isTrackSelected(track.id) ? '#4338ca' : '#64748b',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '32px', height: '32px', borderRadius: '0.375rem',
+                        background: isTrackSelected(track.id) ? '#4338ca' : '#e2e8f0',
+                        color: isTrackSelected(track.id) ? 'white' : '#64748b',
+                      }}>
+                        {track.icon}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: isTrackSelected(track.id) ? 500 : 400 }}>{track.label}</span>
+                    </button>
+                  ))}
                 </div>
+
+                {/* Custom Track Input */}
+                <div style={{ marginTop: '1.5rem' }}>
+                  <label className="ehm-label">Add Custom Track</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      className="ehm-input"
+                      value={customTrack}
+                      onChange={e => setCustomTrack(e.target.value)}
+                      placeholder="Enter custom track name (e.g., Healthcare Innovation)"
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomTrack(); } }}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={addCustomTrack}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.25rem',
+                        padding: '0.5rem 1rem', whiteSpace: 'nowrap',
+                        background: '#f1f5f9', border: '1px solid #e2e8f0',
+                        borderRadius: '0.375rem', cursor: 'pointer', color: '#475569',
+                        fontSize: '0.8rem', fontWeight: 500,
+                      }}
+                    >
+                      <Plus size={14} />
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Show selected custom tracks */}
+                {(form.themedTracks || []).some(t => !THEMED_TRACKS.find(tt => tt.label === t)) && (
+                  <div style={{ marginTop: '1rem' }}>
+                    <label className="ehm-label">Your Custom Tracks</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {(form.themedTracks || []).filter(t => !THEMED_TRACKS.find(tt => tt.label === t)).map(track => (
+                        <span key={track} style={{
+                          display: 'flex', alignItems: 'center', gap: '0.5rem',
+                          padding: '0.4rem 0.75rem', borderRadius: '999px',
+                          background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)',
+                          color: '#8b5cf6', fontSize: '0.8rem',
+                        }}>
+                          {track}
+                          <button 
+                            type="button" 
+                            onClick={() => removeTrack(track)}
+                            style={{ 
+                              background: 'none', border: 'none', color: '#8b5cf6', 
+                              cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 
+                            }}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className="ehm-field">
                 <label className="ehm-label">Target Batches</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
                   {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year (PG)'].map(batch => {
                     const isSelected = (form.targetBatches || []).includes(batch);
                     return (
@@ -438,7 +553,7 @@ export default function EditHackathonModal({ hackathon, onClose, onSave }: EditH
               </div>
               <div className="ehm-field">
                 <label className="ehm-label">Allowed Departments</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
                   {['Computer Science', 'Information Technology', 'AI & Data Science', 'Electronics', 'Electrical', 'Mechanical', 'Civil', 'Chemical', 'Biotechnology', 'Other'].map(dept => {
                     const isSelected = (form.allowedDepartments || []).includes(dept);
                     return (

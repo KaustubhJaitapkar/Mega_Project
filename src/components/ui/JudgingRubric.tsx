@@ -1,13 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Plus, Trash2, BarChart3, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, BarChart3 } from 'lucide-react';
 
 interface RubricItem {
   id: string;
   name: string;
   description: string;
-  weight: number;
   maxScore: number;
 }
 
@@ -20,19 +18,11 @@ export default function JudgingRubric({
   items,
   onChange,
 }: JudgingRubricProps) {
-  const totalWeight = useMemo(() =>
-    items.reduce((sum, item) => sum + item.weight, 0),
-    [items]
-  );
-
-  const isValid = totalWeight === 100;
-
   const addItem = () => {
     const newItem: RubricItem = {
       id: `rubric-${Date.now()}`,
       name: '',
       description: '',
-      weight: 0,
       maxScore: 10,
     };
     onChange([...items, newItem]);
@@ -48,43 +38,33 @@ export default function JudgingRubric({
     onChange(items.filter(item => item.id !== id));
   };
 
-  const distributeEqually = () => {
-    const equalWeight = Math.floor(100 / items.length);
-    const remainder = 100 - (equalWeight * items.length);
-
-    onChange(items.map((item, index) => ({
-      ...item,
-      weight: equalWeight + (index === 0 ? remainder : 0),
-    })));
-  };
-
   const presetRubrics = [
     {
       name: 'Standard',
       items: [
-        { name: 'Code Quality', description: 'Code structure, readability, and best practices', weight: 25, maxScore: 10 },
-        { name: 'Innovation', description: 'Creativity and uniqueness of the solution', weight: 30, maxScore: 10 },
-        { name: 'Impact', description: 'Potential real-world impact and usefulness', weight: 20, maxScore: 10 },
-        { name: 'Presentation', description: 'Pitch clarity, demo quality, and Q&A handling', weight: 15, maxScore: 10 },
-        { name: 'Design', description: 'UI/UX design and visual appeal', weight: 10, maxScore: 10 },
+        { name: 'Code Quality', description: 'Code structure, readability, and best practices', maxScore: 10 },
+        { name: 'Innovation', description: 'Creativity and uniqueness of the solution', maxScore: 10 },
+        { name: 'Impact', description: 'Potential real-world impact and usefulness', maxScore: 10 },
+        { name: 'Presentation', description: 'Pitch clarity, demo quality, and Q&A handling', maxScore: 10 },
+        { name: 'Design', description: 'UI/UX design and visual appeal', maxScore: 10 },
       ],
     },
     {
       name: 'Technical Focus',
       items: [
-        { name: 'Technical Complexity', description: 'Difficulty of implementation and technical depth', weight: 35, maxScore: 10 },
-        { name: 'Code Quality', description: 'Clean code, documentation, and testing', weight: 25, maxScore: 10 },
-        { name: 'Functionality', description: 'Working features and bug-free execution', weight: 25, maxScore: 10 },
-        { name: 'Scalability', description: 'Potential for growth and maintenance', weight: 15, maxScore: 10 },
+        { name: 'Technical Complexity', description: 'Difficulty of implementation and technical depth', maxScore: 10 },
+        { name: 'Code Quality', description: 'Clean code, documentation, and testing', maxScore: 10 },
+        { name: 'Functionality', description: 'Working features and bug-free execution', maxScore: 10 },
+        { name: 'Scalability', description: 'Potential for growth and maintenance', maxScore: 10 },
       ],
     },
     {
       name: 'Pitch Heavy',
       items: [
-        { name: 'Pitch Quality', description: 'Storytelling and communication skills', weight: 30, maxScore: 10 },
-        { name: 'Innovation', description: 'Novelty and creative problem solving', weight: 25, maxScore: 10 },
-        { name: 'Business Viability', description: 'Market potential and business model', weight: 25, maxScore: 10 },
-        { name: 'Technical Execution', description: 'Working prototype and implementation', weight: 20, maxScore: 10 },
+        { name: 'Pitch Quality', description: 'Storytelling and communication skills', maxScore: 10 },
+        { name: 'Innovation', description: 'Novelty and creative problem solving', maxScore: 10 },
+        { name: 'Business Viability', description: 'Market potential and business model', maxScore: 10 },
+        { name: 'Technical Execution', description: 'Working prototype and implementation', maxScore: 10 },
       ],
     },
   ];
@@ -117,21 +97,6 @@ export default function JudgingRubric({
               </button>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="jr-weight-indicator">
-        <div className="jr-weight-bar">
-          <div
-            className={`jr-weight-fill ${!isValid && totalWeight > 0 ? 'jr-weight-invalid' : ''}`}
-            style={{ width: `${Math.min(totalWeight, 100)}%` }}
-          />
-        </div>
-        <div className={`jr-weight-label ${!isValid && totalWeight > 0 ? 'jr-weight-label-invalid' : ''}`}>
-          {totalWeight}% / 100%
-          {totalWeight > 0 && !isValid && (
-            <span className="jr-weight-hint"> {totalWeight < 100 ? '(add ' + (100 - totalWeight) + '% more)' : '(remove ' + (totalWeight - 100) + '%)'}</span>
-          )}
         </div>
       </div>
 
@@ -179,29 +144,6 @@ export default function JudgingRubric({
                   />
                 </div>
 
-                <div className="jr-field jr-field-weight">
-                  <label className="jr-field-label">Weight (%)</label>
-                  <div className="jr-weight-input-wrap">
-                    <input
-                      type="number"
-                      className="org-input jr-weight-input"
-                      min="0"
-                      max="100"
-                      value={item.weight}
-                      onChange={(e) => updateItem(item.id, 'weight', parseInt(e.target.value) || 0)}
-                    />
-                    <span className="jr-weight-unit">%</span>
-                  </div>
-                  <input
-                    type="range"
-                    className="jr-slider"
-                    min="0"
-                    max="100"
-                    value={item.weight}
-                    onChange={(e) => updateItem(item.id, 'weight', parseInt(e.target.value))}
-                  />
-                </div>
-
                 <div className="jr-field jr-field-score">
                   <label className="jr-field-label">Max Score</label>
                   <input
@@ -216,25 +158,12 @@ export default function JudgingRubric({
               </div>
 
               <div className="jr-card-preview">
-                <div className="jr-preview-bar" style={{ width: `${item.weight}%` }} />
                 <span className="jr-preview-text">
-                  {item.name || 'Unnamed'}: {item.weight}% weight, {item.maxScore} pts max
+                  {item.name || 'Unnamed'}: {item.maxScore} pts max
                 </span>
               </div>
             </div>
           ))}
-
-          {totalWeight !== 100 && items.length > 0 && (
-            <div className="jr-warning">
-              <AlertCircle size={16} />
-              <span>
-                Weights must total 100%. Currently at {totalWeight}%.
-                <button type="button" className="jr-auto-fix" onClick={distributeEqually}>
-                  Auto-distribute equally
-                </button>
-              </span>
-            </div>
-          )}
         </div>
       )}
 

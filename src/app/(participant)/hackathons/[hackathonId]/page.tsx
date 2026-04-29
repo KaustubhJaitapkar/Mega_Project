@@ -26,6 +26,7 @@ interface Hackathon {
   location?: string;
   isVirtual: boolean;
   prize?: string;
+  prizeDetails?: Array<{ id?: string; title: string; amount?: number | string }>;
   rules?: string;
   maxTeamSize: number;
   minTeamSize: number;
@@ -67,31 +68,33 @@ interface Hackathon {
   };
 }
 
-const TRACK_ICONS: Record<string, string> = {
-  'ai-ml': '🤖',
-  'web3': '⛓️',
-  'fintech': '💰',
-  'healthtech': '🏥',
-  'edtech': '📚',
-  'cleantech': '🌱',
-  'iot': '📡',
-  'gaming': '🎮',
-  'social': '🤝',
-  'open': '🔓',
+const TRACK_MAP: Record<string, { icon: string; name: string }> = {
+  'ai-ml': { icon: '🤖', name: 'AI/ML' },
+  'web3': { icon: '⛓️', name: 'Web3 & Blockchain' },
+  'fintech': { icon: '💰', name: 'FinTech' },
+  'healthtech': { icon: '🏥', name: 'HealthTech' },
+  'edtech': { icon: '📚', name: 'EdTech' },
+  'cleantech': { icon: '🌱', name: 'CleanTech' },
+  'iot': { icon: '📡', name: 'IoT & Hardware' },
+  'gaming': { icon: '🎮', name: 'Gaming' },
+  'social': { icon: '🤝', name: 'Social Impact' },
+  'open': { icon: '🔓', name: 'Open Innovation' },
 };
 
-const TRACK_NAMES: Record<string, string> = {
-  'ai-ml': 'AI/ML',
-  'web3': 'Web3 & Blockchain',
-  'fintech': 'FinTech',
-  'healthtech': 'HealthTech',
-  'edtech': 'EdTech',
-  'cleantech': 'CleanTech',
-  'iot': 'IoT & Hardware',
-  'gaming': 'Gaming',
-  'social': 'Social Impact',
-  'open': 'Open Innovation',
-};
+/** Get track display info - handles both predefined IDs and custom track labels */
+function getTrackDisplay(track: string): { icon: string; name: string } {
+  // First check if it's a predefined track ID
+  if (TRACK_MAP[track]) return TRACK_MAP[track];
+  // Then check if it matches a predefined track name (case-insensitive)
+  const normalized = track.toLowerCase();
+  for (const [id, info] of Object.entries(TRACK_MAP)) {
+    if (info.name.toLowerCase() === normalized || id === normalized) {
+      return info;
+    }
+  }
+  // Return as custom track
+  return { icon: '🎯', name: track };
+}
 
 const SUBMISSION_LABELS: Record<string, { label: string; icon: string }> = {
   'github': { label: 'GitHub Repository', icon: '🔗' },
@@ -128,6 +131,32 @@ function formatTime(value: string) {
 
 function formatDateTime(value: string) {
   return `${formatDate(value)} at ${formatTime(value)}`;
+}
+
+function formatPrizeAmount(amount?: number | string) {
+  if (amount === undefined || amount === null || amount === '') return '';
+  if (typeof amount === 'number') {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+  return amount;
+}
+
+function normalizePrizeDetails(value?: Hackathon['prizeDetails']) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 function getStatusColor(status: string) {
@@ -246,6 +275,7 @@ export default function HackathonDetailPage() {
 
   const statusColor = getStatusColor(hackathon.status);
   const registeredCount = hackathon._count?.attendances ?? 0;
+  const prizeDetails = normalizePrizeDetails(hackathon.prizeDetails);
 
   return (
     <div className="hp-container">
@@ -575,17 +605,37 @@ export default function HackathonDetailPage() {
                     </div>
                   </div>
 
+                  {prizeDetails.length > 0 && (
+                    <div className="hp-info-card" style={{ marginTop: '1rem' }}>
+                      <h3 className="hp-info-title">Prize Breakdown</h3>
+                      <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        {prizeDetails.map((prize, idx) => (
+                          <div key={prize.id || idx} className="hp-req-item" style={{ padding: '0.6rem 0.75rem' }}>
+                            <span className="hp-req-icon">🏅</span>
+                            <span className="hp-req-label">{prize.title}</span>
+                            {formatPrizeAmount(prize.amount) && (
+                              <span className="hp-req-check">{formatPrizeAmount(prize.amount)}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Themed Tracks */}
                   {hackathon.themedTracks && hackathon.themedTracks.length > 0 && (
                     <div className="hp-tracks">
                       <h3 className="hp-subsection-title">Themed Tracks</h3>
                       <div className="hp-tracks-grid">
-                        {hackathon.themedTracks.map((trackId) => (
-                          <div key={trackId} className="hp-track-card">
-                            <span className="hp-track-icon">{TRACK_ICONS[trackId] || '🎯'}</span>
-                            <span className="hp-track-name">{TRACK_NAMES[trackId] || trackId}</span>
-                          </div>
-                        ))}
+                        {hackathon.themedTracks.map((track) => {
+                          const display = getTrackDisplay(track);
+                          return (
+                            <div key={track} className="hp-track-card">
+                              <span className="hp-track-icon">{display.icon}</span>
+                              <span className="hp-track-name">{display.name}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -599,12 +649,9 @@ export default function HackathonDetailPage() {
                           <div key={item.id || idx} className="hp-rubric-item">
                             <div className="hp-rubric-header">
                               <span className="hp-rubric-name">{item.name}</span>
-                              <span className="hp-rubric-weight">{item.weight}%</span>
+                              <span className="hp-rubric-weight">{item.maxScore} pts</span>
                             </div>
                             {item.description && <p className="hp-rubric-desc">{item.description}</p>}
-                            <div className="hp-rubric-bar">
-                              <div className="hp-rubric-fill" style={{ width: `${item.weight}%` }} />
-                            </div>
                           </div>
                         ))}
                       </div>

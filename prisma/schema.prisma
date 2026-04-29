@@ -204,6 +204,7 @@ model Hackathon {
   location        String?
   isVirtual       Boolean             @default(true)
   prize           String?
+  prizeDetails    Json?               // [{id, title, amount}]
   sponsorIds      String[]
   rules           String?             @db.Text
 
@@ -221,13 +222,13 @@ model Hackathon {
   mentorDetails   Json?               // [{name, email, expertise}]
 
   // New fields for enhanced hackathon creation
-  themedTracks    String[]            @default([]) // ['ai-ml', 'web3', etc.]
+  themedTracks    String[]            @default([]) // ['AI/ML', 'Web3', etc.]
   targetBatches   String[]            @default([]) // ['1st Year', '2nd Year', etc.]
   allowedDepartments String[]         @default([]) // ['Computer Science', etc.]
   allowCrossYearTeams Boolean         @default(false)
   submissionRequirements String[]     @default([]) // ['github', 'demo', 'video', etc.]
   mealSchedule    Json?               // [{id, name, startTime, endTime, day}]
-  rubricItems     Json?               // [{id, name, description, weight, maxScore}]
+  rubricItems     Json?               // [{id, name, description, maxScore}]
   internalMentors Json?               // [{id, name, email, department, expertise}]
 
   createdAt       DateTime            @default(now())
@@ -353,6 +354,7 @@ model HackathonRegistration {
   graduatingYear      Int
   courseDuration      String
   termsAccepted       Boolean  @default(false)
+  selectedTrack       String?  // Participant's chosen themed track
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

@@ -2,7 +2,6 @@ import { prisma } from '@/lib/prisma';
 
 interface RubricItemInfo {
   id: string;
-  weight: number;
   maxScore: number;
 }
 
@@ -14,26 +13,25 @@ interface ScoreRecord {
 }
 
 /**
- * Calculates the weighted score for a single judge on a single submission.
- * Formula: SUM((score / maxScore) * weight) for each rubric item.
- * Returns a score normalized to the sum of weights (typically 0-100).
+ * Calculates the total score for a single judge on a single submission.
+ * Formula: SUM(score) for each rubric item.
  */
-export function calculateWeightedScore(
+export function calculateTotalScore(
   judgeScores: { rubricItemId: string; score: number }[],
   rubricItemMap: Map<string, RubricItemInfo>
 ): number {
-  let weightedTotal = 0;
+  let total = 0;
   for (const entry of judgeScores) {
     const item = rubricItemMap.get(entry.rubricItemId);
     if (!item) continue;
-    weightedTotal += (entry.score / item.maxScore) * item.weight;
+    total += entry.score;
   }
-  return weightedTotal;
+  return total;
 }
 
 /**
- * Computes final scores per team for a hackathon using weighted rubric scoring,
- * averaged across all judges per submission.
+ * Computes final scores per team for a hackathon using raw rubric totals,
+ * summed across all judges per submission.
  *
  * Returns a Map of teamId -> finalScore, and a Map of teamId -> judgeCount.
  */
@@ -53,7 +51,6 @@ export async function computeTeamRankings(hackathonId: string): Promise<{
     for (const item of rubric.items) {
       rubricItemMap.set(item.id, {
         id: item.id,
-        weight: item.weight,
         maxScore: item.maxScore,
       });
     }
@@ -84,17 +81,16 @@ export async function computeTeamRankings(hackathonId: string): Promise<{
     judgeMap.get(score.judgerId)!.push(score);
   }
 
-  // Calculate per-submission weighted score (averaged across judges)
+  // Calculate per-submission total score (summed across judges)
   const submissionScores = new Map<string, number>();
   const submissionJudgeCounts = new Map<string, number>();
 
   for (const [subId, judgeMap] of submissionJudgeScores) {
-    let totalWeighted = 0;
+    let totalScore = 0;
     for (const [, judgeScores] of judgeMap) {
-      totalWeighted += calculateWeightedScore(judgeScores, rubricItemMap);
+      totalScore += calculateTotalScore(judgeScores, rubricItemMap);
     }
-    const avgWeighted = totalWeighted / judgeMap.size;
-    submissionScores.set(subId, avgWeighted);
+    submissionScores.set(subId, totalScore);
     submissionJudgeCounts.set(subId, judgeMap.size);
   }
 

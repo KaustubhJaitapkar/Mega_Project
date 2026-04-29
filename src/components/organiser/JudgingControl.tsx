@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trophy, Eye, EyeOff, Lock, Plus, Trash2, Save, RefreshCw } from 'lucide-react';
+import { Trophy, Eye, EyeOff, Lock, Plus, RefreshCw } from 'lucide-react';
 
-interface RubricItem { name: string; description: string; weight: number; maxScore: number }
+interface RubricItem { name: string; description: string; maxScore: number }
 interface Rubric { id: string; name: string; description: string; maxScore: number; isActive: boolean; items: Array<RubricItem & { id: string }> }
 interface Props { hackathonId: string }
 
@@ -58,9 +58,9 @@ export default function JudgingControl({ hackathonId }: Props) {
       body: JSON.stringify({
         name: 'Default Rubric', description: 'Standard judging criteria', maxScore: 100,
         items: [
-          { name: 'Innovation', description: 'Creativity and originality', weight: 40, maxScore: 10 },
-          { name: 'Execution', description: 'Technical implementation', weight: 30, maxScore: 10 },
-          { name: 'Impact', description: 'Potential real-world impact', weight: 30, maxScore: 10 },
+          { name: 'Innovation', description: 'Creativity and originality', maxScore: 10 },
+          { name: 'Execution', description: 'Technical implementation', maxScore: 10 },
+          { name: 'Impact', description: 'Potential real-world impact', maxScore: 10 },
         ],
       }),
     });
@@ -119,7 +119,6 @@ export default function JudgingControl({ hackathonId }: Props) {
               <div key={item.id || item.name} className="org-row" style={{ paddingLeft: '0.5rem' }}>
                 <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>{item.name}</span>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <span className="org-badge org-badge-muted">weight: {item.weight}%</span>
                   <span className="org-badge org-badge-muted">max: {item.maxScore}</span>
                 </div>
               </div>

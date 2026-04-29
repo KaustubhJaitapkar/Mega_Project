@@ -93,6 +93,7 @@ export async function POST(
         graduatingYear: validated.graduatingYear,
         courseDuration: validated.courseDuration,
         termsAccepted: validated.termsAccepted,
+        selectedTrack: validated.selectedTrack,
         hackathon: { connect: { id: params.hackathonId } },
         user: { connect: { id: user.id } },
       },

@@ -712,9 +712,9 @@ export default function CommandCenterPage() {
   const [rubric] = useState({
     name: 'Main Rubric', description: '', maxScore: 100,
     items: [
-      { name: 'Innovation', weight: 40, maxScore: 10 },
-      { name: 'Execution', weight: 30, maxScore: 10 },
-      { name: 'Impact', weight: 30, maxScore: 10 },
+      { name: 'Innovation', maxScore: 10 },
+      { name: 'Execution', maxScore: 10 },
+      { name: 'Impact', maxScore: 10 },
     ],
   });
   const [statusControl, setStatusControl] = useState('draft');
@@ -1676,7 +1676,7 @@ export default function CommandCenterPage() {
                             {hackathonData.rubricItems.slice(0, 5).map((item: any, idx: number) => (
                               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#f8fafc', borderRadius: 6 }}>
                                 <span style={{ fontSize: 11, color: '#475569' }}>{item.name}</span>
-                                <span style={{ fontSize: 11, fontFamily: '"DM Mono", monospace', color: '#6366f1', fontWeight: 600 }}>{item.weight}%</span>
+                                <span style={{ fontSize: 11, fontFamily: '"DM Mono", monospace', color: '#6366f1', fontWeight: 600 }}>{item.maxScore} pts</span>
                               </div>
                             ))}
                             <div style={{ fontSize: 10, color: '#94a3b8', textAlign: 'center', paddingTop: 4 }}>
