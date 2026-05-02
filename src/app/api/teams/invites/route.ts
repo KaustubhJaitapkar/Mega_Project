@@ -22,7 +22,19 @@ export async function GET() {
         requestedById: { not: user.id },
       },
       include: {
-        team: true,
+        team: {
+          include: {
+            members: {
+              include: {
+                user: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            }
+          }
+        },
         requestedBy: { select: { id: true, name: true, email: true } },
       },
       orderBy: { createdAt: 'desc' },

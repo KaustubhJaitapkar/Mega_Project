@@ -46,6 +46,27 @@ export async function POST(
       );
     }
 
+    // Check if invitee is already a member of any team in the same hackathon
+    const existingMembership = await prisma.teamMember.findFirst({
+      where: {
+        userId: invitee.id,
+        team: {
+          hackathonId: team.hackathonId
+        }
+      },
+      include: {
+        team: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+    if (existingMembership) {
+      return NextResponse.json(
+        { error: `User is already a member of team "${existingMembership.team.name}" in this hackathon` },
+        { status: 400 }
+      );
+    }
+
     const inviteRequest = await prisma.joinRequest.upsert({
       where: { teamId_userId: { teamId: team.id, userId: invitee.id } },
       create: {

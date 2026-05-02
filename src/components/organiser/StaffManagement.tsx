@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Mail, Trash2, Users, Shuffle } from 'lucide-react';
+import { Plus, Mail, Trash2, Users, Shuffle, Sparkles, RefreshCw } from 'lucide-react';
 
 interface StaffMember { id: string; name: string; email: string; role: string }
 interface Props { hackathonId: string }
@@ -14,6 +14,7 @@ export default function StaffManagement({ hackathonId }: Props) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'JUDGE' | 'MENTOR'>('JUDGE');
   const [loading, setLoading] = useState(false);
+  const [autoAssigning, setAutoAssigning] = useState(false);
   const [feedback, setFeedback] = useState('');
 
   const loadStaff = async () => {
@@ -61,14 +62,25 @@ export default function StaffManagement({ hackathonId }: Props) {
     setLoading(false);
   }
 
-  async function autoAssign() {
-    setLoading(true);
+  async function autoAssignMentors() {
+    setAutoAssigning(true);
     try {
-      const res = await fetch(`/api/hackathons/${hackathonId}/staff/auto-assign`, { method: 'POST' });
+      const res = await fetch(`/api/hackathons/${hackathonId}/staff/auto-assign`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
       const data = await res.json();
-      showFeedback(res.ok ? data.message || 'Done' : data.error || 'Failed', res.ok);
-    } catch { showFeedback('Failed', false); }
-    setLoading(false);
+      if (res.ok) {
+        showFeedback(data.message || 'Mentors auto-assigned successfully', true);
+        loadStaff(); // Refresh the staff lists
+      } else {
+        showFeedback(data.error || 'Failed to auto-assign mentors', false);
+      }
+    } catch { 
+      showFeedback('Network error occurred', false); 
+    } finally {
+      setAutoAssigning(false);
+    }
   }
 
   const StaffList = ({ list, type }: { list: StaffMember[]; type: string }) => (
@@ -122,10 +134,38 @@ export default function StaffManagement({ hackathonId }: Props) {
         </div>
       </div>
 
-      {/* Auto-assign */}
-      <button className="org-btn-secondary" onClick={autoAssign} disabled={loading} style={{ alignSelf: 'flex-start' }}>
-        <Shuffle style={{ width: 14, height: 14 }} />Auto-Assign Mentors
-      </button>
+      {/* Auto-Assign Mentors */}
+      <div className="org-section">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>Auto-Assign Mentors</p>
+            <p className="org-text" style={{ fontSize: '0.75rem' }}>Intelligently match mentors to teams based on skills and tracks</p>
+          </div>
+          <button 
+            className="org-btn-primary" 
+            onClick={autoAssignMentors}
+            disabled={autoAssigning || mentors.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {autoAssigning ? (
+              <>
+                <RefreshCw style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
+                Assigning...
+              </>
+            ) : (
+              <>
+                <Sparkles style={{ width: 14, height: 14 }} />
+                Auto-Assign
+              </>
+            )}
+          </button>
+        </div>
+        {mentors.length === 0 && (
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+            Add mentors first to use auto-assignment
+          </p>
+        )}
+      </div>
 
       {/* Lists */}
       <StaffList list={judges} type="Judges" />

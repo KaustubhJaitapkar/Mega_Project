@@ -2,22 +2,25 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
 
-const groq = new Groq({
-  apiKey: process.env.GROK_API_KEY,
+const client = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
 });
 
 interface TeamData {
   id: string;
   name: string;
   skills: string[];
+  tracks: string[];
 }
 
 interface MentorData {
   id: string;
   name: string;
   skills: string[];
+  expertise: string[];
 }
 
 interface GroqMatch {
@@ -41,7 +44,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get unassigned teams with member skills and submission technologies
+    // Get unassigned teams with member skills, submission technologies, and selected tracks
     const unassignedTeams = await prisma.team.findMany({
       where: {
         hackathonId: params.hackathonId,
@@ -51,7 +54,13 @@ export async function POST(
         members: {
           include: {
             user: {
-              include: { profile: true }
+              include: { 
+                profile: true,
+                registrations: {
+                  where: { hackathonId: params.hackathonId },
+                  select: { selectedTrack: true }
+                }
+              }
             }
           }
         },
@@ -65,7 +74,7 @@ export async function POST(
       return NextResponse.json({ message: 'No unassigned teams found' });
     }
 
-    // Get available mentors with skills
+    // Get available mentors with skills and expertise
     const availableMentors = await prisma.user.findMany({
       where: {
         hackathonsMentoring: {
@@ -79,17 +88,28 @@ export async function POST(
       return NextResponse.json({ error: 'No mentors available' }, { status: 400 });
     }
 
-    // Build team data: combine member skills + submission technologies
-    const teamData: TeamData[] = unassignedTeams.map(team => ({
-      id: team.id,
-      name: team.name,
-      skills: [
-        ...new Set([
-          ...team.members.flatMap(m => m.user.profile?.skills || []),
-          ...(team.submission?.technologies || [])
-        ])
-      ]
-    }));
+    // Get hackathon's themed tracks
+    const hackathonTracks = hackathon.themedTracks || [];
+
+    // Build team data: combine member skills, submission technologies, and selected tracks
+    const teamData: TeamData[] = unassignedTeams.map(team => {
+      // Get unique selected tracks from team members
+      const selectedTracks = team.members
+        .flatMap(m => m.user.registrations.map(r => r.selectedTrack))
+        .filter((track): track is string => track !== null && track !== undefined);
+
+      return {
+        id: team.id,
+        name: team.name,
+        skills: [
+          ...new Set([
+            ...team.members.flatMap(m => m.user.profile?.skills || []),
+            ...(team.submission?.technologies || [])
+          ])
+        ],
+        tracks: [...new Set([...selectedTracks, ...hackathonTracks])]
+      };
+    });
 
     if (availableMentors.length === 1) {
       const onlyMentorId = availableMentors[0].id;
@@ -110,51 +130,64 @@ export async function POST(
       });
     }
 
-    // Build mentor data
-    const mentorData: MentorData[] = availableMentors.map(mentor => ({
-      id: mentor.id,
-      name: mentor.name || mentor.email,
-      skills: mentor.profile?.skills || []
-    }));
+    // Build mentor data - include profile skills and mentorDetails expertise
+    const mentorDetailsArray = (Array.isArray(hackathon.mentorDetails) ? hackathon.mentorDetails : []) as Array<{email?: string; name?: string; expertise?: string | string[]}>;
+    
+    const mentorData: MentorData[] = availableMentors.map(mentor => {
+      // Find mentor's expertise from hackathon's mentorDetails
+      const mentorDetail = mentorDetailsArray.find(
+        (md) => md.email === mentor.email || md.name === mentor.name
+      );
+      
+      return {
+        id: mentor.id,
+        name: mentor.name || mentor.email,
+        skills: mentor.profile?.skills || [],
+        expertise: mentorDetail?.expertise ? 
+          (Array.isArray(mentorDetail.expertise) ? mentorDetail.expertise : [mentorDetail.expertise]) 
+          : []
+      };
+    });
 
-    // Call Groq API for intelligent matching
-    const groqPrompt = `You are a hackathon mentor matching system. Your task is to match teams to mentors based on skill overlap.
+    // Call Groq API via OpenAI SDK for intelligent matching based on skills, tracks, and expertise
+    const groqPrompt = `You are a hackathon mentor matching system. Your task is to match teams to mentors based on:
+1. Skill overlap between team members' skills and mentor's skills
+2. Team's selected themed tracks and hackathon tracks
+3. Mentor's expertise areas that align with team's focus areas
+
+Hackathon Themed Tracks: [${hackathonTracks.join(', ')}]
 
 Teams:
-${teamData.map(t => `- ID: ${t.id}, Name: ${t.name}, Skills: [${t.skills.join(', ')}]`).join('\n')}
+${teamData.map(t => `- ID: ${t.id}, Name: ${t.name}, Skills: [${t.skills.join(', ')}], Tracks: [${t.tracks.join(', ')}]`).join('\n')}
 
 Mentors:
-${mentorData.map(m => `- ID: ${m.id}, Name: ${m.name}, Skills: [${m.skills.join(', ')}]`).join('\n')}
+${mentorData.map(m => `- ID: ${m.id}, Name: ${m.name}, Skills: [${m.skills.join(', ')}], Expertise: [${m.expertise.join(', ')}]`).join('\n')}
 
-Match each team to exactly ONE mentor. Prioritize skill overlap. If multiple mentors have similar skills for a team, pick the one best suited.
+Match each team to exactly ONE mentor. Prioritize:
+1. Track alignment - mentors whose expertise matches team's tracks
+2. Skill overlap - mentors with complementary skills
+3. Load balancing - distribute teams evenly among mentors
 
 Return ONLY a JSON array of matches with no additional text:
 [
   { "teamId": "team-uuid", "mentorId": "mentor-uuid" }
 ]`;
 
-    const message = await groq.chat.completions.create({
-      model: 'mixtral-8x7b-32768',
-      messages: [
-        {
-          role: 'user',
-          content: groqPrompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 1024
+    const response = await client.responses.create({
+      model: "openai/gpt-oss-20b",
+      input: groqPrompt,
     });
 
     let matches: GroqMatch[] = [];
-    if (message.choices[0]?.message?.content) {
+    if (response.output_text) {
       try {
-        const jsonStr = message.choices[0].message.content
+        const jsonStr = response.output_text
           .replace(/```json\n?/g, '')
           .replace(/```\n?/g, '')
           .trim();
         matches = JSON.parse(jsonStr);
       } catch (e) {
-        console.warn('Failed to parse Groq response, falling back to random assignment', e);
+        console.warn('Failed to parse response, falling back to random assignment', e);
         matches = [];
       }
     }
@@ -203,7 +236,7 @@ Return ONLY a JSON array of matches with no additional text:
     }
 
     return NextResponse.json({
-      message: `${assignments.length} mentors auto-assigned evenly to teams`,
+      message: `${assignments.length} mentors auto-assigned using AI (openai/gpt-oss-20b) based on skills, tracks, and expertise`,
       data: assignments
     });
   } catch (error) {

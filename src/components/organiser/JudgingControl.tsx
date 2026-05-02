@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trophy, Eye, EyeOff, Lock, Plus, RefreshCw } from 'lucide-react';
+import { Trophy, Eye, EyeOff, Lock, Plus, RefreshCw, Sparkles } from 'lucide-react';
 
 interface RubricItem { name: string; description: string; maxScore: number }
 interface Rubric { id: string; name: string; description: string; maxScore: number; isActive: boolean; items: Array<RubricItem & { id: string }> }
@@ -73,6 +73,7 @@ export default function JudgingControl({ hackathonId }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       {feedback && <div className="org-feedback org-feedback-success">{feedback}</div>}
 
       {/* Controls */}

@@ -15,7 +15,12 @@ export async function GET(
       include: {
         creator: { select: { id: true, name: true, image: true } },
         members: {
-          include: {
+          select: {
+            id: true,
+            teamId: true,
+            userId: true,
+            role: true,
+            joinedAt: true,
             user: { select: { id: true, name: true, image: true, profile: true } },
           },
         },
@@ -114,7 +119,12 @@ export async function POST(
       include: {
         creator: { select: { id: true, name: true, image: true } },
         members: {
-          include: {
+          select: {
+            id: true,
+            teamId: true,
+            userId: true,
+            role: true,
+            joinedAt: true,
             user: { select: { id: true, name: true, image: true } },
           },
         },

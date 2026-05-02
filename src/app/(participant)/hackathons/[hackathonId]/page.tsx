@@ -265,7 +265,7 @@ export default function HackathonDetailPage() {
       <div className="hp-not-found">
         <div className="hp-not-found-icon">🔍</div>
         <h2>Hackathon not found</h2>
-        <p>The hackathon you're looking for doesn't exist or has been removed.</p>
+        <p>The hackathon you&apos;re looking for doesn&apos;t exist or has been removed.</p>
         <Link href="/participant/hackathons" className="hp-btn-primary">
           Browse Hackathons
         </Link>

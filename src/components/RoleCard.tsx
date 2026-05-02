@@ -49,7 +49,7 @@ export default function RoleCard({
       <p className="text-sm text-gray-600 mb-4">{description}</p>
 
       <div className="flex-1">
-        <p className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide">What you'll do:</p>
+        <p className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide">What you&apos;ll do:</p>
         <ul className="space-y-2">
           {benefits.map((benefit, idx) => (
             <li key={idx} className="text-xs text-gray-600 flex items-start gap-2">

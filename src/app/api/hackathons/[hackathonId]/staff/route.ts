@@ -9,18 +9,55 @@ export async function GET(
   { params }: { params: { hackathonId: string } }
 ) {
   try {
-    const userOrError = await requireOrganizerOf(params.hackathonId);
-    if (isErrorResponse(userOrError)) return userOrError;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized - No session', code: 'NO_SESSION' }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({ 
+      where: { email: session.user.email },
+      select: { id: true, email: true, name: true, role: true }
+    });
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized - User not found', code: 'USER_NOT_FOUND' }, { status: 401 });
+    }
+
+    if (user.role !== 'ORGANISER') {
+      return NextResponse.json({ 
+        error: 'Forbidden - User is not an organiser', 
+        code: 'NOT_ORGANISER',
+        userRole: user.role 
+      }, { status: 403 });
+    }
+
+    const hackathon = await prisma.hackathon.findUnique({
+      where: { id: params.hackathonId },
+      select: { organiserId: true },
+    });
+    
+    if (!hackathon) {
+      return NextResponse.json({ error: 'Hackathon not found', code: 'HACKATHON_NOT_FOUND' }, { status: 404 });
+    }
+
+    if (hackathon.organiserId !== user.id) {
+      return NextResponse.json({ 
+        error: 'Forbidden - User is not the organiser of this hackathon', 
+        code: 'NOT_HACKATHON_ORGANISER',
+        userId: user.id,
+        organiserId: hackathon.organiserId
+      }, { status: 403 });
+    }
 
     const q = new URL(req.url).searchParams.get('q') || '';
-    const hackathon = await prisma.hackathon.findUnique({
+    const hackathonData = await prisma.hackathon.findUnique({
       where: { id: params.hackathonId },
       include: {
         judges: { select: { id: true, name: true, email: true, role: true } },
         mentors: { select: { id: true, name: true, email: true, role: true } },
       },
     });
-    if (!hackathon) {
+    if (!hackathonData) {
       return NextResponse.json({ error: 'Hackathon not found' }, { status: 404 });
     }
 
@@ -37,8 +74,8 @@ export async function GET(
 
     return NextResponse.json({
       data: {
-        judges: hackathon.judges,
-        mentors: hackathon.mentors,
+        judges: hackathonData.judges,
+        mentors: hackathonData.mentors,
         candidates,
       },
     });

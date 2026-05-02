@@ -16,6 +16,7 @@ export const userSignupSchema = z.object({
 export const userProfileSchema = z.object({
   bio: z.string().optional(),
   skills: z.array(z.string()).max(15, 'Maximum 15 skills allowed').optional(),
+  skillsNeeded: z.array(z.string()).max(10, 'Maximum 10 skills needed').optional(),
   college: z.string().optional(),
   yearOfStudy: z.string().optional(),
   experience: z.enum(['junior', 'mid', 'senior']).optional(),

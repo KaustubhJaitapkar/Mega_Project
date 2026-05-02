@@ -42,6 +42,7 @@ export default function ParticipantProfilePage() {
     setSkillInput('');
   }
 
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault(); setError(''); setSuccess(''); setIsSaving(true);
     try {

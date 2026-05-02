@@ -74,7 +74,7 @@ export default function MealScheduleBuilder({
         <div className="msb-empty">
           <div className="msb-empty-icon">🍽️</div>
           <p>No meal slots configured</p>
-          <p className="msb-empty-hint">Click "Add Meal Slot" to define when meals will be served</p>
+          <p className="msb-empty-hint">Click &quot;Add Meal Slot&quot; to define when meals will be served</p>
         </div>
       ) : (
         <div className="msb-list">

@@ -113,6 +113,7 @@ model User {
   certificates          Certificate[]
   announcements         Announcement[]
   registrations         HackathonRegistration[]
+  requirementInterests RequirementInterest[]
 
   @@index([email])
   @@index([role])
@@ -161,6 +162,7 @@ model Profile {
   userId          String    @unique
   bio             String?
   skills          String[]
+  skillsNeeded    String[]  @default([]) // Skills the participant is looking for in teammates
   experience      String?   // junior, mid, senior
   company         String?
   website         String?
@@ -293,6 +295,7 @@ model Team {
   members         TeamMember[]
   submission      Submission?
   joinRequests    JoinRequest[]
+  requirements    TeamRequirement[]
 
   @@unique([hackathonId, name])
   @@index([hackathonId])
@@ -581,4 +584,40 @@ model ChatMessage {
   @@index([hackathonId, teamId])
   @@index([teamId, createdAt])
   @@index([createdAt])
+}
+
+model TeamRequirement {
+  id              String   @id @default(cuid())
+  teamId          String
+  title           String
+  description     String?  @db.Text
+  skillsNeeded    String[] @default([])
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  team Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  interests RequirementInterest[]
+
+  @@index([teamId])
+  @@index([isActive])
+}
+
+model RequirementInterest {
+  id              String   @id @default(cuid())
+  requirementId   String
+  userId          String
+  message         String?  @db.Text
+  status          JoinRequestStatus @default(PENDING)
+  respondedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  requirement TeamRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([requirementId, userId])
+  @@index([requirementId])
+  @@index([userId])
+  @@index([status])
 }

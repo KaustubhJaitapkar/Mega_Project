@@ -266,7 +266,7 @@ export default function EditHackathonPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '1rem', background: 'var(--bg-surface)', padding: '0.35rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-        {(TABS as string[]).map(tab => (
+        {[...TABS].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as TabId)}

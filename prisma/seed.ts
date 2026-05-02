@@ -94,6 +94,11 @@ const SKILLS_POOL = [
   "DevOps", "CI/CD", "GitHub Actions", "Jenkins",
 ];
 
+function getRandomSkills(pool: string[], count: number): string[] {
+  const shuffled = [...pool].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+}
+
 // Indian colleges for realistic data
 const COLLEGES = [
   "IIT Bombay", "IIT Delhi", "IIT Madras", "IIT Kanpur", "IIT Kharagpur",
@@ -267,6 +272,7 @@ async function main() {
             create: {
               bio: `${domain} student at ${college}. Passionate about building innovative solutions.`,
               skills: p.skills,
+              skillsNeeded: getRandomSkills(SKILLS_POOL, Math.floor(Math.random() * 4) + 1),
               company: college,
               experience: i < 10 ? "junior" : i < 20 ? "mid" : "senior",
               country: "India",
