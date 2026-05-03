@@ -94,7 +94,7 @@ export default function ParticipantDashboardPage() {
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
-  const nextEvent = activeHackathon?.timelines?.find((ev) => new Date(ev.startTime).getTime() > now);
+  // Timeline removed
 
   if (isLoading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
@@ -205,33 +205,9 @@ export default function ParticipantDashboardPage() {
         </div>
       )}
 
-      {/* Timeline + Announcements */}
+      {/* Announcements only (timeline hidden) */}
       {activeHackathon && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-          {/* Timeline */}
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-            <p className="org-label" style={{ marginBottom: '0.75rem' }}>Timeline</p>
-            {(activeHackathon.timelines || []).slice(0, 5).map((ev) => {
-              const isCurrent = new Date(ev.startTime).getTime() <= now && new Date(ev.endTime).getTime() >= now;
-              const isNext = !isCurrent && nextEvent?.id === ev.id;
-              return (
-                <div key={ev.id} style={{
-                  padding: '0.6rem 0.85rem', marginBottom: '0.4rem', borderRadius: 'var(--radius-sm)',
-                  borderLeft: `3px solid ${isCurrent ? '#3ecf8e' : isNext ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                  background: isCurrent ? 'rgba(62,207,142,0.06)' : isNext ? 'var(--accent-dim)' : 'transparent',
-                }}>
-                  <p style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{ev.title}</p>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {new Date(ev.startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-              );
-            })}
-            {(!activeHackathon.timelines || activeHackathon.timelines.length === 0) && (
-              <p className="org-text">No timeline events yet.</p>
-            )}
-          </div>
-
+        <div style={{ marginBottom: '1.25rem' }}>
           {/* Announcements */}
           <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
             <p className="org-label" style={{ marginBottom: '0.75rem' }}>Announcements</p>

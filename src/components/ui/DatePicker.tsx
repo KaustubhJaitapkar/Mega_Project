@@ -72,8 +72,16 @@ export default function DatePicker({
   };
 
   const isDateDisabled = (date: Date) => {
-    if (minDate && date < new Date(minDate.setHours(0, 0, 0, 0))) return true;
-    if (maxDate && date > new Date(maxDate.setHours(23, 59, 59, 999))) return true;
+    if (minDate) {
+      const minDateCopy = new Date(minDate);
+      minDateCopy.setHours(0, 0, 0, 0);
+      if (date < minDateCopy) return true;
+    }
+    if (maxDate) {
+      const maxDateCopy = new Date(maxDate);
+      maxDateCopy.setHours(23, 59, 59, 999);
+      if (date > maxDateCopy) return true;
+    }
     return false;
   };
 
@@ -88,9 +96,12 @@ export default function DatePicker({
     setSelectedHour(hour);
     setSelectedMinute(minute);
     setSelectedPeriod(period);
-    if (selectedDate) {
-      updateValue(selectedDate, hour, minute, period);
+    // If no date selected, use today as default
+    const dateToUse = selectedDate || new Date();
+    if (!selectedDate) {
+      setSelectedDate(dateToUse);
     }
+    updateValue(dateToUse, hour, minute, period);
   };
 
   const updateValue = (date: Date, hour: number, minute: number, period: 'AM' | 'PM') => {
@@ -98,9 +109,17 @@ export default function DatePicker({
     if (period === 'PM' && h !== 12) h += 12;
     if (period === 'AM' && h === 12) h = 0;
 
-    const newDate = new Date(date);
-    newDate.setHours(h, minute, 0, 0);
-    onChange(newDate.toISOString().slice(0, 16));
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1; // months are 0-indexed
+    const day = date.getDate();
+    
+    // Format as YYYY-MM-DDTHH:mm
+    const monthStr = String(month).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const hourStr = String(h).padStart(2, '0');
+    const minuteStr = String(minute).padStart(2, '0');
+    
+    onChange(`${year}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}`);
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -249,11 +268,11 @@ export default function DatePicker({
                 </div>
                 <div className="dp-time-separator">:</div>
                 <div className="dp-time-column">
-                  <button type="button" className="dp-time-arrow" onClick={() => handleTimeChange(selectedHour, selectedMinute === 55 ? 0 : selectedMinute + 5, selectedPeriod)}>
+                  <button type="button" className="dp-time-arrow" onClick={() => handleTimeChange(selectedHour, Math.min(selectedMinute + 5, 55), selectedPeriod)}>
                     <ChevronLeft size={16} className="rotate-90" />
                   </button>
                   <div className="dp-time-value">{String(selectedMinute).padStart(2, '0')}</div>
-                  <button type="button" className="dp-time-arrow" onClick={() => handleTimeChange(selectedHour, selectedMinute === 0 ? 55 : selectedMinute - 5, selectedPeriod)}>
+                  <button type="button" className="dp-time-arrow" onClick={() => handleTimeChange(selectedHour, Math.max(selectedMinute - 5, 0), selectedPeriod)}>
                     <ChevronRight size={16} className="rotate-90" />
                   </button>
                 </div>

@@ -44,6 +44,7 @@ export const config = {
     '/sponsor/:path*',
     '/profile/:path*',
     '/select-role',
+    '/role-selection',
     '/create',
     '/api/((?!auth).)*',
   ],

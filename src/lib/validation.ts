@@ -126,6 +126,7 @@ export const hackathonCreateSchema = z.object({
       expertise: z.string().optional(),
     })
   ).optional().default([]),
+  customResources: z.array(z.string()).optional().default([]),
 });
 
 // Team validation

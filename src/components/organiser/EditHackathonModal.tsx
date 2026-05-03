@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Save, Image, Calendar, MapPin, Users, Award, FileText, Target, Bot, Link as LinkIcon, DollarSign, Activity, BookOpen, Leaf, Cpu, Gamepad2, Globe, Plus, Trash2 } from 'lucide-react';
+import DatePicker from '@/components/ui/DatePicker';
 
 interface Hackathon {
   id: string;
@@ -277,42 +278,30 @@ export default function EditHackathonModal({ hackathon, onClose, onSave }: EditH
           {/* Schedule */}
           {activeSection === 'schedule' && (
             <div className="ehm-section">
-              <div className="ehm-field">
-                <label className="ehm-label">Hackathon Start *</label>
-                <input
-                  className="ehm-input"
-                  type="datetime-local"
-                  value={form.startDate || ''}
-                  onChange={e => update('startDate', e.target.value)}
-                />
-              </div>
-              <div className="ehm-field">
-                <label className="ehm-label">Hackathon End *</label>
-                <input
-                  className="ehm-input"
-                  type="datetime-local"
-                  value={form.endDate || ''}
-                  onChange={e => update('endDate', e.target.value)}
-                />
-              </div>
-              <div className="ehm-field">
-                <label className="ehm-label">Registration Deadline *</label>
-                <input
-                  className="ehm-input"
-                  type="datetime-local"
-                  value={form.registrationDeadline || ''}
-                  onChange={e => update('registrationDeadline', e.target.value)}
-                />
-              </div>
-              <div className="ehm-field">
-                <label className="ehm-label">Submission Deadline *</label>
-                <input
-                  className="ehm-input"
-                  type="datetime-local"
-                  value={form.submissionDeadline || ''}
-                  onChange={e => update('submissionDeadline', e.target.value)}
-                />
-              </div>
+              <DatePicker
+                value={form.startDate || ''}
+                onChange={val => update('startDate', val)}
+                label="Hackathon Start *"
+                placeholder="Select start date & time"
+              />
+              <DatePicker
+                value={form.endDate || ''}
+                onChange={val => update('endDate', val)}
+                label="Hackathon End *"
+                placeholder="Select end date & time"
+              />
+              <DatePicker
+                value={form.registrationDeadline || ''}
+                onChange={val => update('registrationDeadline', val)}
+                label="Registration Deadline *"
+                placeholder="Select registration deadline"
+              />
+              <DatePicker
+                value={form.submissionDeadline || ''}
+                onChange={val => update('submissionDeadline', val)}
+                label="Submission Deadline *"
+                placeholder="Select submission deadline"
+              />
             </div>
           )}
 

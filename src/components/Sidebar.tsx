@@ -167,6 +167,21 @@ export default function Sidebar({ role }: SidebarProps) {
         }}>
           Hackmate
         </span>
+        <span style={{
+          background: 'var(--accent-dim)',
+          border: '1px solid var(--border-accent)',
+          borderRadius: 'var(--radius-sm)',
+          color: 'var(--accent)',
+          fontFamily: 'var(--font-display)',
+          fontSize: '0.6rem',
+          fontWeight: 600,
+          padding: '0.2rem 0.4rem',
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          marginLeft: '0.5rem',
+        }}>
+          {role?.charAt(0) + role?.slice(1).toLowerCase()}
+        </span>
       </div>
 
       {/* Nav */}
@@ -227,20 +242,7 @@ export default function Sidebar({ role }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
-      <div style={{
-        padding: '1rem 1.25rem',
-        borderTop: '1px solid var(--border-subtle)',
-      }}>
-        <p style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '0.65rem',
-          color: 'var(--text-muted)',
-          letterSpacing: '0.05em',
-        }}>
-          {role?.charAt(0) + role?.slice(1).toLowerCase()} view
-        </p>
-      </div>
+      {/* Footer - removed role display */}
     </aside>
   );
 }

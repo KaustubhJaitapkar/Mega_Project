@@ -104,9 +104,13 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Never redirect to auth pages after login
-      if (url.startsWith('/login') || url.startsWith('/signup') || url.startsWith('/select-role')) {
+      // Never redirect to auth pages after login, except role selection pages
+      if (url.startsWith('/login') || url.startsWith('/signup')) {
         return `${baseUrl}/dashboard`;
+      }
+      // Allow role selection pages for new users
+      if (url.startsWith('/select-role') || url.startsWith('/role-selection')) {
+        return `${baseUrl}${url}`;
       }
       // Allow relative callback URLs
       if (url.startsWith('/')) return `${baseUrl}${url}`;
@@ -123,9 +127,12 @@ export const authOptions: NextAuthOptions = {
         });
 
         // If user was just created (createdAt === updatedAt within 2s), they need role selection
-        if (existingUser && !existingUser.role) {
-          // New OAuth user without role - they'll be redirected to select-role
-          return true;
+        if (existingUser) {
+          const diff = Math.abs(existingUser.updatedAt.getTime() - existingUser.createdAt.getTime());
+          if (diff < 2000) {
+            // New OAuth user - redirect to role selection
+            return '/role-selection';
+          }
         }
       }
       return true;
@@ -134,7 +141,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
     error: '/login',
-    newUser: '/select-role',
+    newUser: '/role-selection',
   },
   session: {
     strategy: 'jwt',

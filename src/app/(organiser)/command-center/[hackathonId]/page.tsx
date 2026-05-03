@@ -1,587 +1,9 @@
-// 'use client';
-
-// import { useEffect, useState } from 'react';
-// import { useParams } from 'next/navigation';
-
-// interface Stats {
-//   totalTeams: number;
-//   participantsCount: number;
-//   totalSubmissions: number;
-//   submittedCount: number;
-//   healthyCount: number;
-//   openTickets: number;
-//   totalAttendances: number;
-//   averageTeamSize: number;
-//   averageScore: number;
-//   totalScores: number;
-//   teamDistribution: Record<string, number>;
-//   skillHeatmap: Array<{ skill: string; count: number }>;
-//   trends: {
-//     timestamp: string;
-//     teamCount: number;
-//     submissionCount: number;
-//     openTickets: number;
-//   };
-// }
-
-// interface Announcement {
-//   id: string;
-//   title: string;
-//   content: string;
-//   author: {
-//     id: string;
-//     name: string;
-//   };
-//   isUrgent: boolean;
-//   createdAt: string;
-// }
-
-// export default function CommandCenterPage() {
-//   const params = useParams();
-//   const hackathonId = params.hackathonId as string;
-//   const [stats, setStats] = useState<Stats | null>(null);
-//   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-//   const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '', isUrgent: false });
-//   const [announcementChannel, setAnnouncementChannel] = useState('website');
-//   const [submissions, setSubmissions] = useState<any[]>([]);
-//   const [teams, setTeams] = useState<any[]>([]);
-//   const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
-//   const [timelineForm, setTimelineForm] = useState({
-//     id: '',
-//     title: '',
-//     description: '',
-//     type: 'general',
-//     startTime: '',
-//     endTime: '',
-//   });
-//   const [staffEmail, setStaffEmail] = useState('');
-//   const [staffType, setStaffType] = useState<'JUDGE' | 'MENTOR'>('JUDGE');
-//   const [staff, setStaff] = useState<{ judges: any[]; mentors: any[] }>({ judges: [], mentors: [] });
-//   const [rubric, setRubric] = useState({
-//     name: 'Main Rubric',
-//     description: '',
-//     maxScore: 100,
-//     items: [
-//       { name: 'Innovation', weight: 40, maxScore: 10 },
-//       { name: 'Execution', weight: 30, maxScore: 10 },
-//       { name: 'Impact', weight: 30, maxScore: 10 },
-//     ],
-//   });
-//   const [statusControl, setStatusControl] = useState('draft');
-//   const [maxTeams, setMaxTeams] = useState(100);
-//   const [extendDeadline, setExtendDeadline] = useState('');
-//   const [judgingControl, setJudgingControl] = useState({ judgingOpen: false, blindMode: false });
-//   const [certificateUserId, setCertificateUserId] = useState('');
-//   const [certificateType, setCertificateType] = useState('PARTICIPANT');
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [isPublishing, setIsPublishing] = useState(false);
-//   const [feedback, setFeedback] = useState('');
-
-//   useEffect(() => {
-//     async function fetchData() {
-//       try {
-//         const [statsRes, announcementsRes, submissionsRes, hackathonRes, staffRes, judgingRes] = await Promise.all([
-//           fetch(`/api/hackathons/${hackathonId}/stats`),
-//           fetch(`/api/hackathons/${hackathonId}/announcements?limit=5`),
-//           fetch(`/api/hackathons/${hackathonId}/submissions`),
-//           fetch(`/api/hackathons/${hackathonId}`),
-//           fetch(`/api/hackathons/${hackathonId}/staff`),
-//           fetch(`/api/hackathons/${hackathonId}/judging-control`),
-//         ]);
-
-//         const statsData = await statsRes.json();
-//         const announcementsData = await announcementsRes.json();
-//         const submissionsData = await submissionsRes.json();
-//         const hackathonData = await hackathonRes.json();
-//         const staffData = await staffRes.json();
-//         const judgingData = await judgingRes.json();
-
-//         setStats(statsData.data);
-//         setAnnouncements(announcementsData.data || []);
-//         setSubmissions(submissionsData.data || []);
-//         setTeams(hackathonData.data?.teams || []);
-//         setTimelineEvents(hackathonData.data?.timelines || []);
-//         setStaff({
-//           judges: staffData.data?.judges || [],
-//           mentors: staffData.data?.mentors || [],
-//         });
-//         setJudgingControl({
-//           judgingOpen: !!judgingData.data?.judgingOpen,
-//           blindMode: !!judgingData.data?.blindMode,
-//         });
-//       } catch (error) {
-//         console.error('Failed to fetch data:', error);
-//       } finally {
-//         setIsLoading(false);
-//       }
-//     }
-
-//     if (hackathonId) {
-//       fetchData();
-//     }
-//   }, [hackathonId]);
-
-//   async function handlePublishAnnouncement() {
-//     if (!newAnnouncement.title || !newAnnouncement.content) {
-//       alert('Please fill in all fields');
-//       return;
-//     }
-
-//     setIsPublishing(true);
-//     try {
-//       const res = await fetch(`/api/hackathons/${hackathonId}/announcements`, {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({ ...newAnnouncement, channel: announcementChannel }),
-//       });
-
-//       if (res.ok) {
-//         const data = await res.json();
-//         setAnnouncements([data.data, ...announcements]);
-//         setNewAnnouncement({ title: '', content: '', isUrgent: false });
-//         alert('Announcement published!');
-//       }
-//     } catch (error) {
-//       console.error('Failed to publish announcement:', error);
-//     } finally {
-//       setIsPublishing(false);
-//     }
-//   }
-
-//   async function addStaff() {
-//     const res = await fetch(`/api/hackathons/${hackathonId}/staff`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ email: staffEmail, type: staffType }),
-//     });
-//     const data = await res.json();
-//     if (res.ok) {
-//       setStaff({ judges: data.data.judges, mentors: data.data.mentors });
-//       setFeedback(`${staffType.toLowerCase()} added successfully`);
-//       setStaffEmail('');
-//     } else {
-//       setFeedback(data.error || 'Failed to add staff');
-//     }
-//   }
-
-//   async function saveHackathonControls() {
-//     const res = await fetch(`/api/hackathons/${hackathonId}`, {
-//       method: 'PUT',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ status: statusControl, maxTeams }),
-//     });
-//     const data = await res.json();
-//     setFeedback(res.ok ? 'Hackathon controls updated' : data.error || 'Failed to update');
-//   }
-
-//   async function createRubric() {
-//     const res = await fetch(`/api/hackathons/${hackathonId}/rubrics`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify(rubric),
-//     });
-//     const data = await res.json();
-//     setFeedback(res.ok ? 'Rubric created' : data.error || 'Failed to create rubric');
-//   }
-
-//   async function runQuickAction(action: 'LOCK_SUBMISSIONS' | 'EXTEND_DEADLINE' | 'OPEN_JUDGING') {
-//     const payload: any = { action };
-//     if (action === 'EXTEND_DEADLINE') payload.submissionDeadline = extendDeadline;
-//     const res = await fetch(`/api/hackathons/${hackathonId}/quick-actions`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify(payload),
-//     });
-//     const data = await res.json();
-//     setFeedback(res.ok ? `${action} applied` : data.error || 'Quick action failed');
-//   }
-
-//   async function updateJudgingControl(next: { judgingOpen?: boolean; blindMode?: boolean }) {
-//     const res = await fetch(`/api/hackathons/${hackathonId}/judging-control`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify(next),
-//     });
-//     const data = await res.json();
-//     setFeedback(res.ok ? 'Judging control updated' : data.error || 'Judging control failed');
-//     if (res.ok) setJudgingControl((prev) => ({ ...prev, ...next }));
-//   }
-
-//   async function generateCertificate() {
-//     const res = await fetch(`/api/hackathons/${hackathonId}/certificates`, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ userId: certificateUserId, type: certificateType }),
-//     });
-//     const data = await res.json();
-//     setFeedback(res.ok ? `Certificate generated: ${data.data.certificateUrl || data.data.id}` : data.error || 'Certificate generation failed');
-//   }
-
-//   async function saveTimelineEvent() {
-//     const isEdit = !!timelineForm.id;
-//     const url = isEdit
-//       ? `/api/hackathons/${hackathonId}/timeline/${timelineForm.id}`
-//       : `/api/hackathons/${hackathonId}/timeline`;
-//     const method = isEdit ? 'PUT' : 'POST';
-//     const payload = {
-//       title: timelineForm.title,
-//       description: timelineForm.description,
-//       type: timelineForm.type,
-//       startTime: new Date(timelineForm.startTime).toISOString(),
-//       endTime: new Date(timelineForm.endTime).toISOString(),
-//     };
-//     const res = await fetch(url, {
-//       method,
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify(payload),
-//     });
-//     const data = await res.json();
-//     if (!res.ok) {
-//       setFeedback(data.error || 'Failed to save timeline event');
-//       return;
-//     }
-//     setFeedback(isEdit ? 'Timeline event updated' : 'Timeline event created');
-//     setTimelineForm({ id: '', title: '', description: '', type: 'general', startTime: '', endTime: '' });
-//     const listRes = await fetch(`/api/hackathons/${hackathonId}/timeline`);
-//     const listData = await listRes.json();
-//     setTimelineEvents(listData.data || []);
-//   }
-
-//   if (isLoading) {
-//     return (
-//       <div className="p-8 flex justify-center items-center h-screen">
-//         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="p-8">
-//       <h1 className="text-4xl font-bold text-gray-900 mb-8">Command Center</h1>
-//       {feedback && <div className="mb-4 p-3 rounded bg-indigo-100 text-indigo-800">{feedback}</div>}
-
-//       {/* Stats */}
-//       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-//         <div className="card">
-//           <p className="text-gray-600 text-sm">Total Teams</p>
-//           <p className="text-3xl font-bold text-gray-900">{stats?.totalTeams}</p>
-//         </div>
-//         <div className="card">
-//           <p className="text-gray-600 text-sm">Submissions</p>
-//           <p className="text-3xl font-bold text-gray-900">{stats?.submittedCount}</p>
-//         </div>
-//         <div className="card">
-//           <p className="text-gray-600 text-sm">Participants</p>
-//           <p className="text-3xl font-bold text-gray-900">{stats?.participantsCount}</p>
-//         </div>
-//         <div className="card">
-//           <p className="text-gray-600 text-sm">Healthy Submissions</p>
-//           <p className="text-3xl font-bold text-gray-900">{stats?.healthyCount}</p>
-//         </div>
-//         <div className="card">
-//           <p className="text-gray-600 text-sm">Avg Team Size</p>
-//           <p className="text-3xl font-bold text-gray-900">{stats?.averageTeamSize}</p>
-//         </div>
-//         <div className="card">
-//           <p className="text-gray-600 text-sm">Open Tickets</p>
-//           <p className="text-3xl font-bold text-gray-900">{stats?.openTickets}</p>
-//         </div>
-//       </div>
-
-//       <div className="grid grid-cols-2 gap-6 mb-8">
-//         <div className="card">
-//           <h2 className="text-xl font-bold mb-3">Team Distribution Chart</h2>
-//           <div className="space-y-2">
-//             {Object.entries(stats?.teamDistribution || {}).map(([size, count]) => (
-//               <div key={size} className="flex items-center gap-3">
-//                 <span className="w-16 text-sm">Size {size}</span>
-//                 <div className="h-3 bg-indigo-500 rounded" style={{ width: `${Math.max(8, Number(count) * 18)}px` }} />
-//                 <span className="text-sm">{count}</span>
-//               </div>
-//             ))}
-//           </div>
-//         </div>
-//         <div className="card">
-//           <h2 className="text-xl font-bold mb-3">Skill Heatmap</h2>
-//           <div className="grid grid-cols-2 gap-2">
-//             {(stats?.skillHeatmap || []).map((s) => (
-//               <div key={s.skill} className="p-2 rounded bg-indigo-50 flex justify-between">
-//                 <span>{s.skill}</span>
-//                 <span className="font-semibold">{s.count}</span>
-//               </div>
-//             ))}
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="grid grid-cols-3 gap-6">
-//         {/* Announcement Panel */}
-//         <div className="col-span-2">
-//           <div className="card mb-6">
-//             <h2 className="text-xl font-bold text-gray-900 mb-4">Publish Announcement</h2>
-//             <div className="space-y-4">
-//               <input
-//                 type="text"
-//                 placeholder="Title"
-//                 value={newAnnouncement.title}
-//                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
-//                 className="input"
-//               />
-//               <textarea
-//                 placeholder="Content"
-//                 value={newAnnouncement.content}
-//                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
-//                 className="input min-h-24"
-//               />
-//               <select
-//                 value={announcementChannel}
-//                 onChange={(e) => setAnnouncementChannel(e.target.value)}
-//                 className="input"
-//               >
-//                 <option value="website">website</option>
-//                 <option value="discord">discord</option>
-//                 <option value="both">both</option>
-//               </select>
-//               <div className="flex items-center gap-2">
-//                 <input
-//                   type="checkbox"
-//                   checked={newAnnouncement.isUrgent}
-//                   onChange={(e) => setNewAnnouncement({ ...newAnnouncement, isUrgent: e.target.checked })}
-//                   id="urgent"
-//                 />
-//                 <label htmlFor="urgent" className="text-gray-700">
-//                   Mark as urgent
-//                 </label>
-//               </div>
-//               <button
-//                 onClick={handlePublishAnnouncement}
-//                 disabled={isPublishing}
-//                 className="btn btn-primary w-full"
-//               >
-//                 {isPublishing ? 'Publishing...' : 'Publish'}
-//               </button>
-//             </div>
-//           </div>
-
-//           {/* Recent Announcements */}
-//           <div className="card">
-//             <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Announcements</h2>
-//             <div className="space-y-4 max-h-96 overflow-y-auto">
-//               {announcements.map((announcement) => (
-//                 <div key={announcement.id} className="p-4 bg-gray-50 rounded-lg">
-//                   <div className="flex items-start justify-between mb-2">
-//                     <h3 className="font-bold text-gray-900">{announcement.title}</h3>
-//                     {announcement.isUrgent && (
-//                       <span className="badge badge-danger">URGENT</span>
-//                     )}
-//                   </div>
-//                   <p className="text-gray-700 text-sm mb-2">{announcement.content}</p>
-//                   <p className="text-xs text-gray-600">
-//                     by {announcement.author.name} •{' '}
-//                     {new Date(announcement.createdAt).toLocaleString()}
-//                   </p>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-
-//           <div className="card mt-6">
-//             <h2 className="text-xl font-bold text-gray-900 mb-4">Submission Monitoring</h2>
-//             <div className="overflow-auto">
-//               <table className="w-full text-sm">
-//                 <thead>
-//                   <tr className="text-left border-b">
-//                     <th className="py-2">Team</th>
-//                     <th>Status</th>
-//                     <th>GitHub</th>
-//                     <th>Live</th>
-//                     <th>Health</th>
-//                   </tr>
-//                 </thead>
-//                 <tbody>
-//                   {submissions.map((s) => (
-//                     <tr key={s.id} className="border-b">
-//                       <td className="py-2">{s.team?.name}</td>
-//                       <td>{s.status}</td>
-//                       <td>{s.githubUrl ? <a className="text-indigo-600" href={s.githubUrl} target="_blank">link</a> : '-'}</td>
-//                       <td>{s.liveUrl ? <a className="text-indigo-600" href={s.liveUrl} target="_blank">link</a> : '-'}</td>
-//                       <td>{s.isHealthy ? 'healthy' : s.healthCheckAt ? 'broken' : 'checking'}</td>
-//                     </tr>
-//                   ))}
-//                 </tbody>
-//               </table>
-//             </div>
-//           </div>
-
-//           <div className="card mt-6">
-//             <h2 className="text-xl font-bold mb-3">Team Monitoring</h2>
-//             <div className="space-y-2 max-h-72 overflow-auto">
-//               {teams.map((t) => (
-//                 <div key={t.id} className="p-3 rounded border">
-//                   <p className="font-semibold">{t.name}</p>
-//                   <p className="text-sm text-gray-600">Members: {t.members?.length || 0}</p>
-//                   <p className="text-xs text-gray-500">
-//                     {t.members?.map((m: any) => m.user.name).join(', ')}
-//                   </p>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-
-//           <div className="card mt-6">
-//             <h2 className="text-xl font-bold mb-4">Timeline Events</h2>
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-//               <input
-//                 className="input"
-//                 placeholder="Event title"
-//                 value={timelineForm.title}
-//                 onChange={(e) => setTimelineForm((p) => ({ ...p, title: e.target.value }))}
-//               />
-//               <input
-//                 className="input"
-//                 placeholder="Event type"
-//                 value={timelineForm.type}
-//                 onChange={(e) => setTimelineForm((p) => ({ ...p, type: e.target.value }))}
-//               />
-//               <input
-//                 className="input"
-//                 placeholder="Description"
-//                 value={timelineForm.description}
-//                 onChange={(e) => setTimelineForm((p) => ({ ...p, description: e.target.value }))}
-//               />
-//               <div />
-//               <input
-//                 type="datetime-local"
-//                 className="input"
-//                 value={timelineForm.startTime}
-//                 onChange={(e) => setTimelineForm((p) => ({ ...p, startTime: e.target.value }))}
-//               />
-//               <input
-//                 type="datetime-local"
-//                 className="input"
-//                 value={timelineForm.endTime}
-//                 onChange={(e) => setTimelineForm((p) => ({ ...p, endTime: e.target.value }))}
-//               />
-//             </div>
-//             <button className="btn btn-primary mb-4" onClick={saveTimelineEvent}>
-//               {timelineForm.id ? 'Update Event' : 'Add Event'}
-//             </button>
-//             <div className="space-y-2 max-h-72 overflow-auto">
-//               {timelineEvents.map((ev) => (
-//                 <div key={ev.id} className="p-3 border rounded flex justify-between items-center">
-//                   <div>
-//                     <p className="font-semibold">{ev.title}</p>
-//                     <p className="text-sm text-gray-600">
-//                       {new Date(ev.startTime).toLocaleString()} - {new Date(ev.endTime).toLocaleString()}
-//                     </p>
-//                     <p className="text-xs text-gray-500">{ev.type}</p>
-//                   </div>
-//                   <button
-//                     className="btn btn-secondary"
-//                     onClick={() =>
-//                       setTimelineForm({
-//                         id: ev.id,
-//                         title: ev.title || '',
-//                         description: ev.description || '',
-//                         type: ev.type || 'general',
-//                         startTime: new Date(ev.startTime).toISOString().slice(0, 16),
-//                         endTime: new Date(ev.endTime).toISOString().slice(0, 16),
-//                       })
-//                     }
-//                   >
-//                     Edit
-//                   </button>
-//                 </div>
-//               ))}
-//               {timelineEvents.length === 0 && <p className="text-sm text-gray-600">No timeline events yet.</p>}
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Quick Stats */}
-//         <div className="col-span-1">
-//           <div className="card space-y-4">
-//             <h2 className="text-xl font-bold text-gray-900">Hackathon Management</h2>
-//             <select className="input" value={statusControl} onChange={(e) => setStatusControl(e.target.value)}>
-//               <option value="draft">draft</option>
-//               <option value="published">published</option>
-//               <option value="ongoing">ongoing</option>
-//               <option value="judging">judging</option>
-//               <option value="ended">ended</option>
-//             </select>
-//             <input className="input" type="number" value={maxTeams} onChange={(e) => setMaxTeams(parseInt(e.target.value || '0', 10))} placeholder="max teams" />
-//             <button className="btn btn-secondary w-full" onClick={saveHackathonControls}>Save Controls</button>
-
-//             <h3 className="text-lg font-bold pt-3 border-t">Staff Management</h3>
-//             <input className="input" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} placeholder="user email" />
-//             <select className="input" value={staffType} onChange={(e) => setStaffType(e.target.value as any)}>
-//               <option value="JUDGE">Judge</option>
-//               <option value="MENTOR">Mentor</option>
-//             </select>
-//             <button className="btn btn-secondary w-full" onClick={addStaff}>Add Staff</button>
-//             <p className="text-xs">Judges: {staff.judges.length} | Mentors: {staff.mentors.length}</p>
-
-//             <h3 className="text-lg font-bold pt-3 border-t">Judging Control</h3>
-//             <button className="btn btn-secondary w-full" onClick={() => updateJudgingControl({ judgingOpen: !judgingControl.judgingOpen })}>
-//               {judgingControl.judgingOpen ? 'Close Round' : 'Open Round'}
-//             </button>
-//             <button className="btn btn-secondary w-full" onClick={() => updateJudgingControl({ blindMode: !judgingControl.blindMode })}>
-//               {judgingControl.blindMode ? 'Disable Blind Mode' : 'Enable Blind Mode'}
-//             </button>
-
-//             <h3 className="text-lg font-bold pt-3 border-t">Rubric</h3>
-//             <button className="btn btn-secondary w-full" onClick={createRubric}>Create Default Rubric</button>
-
-//             <h3 className="text-lg font-bold pt-3 border-t">Quick Actions</h3>
-//             <button className="btn btn-secondary w-full" onClick={() => runQuickAction('LOCK_SUBMISSIONS')}>Lock Submissions</button>
-//             <input className="input" type="datetime-local" value={extendDeadline} onChange={(e) => setExtendDeadline(e.target.value)} />
-//             <button className="btn btn-secondary w-full" onClick={() => runQuickAction('EXTEND_DEADLINE')}>Extend Deadline</button>
-//             <button className="btn btn-secondary w-full" onClick={() => runQuickAction('OPEN_JUDGING')}>Open Judging</button>
-
-//             <h3 className="text-lg font-bold pt-3 border-t">Certificate System</h3>
-//             <input className="input" value={certificateUserId} onChange={(e) => setCertificateUserId(e.target.value)} placeholder="user id" />
-//             <select className="input" value={certificateType} onChange={(e) => setCertificateType(e.target.value)}>
-//               <option value="PARTICIPANT">participant</option>
-//               <option value="WINNER">winner</option>
-//               <option value="RUNNER_UP">runner_up</option>
-//               <option value="BEST_PROJECT">best_project</option>
-//             </select>
-//             <button className="btn btn-secondary w-full" onClick={generateCertificate}>Generate Certificate</button>
-            
-//             <div>
-//               <p className="text-sm text-gray-600">Attendance</p>
-//               <p className="text-2xl font-bold text-gray-900">{stats?.totalAttendances}</p>
-//             </div>
-
-//             <div>
-//               <p className="text-sm text-gray-600">Average Score</p>
-//               <p className="text-2xl font-bold text-gray-900">{stats?.averageScore.toFixed(1)}</p>
-//             </div>
-
-//             <div>
-//               <p className="text-sm text-gray-600">Total Scores</p>
-//               <p className="text-2xl font-bold text-gray-900">{stats?.totalScores}</p>
-//             </div>
-
-//             <div className="pt-4 border-t">
-//               <p className="text-xs text-gray-600">Last updated: {new Date().toLocaleTimeString()}</p>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import EditHackathonModal from '@/components/organiser/EditHackathonModal';
+import DatePicker from '@/components/ui/DatePicker';
 
 interface HackathonData {
   id: string;
@@ -690,6 +112,138 @@ const STAT_CARDS = [
   { key: 'openTickets',     label: 'Open Tickets',   color: '#ef4444' },
 ];
 
+function ResultsPanel({ hackathonId }: { hackathonId: string }) {
+  const [rankings, setRankings] = useState<any[]>([]);
+  const [hackathon, setHackathon] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [sendingAnnounce, setSendingAnnounce] = useState(false);
+
+  useEffect(() => {
+    if (!hackathonId) return;
+    (async () => {
+      try {
+        const [rankingsRes, hackathonRes] = await Promise.all([
+          fetch(`/api/hackathons/${hackathonId}/rankings`),
+          fetch(`/api/hackathons/${hackathonId}`),
+        ]);
+        setRankings((await rankingsRes.json()).data || []);
+        const hackathonData = (await hackathonRes.json()).data;
+        setHackathon(hackathonData);
+      } catch { /* silent */ }
+      finally { setLoading(false); }
+    })();
+  }, [hackathonId]);
+
+  async function generateResults() {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/hackathons/${hackathonId}/rankings`);
+      const data = await res.json();
+      if (res.ok) {
+        setRankings(data.data || []);
+        const scored = (data.data || []).filter((r: any) => r.totalScore > 0);
+        setFeedback(scored.length > 0 ? `Results generated for ${scored.length} teams` : 'No scored submissions found');
+      } else {
+        setFeedback(data.error || 'Failed to generate results');
+      }
+    } catch { setFeedback('Network error'); }
+    setGenerating(false);
+    setTimeout(() => setFeedback(''), 4000);
+  }
+
+  async function announceResultsDirectly() {
+    if (rankings.length === 0) {
+      setFeedback('No rankings generated yet. Please generate results first.');
+      setTimeout(() => setFeedback(''), 3000);
+      return;
+    }
+    setSendingAnnounce(true);
+    try {
+      const topTeams = rankings.slice(0, 3);
+      const medalEmojis = ['🥇', '🥈', '🥉'];
+      const lines = topTeams.map((entry: any, idx: number) => {
+        const medal = medalEmojis[idx] || '🏅';
+        return `${medal} #${entry.rank} ${entry.teamName} (${entry.totalScore} pts)`;
+      });
+      const content = `🎉 Results are in! Congratulations to our top teams:\n\n${lines.join('\n')}\n\nView full rankings on the hackathon page.`;
+      const title = `${hackathon?.title || 'Hackathon'} Results Announced!`;
+      const res = await fetch(`/api/hackathons/${hackathonId}/announcements`, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, isUrgent: false }),
+      });
+      if (res.ok) {
+        setFeedback('Results announced on website');
+      } else {
+        setFeedback('Failed to announce');
+      }
+    } catch { setFeedback('Network error'); }
+    setSendingAnnounce(false);
+    setTimeout(() => setFeedback(''), 3000);
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6rem 0' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Announce Results */}
+      <div className="card-cc">
+        <p className="section-label">Announce Results</p>
+        <p style={{ color: '#64748b', fontSize: 12, marginBottom: 12 }}>
+          Announce the top teams to all participants via the website announcement feed.
+        </p>
+        {feedback && (
+          <div style={{ marginBottom: 12, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#16a34a', fontSize: 12 }}>
+            {feedback}
+          </div>
+        )}
+        <button
+          className="cc-btn cc-btn-primary"
+          onClick={announceResultsDirectly}
+          disabled={sendingAnnounce || rankings.length === 0}
+        >
+          {sendingAnnounce ? 'ANNOUNCING...' : 'ANNOUNCE RESULTS'}
+        </button>
+        {rankings.length === 0 && (
+          <p style={{ color: '#ef4444', fontSize: 11, marginTop: 8 }}>Generate rankings first before announcing.</p>
+        )}
+      </div>
+
+      {/* Rankings */}
+      <div className="card-cc">
+        <p className="section-label">Team Rankings</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          <button className="cc-btn cc-btn-primary" onClick={generateResults} disabled={generating}>
+            {generating ? 'GENERATING...' : 'GENERATE RANKINGS'}
+          </button>
+        </div>
+        {rankings.length === 0 ? (
+          <p style={{ color: '#94a3b8', fontFamily: '"DM Mono", monospace', fontSize: 10 }}>NO RANKINGS YET</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 400, overflowY: 'auto' }}>
+            {rankings.map((entry: any) => (
+              <div key={entry.teamId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div>
+                  <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 13, fontWeight: 600, color: '#1e293b' }}>#{entry.rank} {entry.teamName}</span>
+                  <span style={{ fontFamily: '"DM Mono", monospace', fontSize: 11, color: '#6366f1', marginLeft: 8 }}>{entry.totalScore} pts</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CommandCenterPage() {
   const params = useParams();
   const hackathonId = params.hackathonId as string;
@@ -733,7 +287,7 @@ export default function CommandCenterPage() {
   const [isSavingControls, setIsSavingControls] = useState(false);
   const [isPublishingHackathon, setIsPublishingHackathon] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [activeTab, setActiveTab] = useState<'monitor' | 'manage' | 'comms' | 'controls' | 'certificates'>('monitor');
+  const [activeTab, setActiveTab] = useState<'monitor' | 'manage' | 'comms' | 'controls' | 'certificates' | 'results'>('monitor');
 
   const showFeedback = (message: string) => {
     setFeedback(message);
@@ -1377,7 +931,7 @@ export default function CommandCenterPage() {
             </div>
 
             <div style={{ display: 'flex', borderBottom: 'none', gap: 0, alignItems: 'center' }}>
-              {(['monitor', 'manage', 'comms', 'controls', 'certificates'] as const).map((t) => (
+              {(['monitor', 'manage', 'comms', 'controls', 'certificates', 'results'] as const).map((t) => (
                 <button key={t} className={`tab-btn ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
                   {t.toUpperCase()}
                 </button>
@@ -1627,8 +1181,16 @@ export default function CommandCenterPage() {
                         <input className="cc-input" placeholder="Event title" value={timelineForm.title} onChange={(e) => setTimelineForm((p) => ({ ...p, title: e.target.value }))} />
                         <input className="cc-input" placeholder="Type" value={timelineForm.type} onChange={(e) => setTimelineForm((p) => ({ ...p, type: e.target.value }))} />
                         <input className="cc-input" placeholder="Description" value={timelineForm.description} onChange={(e) => setTimelineForm((p) => ({ ...p, description: e.target.value }))} style={{ gridColumn: 'span 2' }} />
-                        <input type="datetime-local" className="cc-input" value={timelineForm.startTime} onChange={(e) => setTimelineForm((p) => ({ ...p, startTime: e.target.value }))} />
-                        <input type="datetime-local" className="cc-input" value={timelineForm.endTime} onChange={(e) => setTimelineForm((p) => ({ ...p, endTime: e.target.value }))} />
+                        <DatePicker
+                          value={timelineForm.startTime}
+                          onChange={val => setTimelineForm(p => ({ ...p, startTime: val }))}
+                          placeholder="Start date & time"
+                        />
+                        <DatePicker
+                          value={timelineForm.endTime}
+                          onChange={val => setTimelineForm(p => ({ ...p, endTime: val }))}
+                          placeholder="End date & time"
+                        />
                       </div>
                       <button className="cc-btn cc-btn-primary" onClick={saveTimelineEvent} style={{ marginBottom: 12 }}>
                         {timelineForm.id ? '↑ UPDATE EVENT' : '+ ADD EVENT'}
@@ -2392,6 +1954,12 @@ export default function CommandCenterPage() {
                 </div>
               </div>
             )}
+
+            {/* ── RESULTS TAB ── */}
+            {activeTab === 'results' && (
+              <ResultsPanel hackathonId={hackathonId} />
+            )}
+
           </div>
         </main>
       </div>

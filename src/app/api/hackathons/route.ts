@@ -155,6 +155,7 @@ export async function POST(req: NextRequest) {
       mealSchedule,
       rubricItems,
       internalMentors,
+      customResources,
       venue,
     } = validatedData as any;
 
@@ -204,6 +205,7 @@ export async function POST(req: NextRequest) {
         ...(Array.isArray(mealSchedule) && mealSchedule.length > 0 && { mealSchedule }),
         ...(Array.isArray(rubricItems) && rubricItems.length > 0 && { rubricItems }),
         ...(Array.isArray(internalMentors) && internalMentors.length > 0 && { internalMentors }),
+        ...(Array.isArray(customResources) && customResources.length > 0 && { customResources }),
       },
       include: {
         organiser: { select: { id: true, name: true, email: true } },

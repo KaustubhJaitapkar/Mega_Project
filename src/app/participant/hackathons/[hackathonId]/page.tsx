@@ -20,7 +20,7 @@ interface Hackathon {
   _count?: { teams: number; submissions: number; attendances: number };
 }
 
-const TABS = ['Overview', 'Timeline', 'Prizes', 'Rules'] as const;
+const TABS = ['Overview', 'Timeline', 'Prizes', 'Rules', 'Results'] as const;
 
 function stripRichText(html: string): string {
   if (!html) return '';
@@ -60,6 +60,121 @@ function normalizePrizeDetails(value?: Hackathon['prizeDetails']) {
     }
   }
   return [];
+}
+
+interface Certificate {
+  id: string;
+  type: 'PARTICIPANT' | 'WINNER' | 'RUNNER_UP' | 'BEST_PROJECT';
+  teamId?: string;
+  userId: string;
+  certificateUrl?: string;
+  team?: { name: string };
+  user?: { name: string };
+}
+
+interface Ranking {
+  teamId: string;
+  teamName: string;
+  rank: number;
+  totalScore: number;
+  judgeCount: number;
+}
+
+function ResultsSection({ hackathonId, prizeDetails }: { hackathonId: string; prizeDetails: Array<{ id?: string; title: string; amount?: number | string }> }) {
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!hackathonId) return;
+    (async () => {
+      try {
+        const [certRes, rankingsRes] = await Promise.all([
+          fetch(`/api/hackathons/${hackathonId}/certificates`),
+          fetch(`/api/hackathons/${hackathonId}/rankings`),
+        ]);
+        const certData = await certRes.json();
+        const rankingsData = await rankingsRes.json();
+        setCertificates((certData.data || []).filter((c: Certificate) => ['WINNER', 'RUNNER_UP', 'BEST_PROJECT'].includes(c.type)));
+        setRankings((rankingsData.data || []).filter((r: Ranking) => r.totalScore > 0));
+      } catch { /* silent */ }
+      finally { setLoading(false); }
+    })();
+  }, [hackathonId]);
+
+  const getTypeLabel = (type: string) => {
+    if (type === 'WINNER') return prizeDetails[0]?.title || 'Winner';
+    if (type === 'RUNNER_UP') return prizeDetails[1]?.title || 'Runner-up';
+    if (type === 'BEST_PROJECT') return prizeDetails[2]?.title || 'Best Project';
+    return type.replace('_', ' ');
+  };
+
+  const getPrizeLabelForRank = (rank: number) => {
+    if (prizeDetails.length > 0 && prizeDetails[rank - 1]?.title) {
+      return prizeDetails[rank - 1].title;
+    }
+    if (rank === 1) return 'Winner';
+    if (rank === 2) return 'Runner-up';
+    if (rank === 3) return 'Best Project';
+    return '-';
+  };
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading results...</div>;
+  }
+
+  if (rankings.length === 0 && certificates.length === 0) {
+    return (
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '2rem', textAlign: 'center' }}>
+        <p className="org-text">Results will be announced after judging concludes.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* Team Rankings Section */}
+      {rankings.length > 0 && (
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+          <p className="org-label" style={{ marginBottom: '0.75rem' }}>Team Rankings</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {rankings.map((entry, idx) => (
+              <div key={entry.teamId} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.6rem 0.75rem', background: 'var(--bg-raised)',
+                borderRadius: 'var(--radius-sm)',
+                border: idx === 0 ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span style={{
+                    fontWeight: 700, fontSize: idx < 3 ? '1rem' : '0.85rem',
+                    color: idx === 0 ? '#e8a44a' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'var(--text-muted)',
+                    minWidth: 24, textAlign: 'center',
+                  }}>
+                    #{entry.rank}
+                  </span>
+                  <div>
+                    <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{entry.teamName}</p>
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{entry.judgeCount} judge{entry.judgeCount !== 1 ? 's' : ''} scored</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  {(() => {
+                    const prizeLabel = getPrizeLabelForRank(entry.rank);
+                    return prizeLabel !== '-' ? (
+                      <span className="org-badge org-badge-accent" style={{ fontSize: '0.65rem' }}>{prizeLabel}</span>
+                    ) : null;
+                  })()}
+                  <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--accent)' }}>{entry.totalScore.toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
 }
 
 export default function HackathonDetailPage() {
@@ -287,6 +402,10 @@ export default function HackathonDetailPage() {
                 <p key={i} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '0.4rem' }}>{line}</p>
               )) : <p className="org-text">Rules will be shared by the organisers soon.</p>}
             </div>
+          )}
+
+          {activeTab === 'Results' && (
+            <ResultsSection hackathonId={hackathonId} prizeDetails={prizeDetails} />
           )}
         </div>
 

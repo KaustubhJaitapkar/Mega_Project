@@ -503,15 +503,17 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
     if (!hackathonId) return;
     (async () => {
       try {
-        const [certRes, subRes, hackathonRes] = await Promise.all([
+        const [certRes, subRes, hackathonRes, rankingsRes] = await Promise.all([
           fetch(`/api/hackathons/${hackathonId}/certificates`, { credentials: 'include' }),
           fetch(`/api/hackathons/${hackathonId}/submissions`, { credentials: 'include' }),
           fetch(`/api/hackathons/${hackathonId}`, { credentials: 'include' }),
+          fetch(`/api/hackathons/${hackathonId}/rankings`, { credentials: 'include' }),
         ]);
         setWinners((await certRes.json()).data?.filter((c: any) => c.type === 'WINNER' || c.type === 'RUNNER_UP' || c.type === 'BEST_PROJECT') || []);
         setSubmissions((await subRes.json()).data || []);
         const hackathonData = (await hackathonRes.json()).data;
         setHackathon(hackathonData);
+        setRankings((await rankingsRes.json()).data || []);
       } catch { /* silent */ }
       finally { setLoading(false); }
     })();
@@ -617,7 +619,10 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
   async function generateResults() {
     setGenerating(true);
     try {
-      const res = await fetch(`/api/hackathons/${hackathonId}/rankings`, { credentials: 'include' });
+      const res = await fetch(`/api/hackathons/${hackathonId}/rankings`, {
+        method: 'POST',
+        credentials: 'include',
+      });
       const data = await res.json();
       if (res.ok) {
         setRankings(data.data || []);
@@ -776,6 +781,45 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
     URL.revokeObjectURL(url);
   }
 
+  async function announceWinnersAutomatically() {
+    if (winners.length === 0) {
+      setFeedback('No winners declared yet. Please declare winners first.');
+      setTimeout(() => setFeedback(''), 3000);
+      return;
+    }
+    setSendingAnnounce(true);
+    try {
+      const prizeDetails = normalizePrizeDetails(hackathon?.prizeDetails);
+      const getTypeLabel = (type: string) => {
+        if (type === 'WINNER') return prizeDetails[0]?.title || 'Winner';
+        if (type === 'RUNNER_UP') return prizeDetails[1]?.title || 'Runner-up';
+        if (type === 'BEST_PROJECT') return prizeDetails[2]?.title || 'Best Project';
+        return type.replace('_', ' ');
+      };
+      const lines = winners.map((cert: any) => {
+        const label = getTypeLabel(cert.type);
+        const teamName = cert.team?.name || 'Team';
+        const memberNames = cert.user?.name || 'Team members';
+        return `${label}: ${teamName} (${memberNames})`;
+      });
+      const content = `🎉 Results are in! Congratulations to our winners:\n\n${lines.join('\n')}\n\nThank you to all participants!`;
+      const title = `${hackathon?.title || 'Hackathon'} Results Announced!`;
+      const res = await fetch(`/api/hackathons/${hackathonId}/announcements`, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title, content, isUrgent: false }),
+      });
+      if (res.ok) {
+        setFeedback('Results announced on website');
+      } else {
+        setFeedback('Failed to announce');
+      }
+    } catch { setFeedback('Network error'); }
+    setSendingAnnounce(false);
+    setTimeout(() => setFeedback(''), 3000);
+  }
+
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}>
       <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
@@ -794,17 +838,10 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
           <button className="org-btn-primary" onClick={generateResults} disabled={generating}>
             {generating ? 'Calculating...' : 'Generate Rankings'}
           </button>
+          <button className="org-btn-secondary" onClick={announceWinnersAutomatically} disabled={sendingAnnounce || rankings.length === 0}>
+            {sendingAnnounce ? 'Announcing...' : 'Announce Results'}
+          </button>
         </div>
-      </div>
-
-      {/* Toggle Participants Button */}
-      <div style={{ marginBottom: '0.5rem' }}>
-        <button 
-          className="org-btn-secondary"
-          onClick={toggleParticipants}
-        >
-          {showParticipants ? 'Hide Participants' : 'Show All Participants'}
-        </button>
       </div>
 
       {/* Prize Results View */}
@@ -895,119 +932,8 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
             )}
           </div>
         )}
-
-        {/* Declared Winners by Prize Category */}
-        <div>
-          <p className="org-label" style={{ marginBottom: '0.6rem' }}>Declared Winners ({winners.length})</p>
-          {winners.length === 0 ? (
-            <div className="org-empty" style={{ padding: '1.5rem' }}>No winners declared yet. Generate rankings and declare winners above.</div>
-          ) : (() => {
-            const byTeam = new Map<string, { type: string; teamName: string; members: any[] }>();
-            for (const w of winners) {
-              const teamName = w.teamId ? (w.title?.split(' - ')?.[1] || w.title) : (w.user?.name || w.title);
-              const key = w.teamId || w.id;
-              if (!byTeam.has(key)) {
-                byTeam.set(key, { type: w.type, teamName, members: [] });
-              }
-              byTeam.get(key)!.members.push(w.user);
-            }
-            return Array.from(byTeam.entries()).map(([key, group]) => (
-              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.85rem', background: 'var(--bg-raised)', borderRadius: 'var(--radius-sm)', marginBottom: '0.35rem' }}>
-                <div>
-                  <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{group.teamName}</p>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{group.members.map((m: any) => m.name).join(', ')}</p>
-                </div>
-                <span className={`org-badge ${group.type === 'WINNER' ? 'org-badge-accent' : group.type === 'RUNNER_UP' ? 'org-badge-muted' : 'org-badge-info'}`}>
-                  {group.type.replace('_', ' ')}
-                </span>
-              </div>
-            ));
-          })()}
-        </div>
       </>
 
-      {/* All Participants Section */}
-      {showParticipants && (
-        <div className="org-section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <p className="org-label" style={{ margin: 0 }}>All Participants ({participants.length})</p>
-            <button className="org-btn-secondary" onClick={exportParticipantsCSV} style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem' }}>
-              Export CSV
-            </button>
-          </div>
-          
-          {loadingParticipants ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-              <div style={{ width: 24, height: 24, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-            </div>
-          ) : participants.length === 0 ? (
-            <div className="org-empty" style={{ padding: '1rem' }}>No participants found. Generate rankings first.</div>
-          ) : (
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '0.35rem',
-              maxHeight: '400px',
-              overflowY: 'auto',
-              paddingRight: '0.25rem',
-            }}>
-              {/* Table Header */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '0.5fr 1.5fr 1.2fr 0.8fr auto', 
-                gap: '0.5rem', 
-                padding: '0.5rem 0.65rem',
-                borderBottom: '1px solid var(--border-subtle)',
-                position: 'sticky',
-                top: 0,
-                background: 'var(--bg-primary)',
-                zIndex: 1,
-              }}>
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Rank</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Name</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Team</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Score</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Prize</span>
-              </div>
-              
-              {participants.map((p: any) => (
-                <div key={p.id} style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: '0.5fr 1.5fr 1.2fr 0.8fr auto', 
-                  gap: '0.5rem', 
-                  alignItems: 'center', 
-                  padding: '0.5rem 0.65rem', 
-                  background: 'var(--bg-raised)', 
-                  borderRadius: 'var(--radius-sm)', 
-                  border: p.prizeLabel !== 'Participant' ? '1px solid rgba(62,207,142,0.3)' : '1px solid var(--border-subtle)' 
-                }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: p.rank <= 3 ? (p.rank === 1 ? '#e8a44a' : p.rank === 2 ? '#94a3b8' : '#cd7f32') : 'var(--text-muted)' }}>
-                    {p.rank === 999 ? 'N/A' : `#${p.rank}`}
-                  </span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.teamName}</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>{p.score.toFixed(2)}</span>
-                  <span className={`org-badge ${p.prizeLabel !== 'Participant' ? 'org-badge-accent' : 'org-badge-muted'}`} style={{ fontSize: '0.65rem' }}>
-                    {p.prizeLabel}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Announce Results */}
-      <div className="org-section">
-        <p className="org-label" style={{ marginBottom: '0.6rem' }}>Announce Results on Website</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <input className="org-input" placeholder="Announcement title (e.g. Winners Announced!)" value={announceTitle} onChange={(e) => setAnnounceTitle(e.target.value)} />
-          <textarea className="org-input" placeholder="Full results details..." value={announceContent} onChange={(e) => setAnnounceContent(e.target.value)} style={{ minHeight: 80, resize: 'vertical' as const }} />
-          <button className="org-btn-primary" onClick={announceResults} disabled={sendingAnnounce || !announceTitle.trim() || !announceContent.trim()} style={{ alignSelf: 'flex-start' }}>
-            {sendingAnnounce ? 'Posting...' : 'Post Results'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Lock, Clock, Trophy, RefreshCw } from 'lucide-react';
+import DatePicker from '@/components/ui/DatePicker';
 
 interface Props { hackathonId: string }
 
@@ -67,7 +68,13 @@ export default function QuickActions({ hackathonId }: Props) {
             <button className="org-btn-secondary" onClick={() => setShowExtend(true)} style={{ alignSelf: 'flex-start' }}>Configure</button>
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input type="datetime-local" className="org-input" value={extendDate} onChange={(e) => setExtendDate(e.target.value)} style={{ flex: 1 }} />
+              <div style={{ flex: 1 }}>
+                <DatePicker
+                  value={extendDate}
+                  onChange={val => setExtendDate(val)}
+                  placeholder="Select new deadline"
+                />
+              </div>
               <button className="org-btn-primary" onClick={extendDeadline} disabled={loading === 'EXTEND_DEADLINE' || !extendDate}>
                 {loading === 'EXTEND_DEADLINE' ? '...' : 'Apply'}
               </button>

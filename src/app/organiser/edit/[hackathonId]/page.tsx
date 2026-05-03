@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import DatePicker from '@/components/ui/DatePicker';
 
 interface PrizeItem { id: string; title: string; amount: string }
 interface SponsorEntry { name: string; logoUrl: string; tier: string; website: string }
@@ -320,10 +321,30 @@ export default function EditHackathonPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Schedule & Deadlines</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <div><label style={lbl}>Registration Deadline *</label><input className="org-input" type="datetime-local" value={form.registrationDeadline} onChange={e => up('registrationDeadline', e.target.value)} /></div>
-              <div><label style={lbl}>Hackathon Start *</label><input className="org-input" type="datetime-local" value={form.startDate} onChange={e => up('startDate', e.target.value)} /></div>
-              <div><label style={lbl}>Hackathon End *</label><input className="org-input" type="datetime-local" value={form.endDate} onChange={e => up('endDate', e.target.value)} /></div>
-              <div><label style={lbl}>Submission Deadline *</label><input className="org-input" type="datetime-local" value={form.submissionDeadline} onChange={e => up('submissionDeadline', e.target.value)} /></div>
+              <DatePicker
+                value={form.registrationDeadline}
+                onChange={val => up('registrationDeadline', val)}
+                label="Registration Deadline *"
+                placeholder="When does registration close?"
+              />
+              <DatePicker
+                value={form.startDate}
+                onChange={val => up('startDate', val)}
+                label="Hackathon Start *"
+                placeholder="When does the hackathon begin?"
+              />
+              <DatePicker
+                value={form.endDate}
+                onChange={val => up('endDate', val)}
+                label="Hackathon End *"
+                placeholder="When does the hackathon end?"
+              />
+              <DatePicker
+                value={form.submissionDeadline}
+                onChange={val => up('submissionDeadline', val)}
+                label="Submission Deadline *"
+                placeholder="When must projects be submitted?"
+              />
             </div>
           </div>
         )}

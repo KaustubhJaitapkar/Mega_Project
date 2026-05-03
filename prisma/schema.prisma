@@ -232,6 +232,8 @@ model Hackathon {
   mealSchedule    Json?               // [{id, name, startTime, endTime, day}]
   rubricItems     Json?               // [{id, name, description, maxScore}]
   internalMentors Json?               // [{id, name, email, department, expertise}]
+  customResources Json?               // ['WiFi Access', 'Power Strips', etc.]
+  rankings        Json?               // [{teamId, teamName, rank, totalScore, judgeCount}]
 
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
@@ -532,6 +534,8 @@ model Certificate {
   @@index([hackathonId])
   @@index([userId])
 }
+
+
 
 model StaffInvite {
   id            String     @id @default(cuid())

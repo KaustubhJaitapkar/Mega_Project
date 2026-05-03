@@ -169,6 +169,7 @@ export default function HackathonForm() {
     lunchProvided: false,
     dinnerProvided: false,
     swagProvided: false,
+    customResources: [] as string[],
     contactEmail: '',
     hostName: '',
     theme: '',
@@ -291,6 +292,22 @@ export default function HackathonForm() {
     setPrizeDetails(prev => prev.filter((p) => p.id !== id));
   };
 
+  const addCustomResource = (resource: string) => {
+    if (resource.trim() && !form.customResources.includes(resource.trim())) {
+      setForm(prev => ({
+        ...prev,
+        customResources: [...prev.customResources, resource.trim()]
+      }));
+    }
+  };
+
+  const removeCustomResource = (resource: string) => {
+    setForm(prev => ({
+      ...prev,
+      customResources: prev.customResources.filter(r => r !== resource)
+    }));
+  };
+
   async function handleSubmit() {
     setLoading(true);
     setError('');
@@ -307,6 +324,7 @@ export default function HackathonForm() {
         allowCrossYearTeams: form.allowCrossYearTeams,
         submissionRequirements,
         mealSchedule,
+        customResources: form.customResources,
         prizeDetails: prizeDetails.filter((p) => p.title.trim()),
         rubricItems,
         internalMentors,
@@ -657,9 +675,9 @@ export default function HackathonForm() {
                   onChange={e => setTimelines(p => p.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
                 />
               </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
       )}
 
       {/* STEP: TRACKS & ELIGIBILITY */}
@@ -721,9 +739,73 @@ export default function HackathonForm() {
                       {track}
                       <button type="button" onClick={() => removeTrack(track)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 }}>×</button>
                     </span>
+              ))}
+            </div>
+            
+            {/* Custom Resources Input */}
+            <div style={{ marginTop: '0.75rem' }}>
+              <label className="hf-label">Add Custom Resource</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  className="org-input"
+                  placeholder="Enter custom resource (e.g., WiFi Access, Power Strips, Monitors)"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.target as HTMLInputElement;
+                      if (input.value.trim()) {
+                        addCustomResource(input.value);
+                        input.value = '';
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="org-btn-secondary"
+                  onClick={e => {
+                    const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement;
+                    if (input && input.value.trim()) {
+                      addCustomResource(input.value);
+                      input.value = '';
+                    }
+                  }}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  + Add
+                </button>
+              </div>
+            </div>
+            
+            {/* Show added custom resources */}
+            {form.customResources.length > 0 && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <label className="hf-label">Your Custom Resources</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {form.customResources.map(resource => (
+                    <span key={resource} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      padding: '0.4rem 0.75rem', borderRadius: '999px',
+                      background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#10b981', fontSize: '0.8rem',
+                    }}>
+                      {resource}
+                      <button
+                        type="button"
+                        onClick={() => removeCustomResource(resource)}
+                        style={{ 
+                          background: 'none', border: 'none', color: '#10b981', 
+                          cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
                   ))}
                 </div>
               </div>
+            )}
+          </div>
             )}
           </div>
 
@@ -961,6 +1043,64 @@ export default function HackathonForm() {
                 </button>
               ))}
             </div>
+            {/* Additional resources input */}
+            <div style={{ marginTop: '1rem' }}>
+              <label className="hf-label">Additional resources</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  className="org-input"
+                  placeholder="Enter custom resource (e.g., WiFi Access, Power Strips, Monitors)"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const input = e.target as HTMLInputElement;
+                      if (input.value.trim()) {
+                        addCustomResource(input.value);
+                        input.value = '';
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="org-btn-secondary"
+                  onClick={e => {
+                    const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement;
+                    if (input && input.value.trim()) {
+                      addCustomResource(input.value);
+                      input.value = '';
+                    }
+                  }}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  + Add
+                </button>
+              </div>
+            </div>
+            {form.customResources.length > 0 && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {form.customResources.map(resource => (
+                    <span key={resource} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      padding: '0.4rem 0.75rem', borderRadius: '999px',
+                      background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#10b981', fontSize: '0.8rem',
+                    }}>
+                      {resource}
+                      <button
+                        type="button"
+                        onClick={() => removeCustomResource(resource)}
+                        style={{ 
+                          background: 'none', border: 'none', color: '#10b981', 
+                          cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 
+                        }}
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Host & Contact */}
@@ -1226,6 +1366,7 @@ export default function HackathonForm() {
                   value={[form.breakfastProvided && 'Breakfast', form.lunchProvided && 'Lunch', form.dinnerProvided && 'Dinner', form.swagProvided && 'Swag'].filter(Boolean).join(', ') || 'None'}
                 />
                 <ReviewItem label="Meal Slots" value={`${mealSchedule.length} configured`} />
+                <ReviewItem label="Custom Resources" value={form.customResources.length > 0 ? form.customResources.join(', ') : 'None'} />
               </div>
             </div>
 

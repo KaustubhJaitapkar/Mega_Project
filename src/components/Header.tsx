@@ -5,36 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function Header() {
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
-  const [isChangingRole, setIsChangingRole] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-
-  // Only PARTICIPANT and ORGANISER can be self-selected.
-  // JUDGE, MENTOR, and SPONSOR are assigned via invitation only.
-  const switchableRoles = ['PARTICIPANT', 'ORGANISER'];
-  const currentRole = (session?.user as any)?.role || 'PARTICIPANT';
-  const canSwitch = switchableRoles.includes(currentRole);
-
-  async function handleRoleChange(newRole: string) {
-    if (!switchableRoles.includes(newRole)) return;
-    setIsChangingRole(true);
-    try {
-      const res = await fetch('/api/users/role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      });
-      if (res.ok) {
-        await update({ role: newRole });
-        router.push('/dashboard');
-      }
-    } catch (error) {
-      console.error('Failed to change role:', error);
-    } finally {
-      setIsChangingRole(false);
-    }
-  }
 
   return (
     <header style={{
@@ -44,66 +17,11 @@ export default function Header() {
       height: 56,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       flexShrink: 0,
     }}>
-      {/* Left: page context */}
-      <div>
-        <p style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '0.7rem',
-          color: 'var(--text-muted)',
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase' as const,
-        }}>
-          {currentRole}
-        </p>
-      </div>
-
       {/* Right: user actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {/* Role switcher - only for self-selectable roles */}
-        {canSwitch ? (
-          <select
-            value={currentRole}
-            onChange={(e) => handleRoleChange(e.target.value)}
-            disabled={isChangingRole}
-            style={{
-              background: 'var(--bg-raised)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-display)',
-              fontSize: '0.7rem',
-              padding: '0.35rem 0.6rem',
-              outline: 'none',
-              cursor: 'pointer',
-              letterSpacing: '0.03em',
-            }}
-          >
-            {switchableRoles.map((r) => (
-              <option key={r} value={r} style={{ background: 'var(--bg-raised)' }}>
-                {r.charAt(0) + r.slice(1).toLowerCase()}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span style={{
-            background: 'var(--accent-dim)',
-            border: '1px solid var(--border-accent)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--accent)',
-            fontFamily: 'var(--font-display)',
-            fontSize: '0.65rem',
-            fontWeight: 600,
-            padding: '0.35rem 0.6rem',
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase',
-          }}>
-            {currentRole}
-          </span>
-        )}
-
         {/* User info + menu */}
         <div style={{ position: 'relative' }}>
           <button

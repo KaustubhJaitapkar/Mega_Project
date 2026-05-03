@@ -185,9 +185,179 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'prizes', label: 'Prizes & Tracks' },
+  { id: 'results', label: 'Results' },
   { id: 'requirements', label: 'Requirements' },
   { id: 'faq', label: 'FAQ' },
 ];
+
+function ResultsSection({ hackathonId }: { hackathonId: string }) {
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [rankings, setRankings] = useState<any[]>([]);
+  const [hackathon, setHackathon] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!hackathonId) return;
+    (async () => {
+      try {
+        const [certRes, hackathonRes, rankingsRes] = await Promise.all([
+          fetch(`/api/hackathons/${hackathonId}/certificates`),
+          fetch(`/api/hackathons/${hackathonId}`),
+          fetch(`/api/hackathons/${hackathonId}/rankings`),
+        ]);
+        const certData = await certRes.json();
+        const hackathonData = await hackathonRes.json();
+        const rankingsData = await rankingsRes.json();
+        setCertificates(certData.data?.filter((c: any) => ['WINNER', 'RUNNER_UP', 'BEST_PROJECT'].includes(c.type)) || []);
+        setRankings((rankingsData.data || []).filter((r: any) => r.totalScore > 0) || []);
+        setHackathon(hackathonData.data);
+      } catch { /* silent */ }
+      finally { setLoading(false); }
+    })();
+  }, [hackathonId]);
+
+  function normalizePrizeDetails(value?: any) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    try { return JSON.parse(value); } catch { return []; }
+  }
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading results...</div>;
+  }
+
+  if (rankings.length === 0 && certificates.length === 0) {
+    return (
+      <div className="hp-empty-state">
+        <p>Results will be announced after judging concludes.</p>
+      </div>
+    );
+  }
+
+  const prizeDetails = normalizePrizeDetails(hackathon?.prizeDetails);
+  const getTypeLabel = (type: string) => {
+    if (type === 'WINNER') return prizeDetails[0]?.title || 'Winner';
+    if (type === 'RUNNER_UP') return prizeDetails[1]?.title || 'Runner-up';
+    if (type === 'BEST_PROJECT') return prizeDetails[2]?.title || 'Best Project';
+    return type.replace('_', ' ');
+  };
+
+  function getPrizeLabelForRank(rank: number, prizeDetails: any[]) {
+    if (prizeDetails.length > 0 && prizeDetails[rank - 1]?.title) {
+      return prizeDetails[rank - 1].title;
+    }
+    if (rank === 1) return 'Winner';
+    if (rank === 2) return 'Runner-up';
+    if (rank === 3) return 'Best Project';
+    return '-';
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Team Rankings Section */}
+      {rankings.length > 0 && (
+        <div>
+          <h3 className="hp-info-title" style={{ marginBottom: '0.75rem' }}>Team Rankings</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {rankings.map((entry: any, idx: number) => (
+              <div key={entry.teamId} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.75rem 0.85rem', background: 'var(--bg-raised)',
+                borderRadius: 'var(--radius-sm)',
+                border: idx === 0 ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{
+                    fontWeight: 700, fontSize: idx < 3 ? '1.1rem' : '0.9rem',
+                    color: idx === 0 ? '#e8a44a' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'var(--text-muted)',
+                    minWidth: 24, textAlign: 'center',
+                  }}>
+                    #{entry.rank}
+                  </span>
+                  <div>
+                    <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{entry.teamName}</p>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{entry.judgeCount} judge{entry.judgeCount !== 1 ? 's' : ''} scored</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  {(() => {
+                    const prizeLabel = getPrizeLabelForRank(entry.rank, prizeDetails);
+                    return prizeLabel !== '-' ? (
+                      <span style={{
+                        padding: '0.25rem 0.5rem',
+                        background: 'rgba(99,102,241,0.1)',
+                        color: 'var(--accent)',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}>
+                        {prizeLabel}
+                      </span>
+                    ) : null;
+                  })()}
+                  <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)' }}>
+                    {entry.totalScore.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Winners Section - Shows below Team Rankings */}
+      {certificates.length > 0 && (
+        <div>
+          <h3 className="hp-info-title" style={{ marginBottom: '0.75rem' }}>Winners</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {['WINNER', 'RUNNER_UP', 'BEST_PROJECT'].map((type) => {
+              const certs = certificates.filter((c: any) => c.type === type);
+              if (certs.length === 0) return null;
+              return (
+                <div key={type} className="hp-info-card">
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    marginBottom: '0.5rem',
+                    paddingBottom: '0.5rem',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)'
+                  }}>
+                    <span style={{ 
+                      fontSize: '1rem',
+                      color: type === 'WINNER' ? '#e8a44a' : type === 'RUNNER_UP' ? '#94a3b8' : '#cd7f32'
+                    }}>
+                      🏆
+                    </span>
+                    <h4 className="hp-info-title" style={{ margin: 0 }}>{getTypeLabel(type)}</h4>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {certs.map((cert: any) => (
+                      <div key={cert.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div>
+                          <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cert.team?.name || 'Team'}</p>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            {cert.user?.name || 'Team members'}
+                          </p>
+                        </div>
+                        {cert.certificateUrl && (
+                          <a href={cert.certificateUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--accent)', textDecoration: 'none' }}>
+                            View Certificate
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function HackathonDetailPage() {
   const params = useParams();
@@ -675,6 +845,14 @@ export default function HackathonDetailPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Results Tab */}
+              {activeTab === 'results' && (
+                <div className="hp-section">
+                  <h2 className="hp-section-title">Results</h2>
+                  <ResultsSection hackathonId={hackathonId} />
                 </div>
               )}
 

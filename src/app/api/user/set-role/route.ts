@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
 const setRoleSchema = z.object({
-  role: z.enum(['PARTICIPANT', 'ORGANISER']),
+  role: z.enum(['PARTICIPANT', 'ORGANISER', 'JUDGE', 'MENTOR', 'SPONSOR']),
 });
 
 export async function POST(req: NextRequest) {
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid role. Choose participant or organiser.' },
+        { error: 'Invalid role. Choose participant, organiser, judge, mentor, or sponsor.' },
         { status: 400 }
       );
     }
