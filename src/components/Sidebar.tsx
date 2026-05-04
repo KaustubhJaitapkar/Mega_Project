@@ -95,7 +95,6 @@ export default function Sidebar({ role }: SidebarProps) {
       { label: 'Dashboard', path: '/participant/dashboard', icon: icons.dashboard },
       { label: 'Explore', path: '/participant/hackathons', icon: icons.explore },
       { label: 'My Team', path: '/participant/my-team', icon: icons.teams },
-      { label: 'Submit', path: '/participant/submit', icon: icons.submit },
       { label: 'Schedule', path: '/participant/schedule', icon: icons.schedule },
       { label: 'Certificates', path: '/participant/certificates', icon: icons.cert },
       { label: 'Profile', path: '/participant/profile', icon: icons.profile },

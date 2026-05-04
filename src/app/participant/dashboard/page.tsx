@@ -152,7 +152,11 @@ export default function ParticipantDashboardPage() {
             {/* Quick Actions */}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <Link href={`/participant/my-team?hackathonId=${activeHackathon.id}`} className="org-btn-primary">My Team</Link>
-              <Link href="/participant/submit" className="org-btn-secondary">Submit</Link>
+              {activeHackathon.status === 'ONGOING' && (
+                <Link href={`/participant/hackathons/${activeHackathon.id}/submit`} className="org-btn-primary" style={{ background: '#3ecf8e', borderColor: '#3ecf8e' }}>
+                  Submit Project
+                </Link>
+              )}
               <Link href="/participant/schedule" className="org-btn-secondary">Schedule</Link>
             </div>
           </div>
@@ -244,7 +248,11 @@ export default function ParticipantDashboardPage() {
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <Link href={`/participant/my-team?hackathonId=${h.id}`} className="org-btn-primary" style={{ fontSize: '0.68rem' }}>Team</Link>
-                  <Link href="/participant/submit" className="org-btn-secondary" style={{ fontSize: '0.68rem' }}>Submit</Link>
+                  {h.status === 'ONGOING' && (
+                    <Link href={`/participant/hackathons/${h.id}/submit`} className="org-btn-primary" style={{ fontSize: '0.68rem', background: '#3ecf8e', borderColor: '#3ecf8e' }}>
+                      Submit
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}

@@ -11,6 +11,8 @@ interface Submission {
   liveUrl?: string;
   description?: string;
   technologies: string[];
+  pitchDeckUrl?: string;
+  files?: Record<string, { url: string; publicId: string }>;
   team: { id: string; name: string; members: Array<any> };
   scores: Array<any>;
 }
@@ -22,7 +24,23 @@ interface RubricItem {
   maxScore: number;
 }
 
+interface SubmissionRequirement {
+  type: 'github' | 'demo' | 'video' | 'presentation' | 'document' | 'image';
+  label: string;
+  description?: string;
+}
+
 type EmbedMode = 'readme' | 'live' | 'none';
+
+// Map of requirement types to labels
+const REQUIREMENT_CONFIG: Record<string, SubmissionRequirement> = {
+  github: { type: 'github', label: 'GitHub Repository', description: 'Source code repository' },
+  demo: { type: 'demo', label: 'Live Demo', description: 'Deployed project URL' },
+  video: { type: 'video', label: 'Video Demo', description: 'Video demonstration' },
+  presentation: { type: 'presentation', label: 'Presentation', description: 'Slide deck / pitch deck' },
+  document: { type: 'document', label: 'Documentation', description: 'Project documentation' },
+  image: { type: 'image', label: 'Screenshots', description: 'Project screenshots' },
+};
 
 export default function JudgingPage() {
   const params = useParams();
@@ -31,6 +49,7 @@ export default function JudgingPage() {
   const [teamRows, setTeamRows] = useState<Array<{ id: string; name: string; submissionId: string | null; scored: boolean }>>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [rubricItems, setRubricItems] = useState<RubricItem[]>([]);
+  const [submissionRequirements, setSubmissionRequirements] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
@@ -61,15 +80,22 @@ export default function JudgingPage() {
         const rows = teamsData.data?.teams || [];
         setTeamRows(rows);
         setBlindMode(!!teamsData.data?.blindMode);
+        
+        // Build submissions map from team rows (which now include submission data with parsed files)
         const subMap: Record<string, Submission> = {};
-        (hackathonData.data?.teams || []).forEach((team: any) => {
-          if (team.submission) subMap[team.submission.id] = team.submission as Submission;
+        rows.forEach((team: any) => {
+          if (team.submission) {
+            subMap[team.submission.id] = team.submission as Submission;
+          }
         });
         setSubmissions(subMap);
+        
         // Get rubric items from the first rubric
         const rubrics = rubricsData.data || [];
         const rubricItems = rubrics.length > 0 ? (rubrics[0].items || []) : [];
         setRubricItems(rubricItems);
+        // Get submission requirements from hackathon
+        setSubmissionRequirements(hackathonData.data?.submissionRequirements || []);
       } catch (err) {
         console.error('Failed to fetch data:', err);
         setLoadError('Failed to load judging data. Please refresh the page.');
@@ -304,7 +330,7 @@ export default function JudgingPage() {
 
         {/* ═══ COL 2: EVIDENCE PANE ═══ */}
         <div className="judging-evidence">
-          {selectedSubmission ? (
+          {selectedTeam ? (
             <>
               {/* Project Header */}
               <div className="judging-evidence__header">
@@ -312,74 +338,142 @@ export default function JudgingPage() {
                   <p className="judging-evidence__team-label">
                     {blindMode ? `Team ${selectedIndex + 1}` : selectedTeam?.name}
                   </p>
-                  <p className="judging-evidence__tech">
-                    {selectedSubmission.technologies?.join(' · ') || 'No tech stack listed'}
-                  </p>
-                  {selectedSubmission.description && (
-                    <div className="judging-evidence__desc">
-                      <span style={{ display: 'block', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Work Done So Far</span>
-                      <p>{selectedSubmission.description}</p>
+                  {selectedSubmission ? (
+                    <>
+                      <p className="judging-evidence__tech">
+                        {selectedSubmission.technologies?.join(' · ') || 'No tech stack listed'}
+                      </p>
+                      {selectedSubmission.description && (
+                        <div className="judging-evidence__desc">
+                          <span style={{ display: 'block', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Work Done So Far</span>
+                          <p>{selectedSubmission.description}</p>
+                        </div>
+                      )}
+                      {gitActivity && (
+                        <span className={`judging-activity-tag ${gitActivity.includes('warning') ? 'judging-activity-tag--warn' : 'judging-activity-tag--ok'}`}>
+                          <span className="judging-activity-tag__dot" />
+                          {gitActivity}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ 
+                      padding: '1rem', 
+                      background: 'rgba(239, 68, 68, 0.1)', 
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      borderRadius: 'var(--radius-md)',
+                      marginTop: '0.5rem'
+                    }}>
+                      <p style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 500 }}>
+                        No submission received for this team
+                      </p>
                     </div>
-                  )}
-                  {gitActivity && (
-                    <span className={`judging-activity-tag ${gitActivity.includes('warning') ? 'judging-activity-tag--warn' : 'judging-activity-tag--ok'}`}>
-                      <span className="judging-activity-tag__dot" />
-                      {gitActivity}
-                    </span>
                   )}
                 </div>
               </div>
 
-              {/* Action Bar */}
-              <div className="judging-evidence__actions">
-                {selectedSubmission.liveUrl && (
-                  <button
-                    className={`judging-action-btn judging-action-btn--live ${embedMode === 'live' ? 'judging-action-btn--active' : ''}`}
-                    onClick={() => {
-                      setEmbedMode(embedMode === 'live' ? 'none' : 'live');
-                      setIframeError(false);
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
-                    </svg>
-                    {embedMode === 'live' ? 'Hide' : 'Open Live Demo'}
-                  </button>
-                )}
-                {selectedSubmission.githubUrl && (
-                  <button
-                    className={`judging-action-btn judging-action-btn--gh ${embedMode === 'readme' ? 'judging-action-btn--active' : ''}`}
-                    onClick={() => {
-                      setEmbedMode(embedMode === 'readme' ? 'none' : 'readme');
-                      setIframeError(false);
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                    </svg>
-                    {embedMode === 'readme' ? 'Hide Readme' : 'View Source Code'}
-                  </button>
-                )}
-                {selectedSubmission.githubUrl && (
-                  <button
-                    className={`judging-action-btn ${showCode ? 'judging-action-btn--active' : ''}`}
-                    onClick={() => setShowCode((prev) => !prev)}
-                  >
-                    {showCode ? 'Hide Code Review' : 'Open Code Review'}
-                  </button>
-                )}
-                {selectedSubmission.liveUrl && (
-                  <a href={selectedSubmission.liveUrl} target="_blank" rel="noopener noreferrer" className="judging-action-btn judging-action-btn--ext">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
-                    </svg>
-                    External
-                  </a>
-                )}
-              </div>
+              {/* Submission Files Section - Show all required submission types */}
+              {submissionRequirements.length > 0 && (
+                <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                    Required Submissions
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {submissionRequirements.map((reqType) => {
+                      const config = REQUIREMENT_CONFIG[reqType] || { type: reqType, label: reqType };
+                      let hasSubmitted = false;
+                      let fileUrl = '';
+                      
+                      if (selectedSubmission) {
+                        if (reqType === 'github' && selectedSubmission.githubUrl) {
+                          hasSubmitted = true;
+                          fileUrl = selectedSubmission.githubUrl;
+                        } else if (reqType === 'demo' && selectedSubmission.liveUrl) {
+                          hasSubmitted = true;
+                          fileUrl = selectedSubmission.liveUrl;
+                        } else if (selectedSubmission.files?.[reqType]?.url) {
+                          hasSubmitted = true;
+                          fileUrl = selectedSubmission.files[reqType].url;
+                        }
+                      }
+                      
+                      return (
+                        <div key={reqType} style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          padding: '0.5rem 0.75rem',
+                          background: hasSubmitted ? 'rgba(62, 207, 142, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                          border: `1px solid ${hasSubmitted ? 'rgba(62, 207, 142, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                          borderRadius: 'var(--radius-sm)',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ 
+                              width: 8, 
+                              height: 8, 
+                              borderRadius: '50%', 
+                              background: hasSubmitted ? '#3ecf8e' : '#ef4444' 
+                            }} />
+                            <span style={{ fontSize: '0.82rem', color: hasSubmitted ? '#3ecf8e' : '#ef4444', fontWeight: 500 }}>
+                              {config.label}
+                            </span>
+                          </div>
+                          {hasSubmitted && fileUrl && (
+                            <a 
+                              href={fileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{ 
+                                fontSize: '0.72rem', 
+                                color: 'var(--accent)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                              }}
+                            >
+                              View
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 10, height: 10 }}>
+                                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-              {/* Embedded View */}
-              {embedMode !== 'none' && (
+              {/* Action Bar - Only show when there's a submission */}
+              {selectedSubmission && (
+                <div className="judging-evidence__actions">
+                  {selectedSubmission.liveUrl && (
+                    <button
+                      className={`judging-action-btn judging-action-btn--live ${embedMode === 'live' ? 'judging-action-btn--active' : ''}`}
+                      onClick={() => {
+                        setEmbedMode(embedMode === 'live' ? 'none' : 'live');
+                        setIframeError(false);
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                      </svg>
+                      {embedMode === 'live' ? 'Hide' : 'Open Live Demo'}
+                    </button>
+                  )}
+                  {selectedSubmission.githubUrl && (
+                    <button
+                      className={`judging-action-btn ${showCode ? 'judging-action-btn--active' : ''}`}
+                      onClick={() => setShowCode((prev) => !prev)}
+                    >
+                      {showCode ? 'Hide Code Review' : 'Open Code Review'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Embedded View - Only show when there's a submission */}
+              {selectedSubmission && embedMode !== 'none' && (
                 <div className="judging-embed">
                   {iframeError ? (
                     <div className="judging-embed__error">
@@ -424,37 +518,58 @@ export default function JudgingPage() {
         {/* ═══ COL 3: VERDICT PANE ═══ */}
         <div className="judging-verdict">
           <div className="judging-verdict__inner">
-            {selectedSubmission ? (
+            {selectedTeam ? (
               <>
                 <div className="judging-verdict__header">
                   <span className="judging-verdict__title">Evaluation</span>
                 </div>
 
-                {/* Rubrics Section */}
-                {rubricItems.length > 0 && (
-                  <div style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                      Rubric Criteria
-                    </h3>
-                    <div className="judging-rubric">
-                      {rubricItems.map((item) => (
-                        <div key={item.id} className="judging-rubric__card">
-                          <div className="judging-rubric__row">
-                            <div>
-                              <p className="judging-rubric__name">{item.name}</p>
-                              <p className="judging-rubric__weight">Max: {item.maxScore} pts</p>
-                            </div>
-                          </div>
-                          {item.description && (
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                              {item.description}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                {!selectedSubmission ? (
+                  <div style={{ 
+                    padding: '2rem', 
+                    textAlign: 'center',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    borderRadius: 'var(--radius-md)',
+                    marginTop: '1rem'
+                  }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" style={{ width: 48, height: 48, marginBottom: '1rem' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                    <p style={{ color: '#ef4444', fontSize: '0.9rem', fontWeight: 500, marginBottom: '0.5rem' }}>
+                      No Submission Received
+                    </p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      This team has not submitted their project yet.
+                    </p>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {/* Rubrics Section */}
+                    {rubricItems.length > 0 && (
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h3 style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                          Rubric Criteria
+                        </h3>
+                        <div className="judging-rubric">
+                          {rubricItems.map((item) => (
+                            <div key={item.id} className="judging-rubric__card">
+                              <div className="judging-rubric__row">
+                                <div>
+                                  <p className="judging-rubric__name">{item.name}</p>
+                                  <p className="judging-rubric__weight">Max: {item.maxScore} pts</p>
+                                </div>
+                              </div>
+                              {item.description && (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                  {item.description}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                 {/* Marks Input Section */}
                 <div>
@@ -573,6 +688,8 @@ export default function JudgingPage() {
                     Seal scores after saving <span style={{ color: 'var(--text-muted)' }}>(irreversible)</span>
                   </span>
                 </label>
+                  </>
+                )}
               </>
             ) : (
               <div className="judging-verdict__empty">

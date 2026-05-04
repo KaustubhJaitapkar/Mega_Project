@@ -3150,3 +3150,241 @@
   color: var(--accent);
   font-weight: 500;
 }
+
+/* ============================================
+   FILE UPLOAD COMPONENT (fu-*)
+   ============================================ */
+
+.fu-container {
+  width: 100%;
+}
+
+.fu-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.fu-hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.fu-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: var(--bg-raised);
+  border: 2px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+  min-height: 120px;
+}
+
+.fu-dropzone:hover {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+
+.fu-dropzone-active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  transform: scale(1.01);
+}
+
+.fu-input-hidden {
+  display: none;
+}
+
+.fu-dropzone-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.fu-dropzone-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+}
+
+.fu-dropzone:hover .fu-dropzone-icon {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.fu-dropzone-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.25rem 0;
+}
+
+.fu-dropzone-link {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.fu-dropzone-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.fu-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-lg);
+}
+
+.fu-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: auth-spin 0.7s linear infinite;
+}
+
+.fu-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fu-preview-content {
+  position: relative;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-raised);
+}
+
+.fu-preview-image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  display: block;
+}
+
+.fu-preview-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  gap: 0.5rem;
+}
+
+.fu-preview-filename {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+  text-align: center;
+}
+
+.fu-preview-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.fu-preview-content:hover .fu-preview-overlay {
+  opacity: 1;
+}
+
+.fu-preview-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.fu-preview-btn:hover {
+  background: #ef4444;
+}
+
+.fu-preview-link {
+  display: block;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--accent);
+  padding: 0.5rem;
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.fu-preview-link:hover {
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.fu-url-input {
+  margin-top: 0.5rem;
+}
+
+.fu-error {
+  font-size: 0.72rem;
+  color: #ef4444;
+  margin-top: 0.5rem;
+}
+
+/* Sponsor Row Styles */
+.hf-sponsor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: 0.75rem;
+}
+
+.hf-sponsor-fields {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr;
+  gap: 0.75rem;
+}
+
+.hf-sponsor-logo {
+  max-width: 300px;
+}

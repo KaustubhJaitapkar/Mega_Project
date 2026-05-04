@@ -18,7 +18,22 @@ export async function GET(
       },
     });
 
-    return NextResponse.json({ data: submission });
+    // Parse files from pitchDeckUrl if it exists
+    let parsedSubmission = submission;
+    if (submission?.pitchDeckUrl) {
+      try {
+        const files = JSON.parse(submission.pitchDeckUrl);
+        parsedSubmission = {
+          ...submission,
+          pitchDeckUrl: undefined, // Remove the JSON string
+          files, // Add parsed files
+        } as any;
+      } catch (e) {
+        // If parsing fails, keep the original
+      }
+    }
+
+    return NextResponse.json({ data: parsedSubmission });
   } catch (error) {
     console.error('Get team submission error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -77,14 +92,23 @@ export async function PUT(
       create: {
         teamId: params.teamId,
         hackathonId: teamMember.team.hackathonId,
-        ...validatedData,
+        githubUrl: validatedData.githubUrl,
+        liveUrl: validatedData.liveUrl,
+        description: validatedData.description,
+        technologies: validatedData.technologies,
+        // Store file URLs in pitchDeckUrl for now (could be extended with a separate field)
+        pitchDeckUrl: validatedData.files ? JSON.stringify(validatedData.files) : undefined,
         status: 'SUBMITTED',
         submittedAt: new Date(),
         isHealthy,
         healthCheckAt: new Date(),
       },
       update: {
-        ...validatedData,
+        githubUrl: validatedData.githubUrl,
+        liveUrl: validatedData.liveUrl,
+        description: validatedData.description,
+        technologies: validatedData.technologies,
+        pitchDeckUrl: validatedData.files ? JSON.stringify(validatedData.files) : undefined,
         status: 'SUBMITTED',
         submittedAt: new Date(),
         isHealthy,

@@ -13,9 +13,9 @@ import {
 } from 'lucide-react';
 import DatePicker from './ui/DatePicker';
 import ImageUpload from './ui/ImageUpload';
+import FileUpload from './ui/FileUpload';
 import MealScheduleBuilder from './ui/MealScheduleBuilder';
 import JudgingRubric from './ui/JudgingRubric';
-import InternalMentorsList from './ui/InternalMentorsList';
 import '@/app/form-components.css';
 
 // Dynamic import for RichTextEditor to avoid SSR issues
@@ -1248,42 +1248,13 @@ export default function HackathonForm() {
           <HfSectionHeader
             icon={<UsersRound size={20} strokeWidth={1.75} />}
             title="People"
-            desc="Sponsors for the site, external judges for scoring, internal mentors for lab hours—you can grow this list later."
+            desc="Sponsors for the site. You can grow this list later."
           />
-
-          {/* Internal Mentors */}
-          <div style={{ marginBottom: '2rem' }}>
-            <InternalMentorsList
-              mentors={internalMentors}
-              onChange={setInternalMentors}
-            />
-          </div>
 
           {/* Sponsors */}
-          <PersonSection
-            title="Sponsors"
-            titleIcon={<BriefcaseBusiness size={15} strokeWidth={2} />}
+          <SponsorSection
             items={sponsors}
             setItems={setSponsors}
-            fields={[
-              { key: 'name', placeholder: 'Sponsor name' },
-              { key: 'tier', placeholder: 'Tier (Platinum/Gold/Silver)' },
-              { key: 'website', placeholder: 'Website URL' },
-              { key: 'logoUrl', placeholder: 'Logo URL' },
-            ]}
-          />
-
-          {/* External Judges */}
-          <PersonSection
-            title="External judges"
-            titleIcon={<Scale size={15} strokeWidth={2} />}
-            items={judges}
-            setItems={setJudges}
-            fields={[
-              { key: 'name', placeholder: 'Judge name' },
-              { key: 'email', placeholder: 'Email' },
-              { key: 'extra', placeholder: 'Company / Title' },
-            ]}
           />
         </div>
       )}
@@ -1404,8 +1375,6 @@ export default function HackathonForm() {
               <h4 className="hf-review-category">People</h4>
               <div className="hf-review-items">
                 <ReviewItem label="Sponsors" value={`${sponsors.filter(s => s.name).length} added`} />
-                <ReviewItem label="External Judges" value={`${judges.filter(j => j.name).length} added`} />
-                <ReviewItem label="Internal Mentors" value={`${internalMentors.filter(m => m.name).length} assigned`} />
               </div>
             </div>
           </div>
@@ -1475,6 +1444,98 @@ function ReviewItem({ label, value }: { label: string; value: string }) {
 }
 
 // Person Section Component
+function SponsorSection({
+  items,
+  setItems,
+}: {
+  items: SponsorEntry[];
+  setItems: (fn: any) => any;
+}) {
+  return (
+    <div className="hf-person-block">
+      <div className="hf-person-head">
+        <p className="hf-person-title">
+          <BriefcaseBusiness size={15} strokeWidth={2} />
+          <span>
+            Sponsors
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600, marginLeft: '0.35rem' }}>({items.length})</span>
+          </span>
+        </p>
+        <button
+          type="button"
+          className="org-btn-secondary"
+          onClick={() => setItems((p: any[]) => [...p, { name: '', tier: '', website: '', logoUrl: '' }])}
+        >
+          <span className="hf-btn-inner">
+            <Plus size={14} strokeWidth={2} aria-hidden />
+            Add row
+          </span>
+        </button>
+      </div>
+      <div className="hf-person-rows">
+        {items.map((item, i) => (
+          <div key={i} className="hf-sponsor-row">
+            <div className="hf-sponsor-fields">
+              <input
+                className="org-input"
+                placeholder="Sponsor name"
+                value={item.name}
+                onChange={e =>
+                  setItems((p: any[]) =>
+                    p.map((x: any, j: number) => (j === i ? { ...x, name: e.target.value } : x))
+                  )
+                }
+              />
+              <input
+                className="org-input"
+                placeholder="Tier (Platinum/Gold/Silver)"
+                value={item.tier}
+                onChange={e =>
+                  setItems((p: any[]) =>
+                    p.map((x: any, j: number) => (j === i ? { ...x, tier: e.target.value } : x))
+                  )
+                }
+              />
+              <input
+                className="org-input"
+                placeholder="Website URL"
+                value={item.website}
+                onChange={e =>
+                  setItems((p: any[]) =>
+                    p.map((x: any, j: number) => (j === i ? { ...x, website: e.target.value } : x))
+                  )
+                }
+              />
+            </div>
+            <div className="hf-sponsor-logo">
+              <FileUpload
+                value={item.logoUrl}
+                onChange={val =>
+                  setItems((p: any[]) =>
+                    p.map((x: any, j: number) => (j === i ? { ...x, logoUrl: val } : x))
+                  )
+                }
+                label="Sponsor Logo"
+                accept="image/*"
+                hint="Upload sponsor logo"
+                maxSizeMB={5}
+              />
+            </div>
+            <button
+              type="button"
+              className="hf-person-remove"
+              onClick={() => setItems((p: any[]) => p.filter((_: any, j: number) => j !== i))}
+              aria-label="Remove sponsor row"
+            >
+              <Trash2 size={16} strokeWidth={2} aria-hidden />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PersonSection({
   title,
   titleIcon,

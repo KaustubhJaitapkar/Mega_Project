@@ -443,6 +443,11 @@ export default function HackathonDetailPage() {
                     {hackathon.status === 'REGISTRATION' && (
                       <Link href={`/participant/hackathons/${hackathon.id}/register`} className="org-btn-secondary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>Update Registration</Link>
                     )}
+                    {hackathon.status === 'ONGOING' && (
+                      <Link href={`/participant/hackathons/${hackathon.id}/submit`} className="org-btn-primary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none', background: '#3ecf8e', borderColor: '#3ecf8e' }}>
+                        Submit Project
+                      </Link>
+                    )}
                     {hackathon.status === 'REGISTRATION' && (
                       <button onClick={unregister} className="org-btn-danger" style={{ width: '100%', justifyContent: 'center' }} disabled={unregistering}>
                         {unregistering ? '...' : 'Unregister'}

@@ -27,7 +27,24 @@ export async function GET(
       orderBy: { updatedAt: 'desc' },
     });
 
-    return NextResponse.json({ data: submissions });
+    // Parse files from pitchDeckUrl for each submission
+    const parsedSubmissions = submissions.map((submission: any) => {
+      if (submission.pitchDeckUrl) {
+        try {
+          const files = JSON.parse(submission.pitchDeckUrl);
+          return {
+            ...submission,
+            pitchDeckUrl: undefined,
+            files,
+          };
+        } catch (e) {
+          return submission;
+        }
+      }
+      return submission;
+    });
+
+    return NextResponse.json({ data: parsedSubmissions });
   } catch (error) {
     console.error('Submission monitoring error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

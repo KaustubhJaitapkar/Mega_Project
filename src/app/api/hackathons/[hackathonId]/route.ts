@@ -35,7 +35,32 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ data: hackathon });
+    // Parse files from pitchDeckUrl for each submission
+    const teamsWithParsedSubmissions = hackathon.teams.map((team: any) => {
+      if (team.submission?.pitchDeckUrl) {
+        try {
+          const files = JSON.parse(team.submission.pitchDeckUrl);
+          return {
+            ...team,
+            submission: {
+              ...team.submission,
+              pitchDeckUrl: undefined,
+              files,
+            },
+          };
+        } catch (e) {
+          return team;
+        }
+      }
+      return team;
+    });
+
+    return NextResponse.json({ 
+      data: {
+        ...hackathon,
+        teams: teamsWithParsedSubmissions,
+      }
+    });
   } catch (error) {
     console.error('Get hackathon error:', error);
     return NextResponse.json(

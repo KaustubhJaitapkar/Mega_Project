@@ -43,12 +43,31 @@ export async function GET(req: Request) {
             })
           : 0;
 
+        // Parse files from pitchDeckUrl if it exists
+        let parsedSubmission = null;
+        if (team.submission) {
+          parsedSubmission = { ...team.submission };
+          if (team.submission.pitchDeckUrl) {
+            try {
+              const files = JSON.parse(team.submission.pitchDeckUrl);
+              parsedSubmission = {
+                ...parsedSubmission,
+                pitchDeckUrl: undefined,
+                files,
+              };
+            } catch (e) {
+              // Keep original if parsing fails
+            }
+          }
+        }
+
         return {
           id: team.id,
           name: blindMode ? anonymousMap[team.id] || `Team ${team.id.slice(-4)}` : team.name,
           // realName is intentionally omitted in blind mode to prevent de-anonymization
           ...(blindMode ? {} : { realName: team.name }),
           submissionId: team.submission?.id || null,
+          submission: parsedSubmission,
           scored: scoreCount > 0,
         };
       })

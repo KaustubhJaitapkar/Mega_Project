@@ -146,6 +146,12 @@ export const submissionSchema = z.object({
   liveUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
   description: z.string().optional(),
   technologies: z.array(z.string()).optional(),
+  files: z.record(
+    z.object({
+      url: z.string().url(),
+      publicId: z.string(),
+    })
+  ).optional(),
 });
 
 // Rubric validation
