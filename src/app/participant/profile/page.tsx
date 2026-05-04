@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import FileUpload from '@/components/ui/FileUpload';
 
 const SKILL_SUGGESTIONS = ['React', 'Next.js', 'Node.js', 'Python', 'TypeScript', 'Machine Learning', 'UI/UX', 'Docker', 'PostgreSQL', 'Firebase', 'Rust', 'Go', 'Swift', 'Kotlin', 'Figma'];
 
@@ -132,7 +133,7 @@ export default function ParticipantProfilePage() {
         {/* Links */}
         <div className="org-section" style={{ marginBottom: '0.75rem' }}>
           <p className="org-label" style={{ marginBottom: '0.75rem' }}>Links</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>GitHub Username</label>
               <input className="org-input" value={form.githubUsername} onChange={(e) => setForm({ ...form, githubUsername: e.target.value })} placeholder="octocat" />
@@ -145,10 +146,18 @@ export default function ParticipantProfilePage() {
               <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>LinkedIn</label>
               <input className="org-input" type="url" value={form.linkedinUrl} onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })} placeholder="https://linkedin.com/in/you" />
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Resume</label>
-              <input className="org-input" type="url" value={form.resumeUrl} onChange={(e) => setForm({ ...form, resumeUrl: e.target.value })} placeholder="https://drive.google.com/..." />
-            </div>
+          </div>
+          
+          {/* Resume Upload Section */}
+          <div style={{ marginTop: '0.75rem' }}>
+            <FileUpload
+              value={form.resumeUrl}
+              onChange={(val) => setForm({ ...form, resumeUrl: val })}
+              label="Resume / CV"
+              accept=".pdf,.doc,.docx"
+              hint="Upload your resume (PDF, DOC, DOCX) - Max 10MB"
+              maxSizeMB={10}
+            />
           </div>
         </div>
 

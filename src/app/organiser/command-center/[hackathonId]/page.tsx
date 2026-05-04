@@ -115,7 +115,7 @@ export default function CommandCenterPage() {
     switch (activeTab) {
       case 'overview': return <OverviewPanel stats={stats} hackathon={hackathon} submissions={submissions} />;
       case 'teams': return <TeamMonitoring hackathonId={hackathonId} />;
-      case 'submissions': return <SubmissionMonitoring hackathonId={hackathonId} />;
+      case 'submissions': return <SubmissionMonitoring hackathonId={hackathonId} submissionRequirements={hackathon?.submissionRequirements || []} />;
       case 'tickets': return <HelpTickets hackathonId={hackathonId} />;
       case 'announcements': return <AnnouncementSystem hackathonId={hackathonId} />;
       case 'staff': return <StaffManagement hackathonId={hackathonId} />;

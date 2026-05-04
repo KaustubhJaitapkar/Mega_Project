@@ -6,6 +6,11 @@ export default withAuth(
     const token = req.nextauth.token;
     const pathname = req.nextUrl.pathname;
 
+    // Allow role-selection page for users who need to select a role
+    if (pathname === '/role-selection' || pathname === '/select-role') {
+      return NextResponse.next();
+    }
+
     // Role-based route guards
     const roleRouteMap: Record<string, string> = {
       '/organiser': 'ORGANISER',
@@ -18,6 +23,11 @@ export default withAuth(
     for (const [prefix, requiredRole] of Object.entries(roleRouteMap)) {
       if (pathname.startsWith(prefix)) {
         if (token?.role !== requiredRole) {
+          // If user doesn't have a role, redirect to role selection
+          if (!token?.role || token.role === 'PARTICIPANT') {
+            // Check if this is a new user who needs to select a role
+            return NextResponse.redirect(new URL('/role-selection', req.url));
+          }
           return NextResponse.redirect(new URL('/dashboard', req.url));
         }
       }

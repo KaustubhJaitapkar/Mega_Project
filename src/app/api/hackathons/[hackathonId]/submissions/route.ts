@@ -22,7 +22,17 @@ export async function GET(
     const submissions = await prisma.submission.findMany({
       where: { hackathonId: params.hackathonId },
       include: {
-        team: { select: { id: true, name: true } },
+        team: { 
+          select: { 
+            id: true, 
+            name: true,
+            members: {
+              include: {
+                user: { select: { id: true, name: true, email: true } }
+              }
+            }
+          } 
+        },
       },
       orderBy: { updatedAt: 'desc' },
     });
