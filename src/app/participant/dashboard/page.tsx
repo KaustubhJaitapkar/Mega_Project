@@ -24,11 +24,12 @@ export default function ParticipantDashboardPage() {
   const [myAttendance, setMyAttendance] = useState<{ checkInTime: string | null; breakfastRedeemed: boolean; lunchRedeemed: boolean; swagCollected: boolean } | null>(null);
 
   useEffect(() => {
+    const abort = new AbortController();
     (async () => {
       try {
         const [hackRes, regRes] = await Promise.all([
-          fetch('/api/hackathons?limit=50'),
-          fetch('/api/users/registrations'),
+          fetch('/api/hackathons?limit=50', { signal: abort.signal }),
+          fetch('/api/users/registrations', { signal: abort.signal }),
         ]);
         const list = (await hackRes.json()).data || [];
         const ids = (await regRes.json()).data || [];
@@ -39,54 +40,65 @@ export default function ParticipantDashboardPage() {
           registered.find((h: Hackathon) => h.status === 'ONGOING') ||
           registered.find((h: Hackathon) => h.status === 'REGISTRATION') || registered[0] || null
         );
-      } catch {
-        setLoadError('Failed to load dashboard data. Please refresh the page.');
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') {
+          setLoadError('Failed to load dashboard data. Please refresh the page.');
+        }
       } finally {
-        setIsLoading(false);
+        if (!abort.signal.aborted) setIsLoading(false);
       }
     })();
+    return () => abort.abort();
   }, []);
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
     if (!activeHackathon) return;
+    const abort = new AbortController();
     (async () => {
       try {
-        const res = await fetch(`/api/hackathons/${activeHackathon.id}/announcements`);
-        setAnnouncements(((await res.json()).data || []).slice(0, 3));
+        const res = await fetch(`/api/hackathons/${activeHackathon.id}/announcements`, { signal: abort.signal });
+        if (!abort.signal.aborted) {
+          setAnnouncements(((await res.json()).data || []).slice(0, 3));
+        }
       } catch {
         // Announcements are non-critical; fail silently
       }
     })();
+    return () => abort.abort();
   }, [activeHackathon]);
 
   useEffect(() => {
     if (!activeHackathon) return;
+    const abort = new AbortController();
     setQrLoading(true);
     setQrError('');
     (async () => {
       try {
         const [qrRes, profileRes] = await Promise.all([
-          fetch(`/api/user/qr?hackathonId=${activeHackathon.id}`),
-          fetch('/api/users/profile'),
+          fetch(`/api/user/qr?hackathonId=${activeHackathon.id}`, { signal: abort.signal }),
+          fetch('/api/users/profile', { signal: abort.signal }),
         ]);
         const qrData = await qrRes.json();
-        if (qrData.data?.qrCode) setQrCode(qrData.data.qrCode);
+        if (qrData.data?.qrCode && !abort.signal.aborted) setQrCode(qrData.data.qrCode);
         const profile = await profileRes.json();
         const userId = profile.user?.id;
-        if (userId) {
-          const attRes = await fetch(`/api/hackathons/${activeHackathon.id}/attendance`);
+        if (userId && !abort.signal.aborted) {
+          const attRes = await fetch(`/api/hackathons/${activeHackathon.id}/attendance`, { signal: abort.signal });
           const attData = await attRes.json();
           const myAtt = (attData.data || []).find((a: any) => a.user?.id === userId);
-          if (myAtt) setMyAttendance(myAtt);
+          if (myAtt && !abort.signal.aborted) setMyAttendance(myAtt);
         }
-      } catch {
-        setQrError('Could not load check-in status. Please refresh.');
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') {
+          setQrError('Could not load check-in status. Please refresh.');
+        }
       } finally {
-        setQrLoading(false);
+        if (!abort.signal.aborted) setQrLoading(false);
       }
     })();
+    return () => abort.abort();
   }, [activeHackathon]);
 
   const target = activeHackathon ? new Date(activeHackathon.status === 'REGISTRATION' ? activeHackathon.registrationDeadline : activeHackathon.submissionDeadline).getTime() : 0;

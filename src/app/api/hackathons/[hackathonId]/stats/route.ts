@@ -8,7 +8,7 @@ export async function GET(
   try {
     const hackathon = await prisma.hackathon.findUnique({
       where: { id: params.hackathonId },
-      include: {
+      select: {
         _count: {
           select: {
             teams: true,
@@ -26,38 +26,34 @@ export async function GET(
       );
     }
 
-    // Calculate advanced stats
-    const submissions = await prisma.submission.findMany({
-      where: { hackathonId: params.hackathonId },
-    });
-
-    const scores = await prisma.score.findMany({
-      where: {
-        submission: {
-          hackathonId: params.hackathonId,
-        },
-      },
-    });
-
-    const teams = await prisma.team.findMany({
-      where: { hackathonId: params.hackathonId },
-      include: {
-        members: {
-          include: {
-            user: {
-              include: { profile: true },
+    const [submissions, scores, teams, tickets] = await Promise.all([
+      prisma.submission.findMany({
+        where: { hackathonId: params.hackathonId },
+        select: { status: true, isHealthy: true },
+      }),
+      prisma.score.findMany({
+        where: { submission: { hackathonId: params.hackathonId } },
+        select: { score: true },
+      }),
+      prisma.team.findMany({
+        where: { hackathonId: params.hackathonId },
+        select: {
+          members: {
+            select: {
+              user: {
+                select: { profile: { select: { skills: true } } },
+              },
             },
           },
         },
-      },
-    });
-
-    const tickets = await prisma.helpTicket.count({
-      where: {
-        hackathonId: params.hackathonId,
-        status: { in: ['OPEN', 'IN_PROGRESS'] },
-      },
-    });
+      }),
+      prisma.helpTicket.count({
+        where: {
+          hackathonId: params.hackathonId,
+          status: { in: ['OPEN', 'IN_PROGRESS'] },
+        },
+      }),
+    ]);
 
     const submittedCount = submissions.filter((s) => s.status === 'SUBMITTED').length;
     const healthyCount = submissions.filter((s) => s.isHealthy).length;

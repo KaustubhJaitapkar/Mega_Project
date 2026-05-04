@@ -42,7 +42,10 @@ export async function GET(req: NextRequest) {
 
     let organiserId: string | null = null;
     if (session?.user?.email) {
-      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true, role: true },
+      });
       if (user?.role === 'ORGANISER') {
         organiserId = user.id;
       }

@@ -188,24 +188,52 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only the hackathon organizer may view attendance records
-    const actor = await prisma.user.findUnique({ where: { email: session.user.email } });
-    const hackathon = await prisma.hackathon.findUnique({ where: { id: params.hackathonId } });
-    if (!actor || !hackathon || hackathon.organiserId !== actor.id) {
+    const hackathon = await prisma.hackathon.findUnique({
+      where: { id: params.hackathonId },
+      select: { organiserId: true },
+    });
+    if (!hackathon) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const attendances = await prisma.attendance.findMany({
-      where: { hackathonId: params.hackathonId },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-      },
-      orderBy: { checkInTime: 'desc' },
+    const actor = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
     });
+    if (!actor || hackathon.organiserId !== actor.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    return NextResponse.json({ data: attendances });
+    const url = new URL(req.url);
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
+
+    const [attendances, total] = await Promise.all([
+      prisma.attendance.findMany({
+        where: { hackathonId: params.hackathonId },
+        select: {
+          id: true,
+          checkInTime: true,
+          checkOutTime: true,
+          breakfastRedeemed: true,
+          lunchRedeemed: true,
+          swagCollected: true,
+          eventMarks: true,
+          user: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+        orderBy: { checkInTime: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.attendance.count({ where: { hackathonId: params.hackathonId } }),
+    ]);
+
+    return NextResponse.json({
+      data: attendances,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error('Attendance fetch error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

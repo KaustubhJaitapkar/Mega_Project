@@ -10,28 +10,43 @@ export async function GET(
   { params }: { params: { hackathonId: string } }
 ) {
   try {
-    const teams = await prisma.team.findMany({
-      where: { hackathonId: params.hackathonId },
-      include: {
-        creator: { select: { id: true, name: true, image: true } },
-        members: {
-          select: {
-            id: true,
-            teamId: true,
-            userId: true,
-            role: true,
-            joinedAt: true,
-            user: { select: { id: true, name: true, image: true, profile: true } },
+    const url = new URL(req.url);
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '25', 10)));
+
+    const [teams, total] = await Promise.all([
+      prisma.team.findMany({
+        where: { hackathonId: params.hackathonId },
+        include: {
+          creator: { select: { id: true, name: true, image: true } },
+          members: {
+            select: {
+              id: true,
+              teamId: true,
+              userId: true,
+              role: true,
+              joinedAt: true,
+              user: { select: { id: true, name: true, image: true, profile: { select: { skills: true, experience: true } } } },
+            },
+          },
+          submission: {
+            select: { id: true, status: true, isHealthy: true, submittedAt: true, githubUrl: true, liveUrl: true, technologies: true },
+          },
+          _count: {
+            select: { joinRequests: true },
           },
         },
-        submission: true,
-        _count: {
-          select: { joinRequests: true },
-        },
-      },
-    });
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.team.count({ where: { hackathonId: params.hackathonId } }),
+    ]);
 
-    return NextResponse.json({ data: teams });
+    return NextResponse.json({
+      data: teams,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     console.error('Get teams error:', error);
     return NextResponse.json(

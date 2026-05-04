@@ -58,7 +58,7 @@ export async function GET(
               name: true,
               email: true,
               image: true,
-              profile: true,
+              profile: { select: { skills: true, experience: true } },
             },
           },
         },

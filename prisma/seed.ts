@@ -1138,8 +1138,7 @@ Over 500 participants, 120+ projects submitted.`,
   console.log(`  • ${participants.length} Participants with realistic profiles`);
   console.log(`  • 8+ Teams across hackathons`);
   console.log(`  • Rubrics with weighted criteria per hackathon`);
-  console.log(`  • Judge scores for submitted projects (sealed)`);
-  console.log(`  • Real GitHub repos linked to submissions`);
+  console.log(`  • Judge scores for submitted projects (sealed)`);]00  console.log(`  • Real GitHub repos linked to submissions`);
   console.log(`  • Attendance records with meal tracking`);
   console.log(`  • Help tickets and mentor assignments`);
   console.log(`  • Certificates for ended hackathon`);

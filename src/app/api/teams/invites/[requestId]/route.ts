@@ -30,15 +30,25 @@ export async function POST(
       return NextResponse.json({ error: 'Invite already processed' }, { status: 400 });
     }
 
-    const attendance = await prisma.attendance.findUnique({
-      where: {
-        hackathonId_userId: {
-          hackathonId: invite.team.hackathonId,
-          userId: user.id,
+    const [registration, attendance] = await Promise.all([
+      prisma.hackathonRegistration.findUnique({
+        where: {
+          hackathonId_userId: {
+            hackathonId: invite.team.hackathonId,
+            userId: user.id,
+          },
         },
-      },
-    });
-    if (!attendance) {
+      }),
+      prisma.attendance.findUnique({
+        where: {
+          hackathonId_userId: {
+            hackathonId: invite.team.hackathonId,
+            userId: user.id,
+          },
+        },
+      }),
+    ]);
+    if (!registration && !attendance) {
       return NextResponse.json({ error: 'Register for this hackathon first' }, { status: 400 });
     }
 

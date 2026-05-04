@@ -1,17 +1,36 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  normalizeNextAuthErrorParam,
+  nextAuthErrorMessage,
+} from '@/lib/next-auth-errors';
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [urlError, setUrlError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const errorParam = searchParams.get('error');
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+
+  useEffect(() => {
+    const code = normalizeNextAuthErrorParam(errorParam);
+    if (code) {
+      setUrlError(nextAuthErrorMessage(code));
+    } else {
+      setUrlError('');
+    }
+    setLoadingProvider(null);
+  }, [errorParam]);
 
   const handleCredentialsSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,13 +41,14 @@ export default function LoginPage() {
       const result = await signIn('credentials', {
         email,
         password,
+        callbackUrl,
         redirect: false,
       });
 
       if (result?.error) {
         setError('Invalid email or password');
       } else if (result?.ok) {
-        router.push('/dashboard');
+        router.push(result.url || callbackUrl);
         router.refresh();
       }
     } catch {
@@ -36,18 +56,21 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, router]);
+  }, [email, password, callbackUrl, router]);
 
   const handleOAuthSignIn = useCallback(async (provider: 'github' | 'google') => {
     setError('');
+    setUrlError('');
     setLoadingProvider(provider);
     try {
-      await signIn(provider, { callbackUrl: '/dashboard' });
+      await signIn(provider, { callbackUrl });
     } catch {
       setError('Authentication failed. Please try again.');
       setLoadingProvider(null);
     }
-  }, []);
+  }, [callbackUrl]);
+
+  const displayError = error || urlError;
 
   return (
     <div className="auth-form">
@@ -59,14 +82,14 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {error && (
+      {displayError && (
         <div className="auth-error auth-animate-in">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
             <path d="M8 4.5v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             <circle cx="8" cy="11" r="0.75" fill="currentColor" />
           </svg>
-          {error}
+          {displayError}
         </div>
       )}
 
@@ -151,8 +174,26 @@ export default function LoginPage() {
 
       <div className="auth-footer auth-animate-in auth-animate-in-delay-3">
         Don&apos;t have an account?{' '}
-        <Link href="/signup">Create one</Link>
+        <Link href={callbackUrl !== '/dashboard' ? `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/signup'}>
+          Create one
+        </Link>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="auth-form">
+          <p className="auth-form__subtitle" style={{ opacity: 0.7 }}>
+            Loading
+          </p>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

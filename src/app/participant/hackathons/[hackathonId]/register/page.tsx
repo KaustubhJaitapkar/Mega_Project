@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 const STEPS = [
@@ -42,9 +42,11 @@ function getTrackDisplay(track: string): { icon: string; name: string } {
   return { icon: '🎯', name: track };
 }
 
-export default function HackathonRegistrationPage() {
+function HackathonRegistrationPageContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteRequestId = searchParams.get('inviteRequestId') || '';
   const { data: session } = useSession();
   const hackathonId = params.hackathonId as string;
   const [stepIndex, setStepIndex] = useState(0);
@@ -64,6 +66,13 @@ export default function HackathonRegistrationPage() {
   const [currentUserId, setCurrentUserId] = useState('');
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
+  const [inviteJoinBusy, setInviteJoinBusy] = useState(false);
+  const inviteHandledRef = useRef(false);
+
+  const effectiveSteps = useMemo(
+    () => (inviteRequestId ? STEPS.filter((s) => s.id !== 'team') : STEPS),
+    [inviteRequestId]
+  );
 
   const isLead = (team?.members || []).some((m: any) => m.role === 'leader' && m.user?.id === currentUserId);
 
@@ -112,6 +121,29 @@ export default function HackathonRegistrationPage() {
     })();
   }, [hackathonId, session?.user?.email, session?.user?.name]);
 
+  // Already registered + invite link: accept invite and go to My Team (no re-fill)
+  useEffect(() => {
+    if (!hackathonId || !inviteRequestId || !savedRegistration || loading) return;
+    if (inviteHandledRef.current) return;
+    inviteHandledRef.current = true;
+    setInviteJoinBusy(true);
+    setError('');
+    void (async () => {
+      try {
+        const res = await fetch(`/api/teams/invites/${inviteRequestId}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          router.replace(`/participant/my-team?hackathonId=${hackathonId}`);
+        } else {
+          setError(data.error || 'Could not join team');
+          inviteHandledRef.current = false;
+        }
+      } finally {
+        setInviteJoinBusy(false);
+      }
+    })();
+  }, [hackathonId, inviteRequestId, savedRegistration, loading, router]);
+
   // Load teammate recommendations when on team step
   useEffect(() => {
     if (stepIndex !== 4 || !hackathonId || !savedRegistration) return;
@@ -159,7 +191,29 @@ export default function HackathonRegistrationPage() {
     })();
   }, [stepIndex, hackathonId, savedRegistration, hackathonInfo]);
 
-  const step = STEPS[stepIndex];
+  async function syncRegistrationToProfile() {
+    const displayName = [form.firstName, form.lastName].filter(Boolean).join(' ').trim();
+    const res = await fetch('/api/users/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: displayName || undefined,
+        bio: [form.courseSpecialization, form.course, form.domain].filter(Boolean).join(' · ').slice(0, 500),
+        phone: form.phone,
+        country: form.location,
+        college: form.instituteName,
+        yearOfStudy: String(form.graduatingYear),
+        skills: [form.domain, form.courseSpecialization].filter((s) => s && String(s).length > 0).slice(0, 15),
+        isLookingForTeam: false,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(typeof data.error === 'string' ? data.error : 'Could not save profile');
+    }
+  }
+
+  const step = effectiveSteps[stepIndex];
   const canContinue = useMemo(() => {
     if (step.id === 'basic') return form.firstName && form.email && form.phone && form.gender && form.location;
     if (step.id === 'user') return form.instituteName && form.userType && form.domain && form.course;
@@ -178,9 +232,31 @@ export default function HackathonRegistrationPage() {
     if (step.id === 'terms') {
       const ok = await saveRegistration();
       if (!ok) return;
+      if (inviteRequestId) {
+        inviteHandledRef.current = true;
+        setInviteJoinBusy(true);
+        setError('');
+        try {
+          await syncRegistrationToProfile();
+          const res = await fetch(`/api/teams/invites/${inviteRequestId}`, { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) {
+            setError(data.error || 'Could not join team');
+            inviteHandledRef.current = false;
+            return;
+          }
+          router.replace(`/participant/my-team?hackathonId=${hackathonId}`);
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : 'Something went wrong');
+          inviteHandledRef.current = false;
+        } finally {
+          setInviteJoinBusy(false);
+        }
+        return;
+      }
       await loadTeam();
     }
-    setStepIndex((s) => Math.min(s + 1, STEPS.length - 1));
+    setStepIndex((s) => Math.min(s + 1, effectiveSteps.length - 1));
   }
 
   async function saveRegistration() {
@@ -248,15 +324,31 @@ export default function HackathonRegistrationPage() {
   </div>;
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: '1.5rem', maxWidth: 900, margin: '0 auto', position: 'relative' }}>
+      {inviteJoinBusy && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.35)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{ background: 'var(--bg-surface)', padding: '1.25rem 1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: 22, height: 22, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>Joining your team…</span>
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: '1.25rem' }}>
         <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>Registration</p>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Hackathon Registration</h1>
+        {inviteRequestId && (
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.5rem', maxWidth: 560 }}>
+            You were invited to a team. Complete every step (same as &quot;Register now&quot;), then you&apos;ll be added to the team automatically.
+          </p>
+        )}
       </div>
 
       {/* Step Indicator */}
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        {STEPS.map((s, idx) => (
+        {effectiveSteps.map((s, idx) => (
           <button key={s.id} onClick={() => { if (idx <= stepIndex || (idx === stepIndex + 1 && canContinue)) setStepIndex(idx); }} style={{
             padding: '0.35rem 0.75rem', borderRadius: 999, border: '1px solid',
             borderColor: idx === stepIndex ? 'var(--accent)' : idx < stepIndex ? 'rgba(62,207,142,0.3)' : 'var(--border-default)',
@@ -555,15 +647,43 @@ export default function HackathonRegistrationPage() {
       {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <button className="org-btn-secondary" onClick={() => stepIndex === 0 ? router.back() : setStepIndex((s) => s - 1)}>Back</button>
-        {stepIndex < STEPS.length - 1 ? (
-          <button className="org-btn-primary" onClick={handleNext} disabled={!canContinue || saving}>
+        {stepIndex < effectiveSteps.length - 1 ? (
+          <button className="org-btn-primary" onClick={() => void handleNext()} disabled={!canContinue || saving || inviteJoinBusy}>
             {saving && step.id === 'terms' ? 'Saving...' : 'Next'}
           </button>
         ) : (
-          <button className="org-btn-primary" onClick={() => router.push(`/participant/hackathons/${hackathonId}`)}>Finish</button>
+          <button
+            className="org-btn-primary"
+            onClick={() => {
+              if (inviteRequestId && step.id === 'terms') {
+                void handleNext();
+              } else {
+                router.push(`/participant/hackathons/${hackathonId}`);
+              }
+            }}
+            disabled={!canContinue || saving || inviteJoinBusy}
+          >
+            {inviteRequestId && step.id === 'terms'
+              ? (inviteJoinBusy ? 'Joining team…' : 'Complete registration & join team')
+              : 'Finish'}
+          </button>
         )}
       </div>
     </div>
+  );
+}
+
+export default function HackathonRegistrationPage() {
+  return (
+    <Suspense
+      fallback={(
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
+          <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+        </div>
+      )}
+    >
+      <HackathonRegistrationPageContent />
+    </Suspense>
   );
 }
 

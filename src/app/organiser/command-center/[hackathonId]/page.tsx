@@ -782,30 +782,54 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
   }
 
   async function announceWinnersAutomatically() {
-    if (winners.length === 0) {
-      setFeedback('No winners declared yet. Please declare winners first.');
+    if (rankings.length === 0) {
+      setFeedback('No rankings yet. Generate rankings first.');
       setTimeout(() => setFeedback(''), 3000);
       return;
     }
+    const prizeDetails = normalizePrizeDetails(hackathon?.prizeDetails);
+    const getTypeLabel = (type: string) => {
+      if (type === 'WINNER') return prizeDetails[0]?.title || 'Winner';
+      if (type === 'RUNNER_UP') return prizeDetails[1]?.title || 'Runner-up';
+      if (type === 'BEST_PROJECT') return prizeDetails[2]?.title || 'Best Project';
+      return type.replace('_', ' ');
+    };
+
     setSendingAnnounce(true);
     try {
-      const prizeDetails = normalizePrizeDetails(hackathon?.prizeDetails);
-      const getTypeLabel = (type: string) => {
-        if (type === 'WINNER') return prizeDetails[0]?.title || 'Winner';
-        if (type === 'RUNNER_UP') return prizeDetails[1]?.title || 'Runner-up';
-        if (type === 'BEST_PROJECT') return prizeDetails[2]?.title || 'Best Project';
-        return type.replace('_', ' ');
-      };
-      const lines = winners.map((cert: any) => {
-        const label = getTypeLabel(cert.type);
-        const teamName = cert.team?.name || 'Team';
-        const memberNames = cert.user?.name || 'Team members';
-        return `${label}: ${teamName} (${memberNames})`;
-      });
-      const content = `🎉 Results are in! Congratulations to our winners:\n\n${lines.join('\n')}\n\nThank you to all participants!`;
       const title = `${hackathon?.title || 'Hackathon'} Results Announced!`;
+      let content: string;
+
+      if (winners.length > 0) {
+        const lines = winners.map((cert: any) => {
+          const label = getTypeLabel(cert.type);
+          const teamName = cert.team?.name || 'Team';
+          const memberNames = cert.user?.name || 'Team members';
+          return `${label}: ${teamName} (${memberNames})`;
+        });
+        content = `🎉 Results are in! Congratulations to our winners:\n\n${lines.join('\n')}\n\nThank you to all participants!`;
+      } else {
+        const scored = [...rankings]
+          .filter((r: any) => Number(r.totalScore) > 0)
+          .sort((a: any, b: any) => (a.rank ?? 999) - (b.rank ?? 999));
+        if (scored.length === 0) {
+          setFeedback('No scored teams yet. Judges need to submit scores before announcing.');
+          setSendingAnnounce(false);
+          setTimeout(() => setFeedback(''), 4000);
+          return;
+        }
+        const top = scored.slice(0, 8);
+        const lines = top.map((r: any) => {
+          const prize = getPrizeLabelForRank(r.rank, prizeDetails);
+          const pts = Number(r.totalScore).toFixed(1);
+          const extra = prize && prize !== '-' ? ` — ${prize}` : '';
+          return `#${r.rank} ${r.teamName || 'Team'} — ${pts} pts${extra}`;
+        });
+        content = `🎉 Results are in! Top teams by judge scores:\n\n${lines.join('\n')}\n\nView full rankings on the hackathon page. Thank you to all participants!`;
+      }
+
       const res = await fetch(`/api/hackathons/${hackathonId}/announcements`, {
-        method: 'POST', 
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ title, content, isUrgent: false }),
@@ -815,7 +839,9 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
       } else {
         setFeedback('Failed to announce');
       }
-    } catch { setFeedback('Network error'); }
+    } catch {
+      setFeedback('Network error');
+    }
     setSendingAnnounce(false);
     setTimeout(() => setFeedback(''), 3000);
   }

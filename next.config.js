@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Load Prisma from node_modules at runtime — avoids stale bundled client after `prisma generate`
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client'],
+  },
   typescript: {
     ignoreBuildErrors: false,
   },

@@ -81,7 +81,8 @@ export async function POST(
     });
 
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const acceptLink = `${baseUrl}/participant/my-team?hackathonId=${team.hackathonId}&inviteRequestId=${inviteRequest.id}`;
+    // Registration first (full form + profile sync); app completes invite after POST /registration.
+    const acceptLink = `${baseUrl}/participant/hackathons/${team.hackathonId}/register?inviteRequestId=${inviteRequest.id}`;
 
     await sendTeamInvitation(email, team.name, inviter.name || 'A teammate', acceptLink);
 

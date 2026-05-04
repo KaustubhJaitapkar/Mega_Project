@@ -18,7 +18,18 @@ export async function GET(
         teams: {
           include: {
             members: { include: { user: { select: { id: true, name: true, image: true } } } },
-            submission: true,
+            submission: {
+              select: {
+                id: true,
+                status: true,
+                isHealthy: true,
+                submittedAt: true,
+                githubUrl: true,
+                liveUrl: true,
+                technologies: true,
+                pitchDeckUrl: true,
+              },
+            },
           },
         },
         timelines: { orderBy: { startTime: 'asc' } },
@@ -84,9 +95,18 @@ export async function PUT(
       );
     }
 
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const hackathon = await prisma.hackathon.findUnique({
       where: { id: params.hackathonId },
-      include: { organiser: true },
+      select: { organiserId: true, rules: true },
     });
 
     if (!hackathon) {
@@ -96,11 +116,7 @@ export async function PUT(
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user || hackathon.organiserId !== user.id) {
+    if (hackathon.organiserId !== user.id) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -178,8 +194,18 @@ export async function DELETE(
       );
     }
 
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const hackathon = await prisma.hackathon.findUnique({
       where: { id: params.hackathonId },
+      select: { organiserId: true },
     });
 
     if (!hackathon) {
@@ -189,11 +215,7 @@ export async function DELETE(
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user || hackathon.organiserId !== user.id) {
+    if (hackathon.organiserId !== user.id) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }

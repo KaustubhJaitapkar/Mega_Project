@@ -18,16 +18,26 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const attendance = await prisma.attendance.findUnique({
-      where: {
-        hackathonId_userId: {
-          hackathonId: params.hackathonId,
-          userId: user.id,
+    const [registration, attendance] = await Promise.all([
+      prisma.hackathonRegistration.findUnique({
+        where: {
+          hackathonId_userId: {
+            hackathonId: params.hackathonId,
+            userId: user.id,
+          },
         },
-      },
-    });
+      }),
+      prisma.attendance.findUnique({
+        where: {
+          hackathonId_userId: {
+            hackathonId: params.hackathonId,
+            userId: user.id,
+          },
+        },
+      }),
+    ]);
 
-    return NextResponse.json({ data: { registered: !!attendance } });
+    return NextResponse.json({ data: { registered: !!(registration || attendance) } });
   } catch (error) {
     console.error('Registration status error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -388,9 +388,24 @@ export default function MyTeamPage() {
     }
   }, [myTeam, hackathonId, loadTickets]);
 
+  const inviteAutoAcceptKeyRef = useRef<string | null>(null);
+
+  // Legacy/deep links: my-team?inviteRequestId= → send unregistered users through full registration first
   useEffect(() => {
-    async function autoAcceptInvite() {
-      if (!inviteRequestId || inviteAutoProcessing || myTeam) return;
+    if (bootLoading || teamLoading || !hackathonId || !inviteRequestId) return;
+    if (isRegistered) return;
+    router.replace(
+      `/participant/hackathons/${hackathonId}/register?inviteRequestId=${encodeURIComponent(inviteRequestId)}`
+    );
+  }, [bootLoading, teamLoading, hackathonId, inviteRequestId, isRegistered, router]);
+
+  useEffect(() => {
+    if (!inviteRequestId || myTeam || !isRegistered) return;
+    // One attempt per inviteRequestId: do not put inviteAutoProcessing in deps (toggling re-ran effect → infinite POST).
+    if (inviteAutoAcceptKeyRef.current === inviteRequestId) return;
+    inviteAutoAcceptKeyRef.current = inviteRequestId;
+
+    void (async () => {
       setInviteAutoProcessing(true);
       try {
         const res = await fetch(`/api/teams/invites/${inviteRequestId}`, { method: 'POST' });
@@ -406,9 +421,8 @@ export default function MyTeamPage() {
       } finally {
         setInviteAutoProcessing(false);
       }
-    }
-    autoAcceptInvite();
-  }, [inviteRequestId, myTeam, inviteAutoProcessing, loadTeams]);
+    })();
+  }, [inviteRequestId, myTeam, isRegistered, loadTeams]);
 
   function goToRegistration() {
     if (!hackathonId) return;

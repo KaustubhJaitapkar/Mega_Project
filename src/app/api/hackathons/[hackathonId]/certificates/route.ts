@@ -69,15 +69,19 @@ export async function POST(
 
       const created: any[] = [];
 
+      // Batch fetch existing certificates to avoid N+1
+      const existingCerts = await prisma.certificate.findMany({
+        where: {
+          hackathonId: params.hackathonId,
+          userId: { in: Array.from(allUserIds) },
+          type: { in: ['WINNER', 'RUNNER_UP', 'PARTICIPANT'] as any },
+        },
+        select: { userId: true, type: true },
+      });
+      const existingSet = new Set(existingCerts.map((c) => `${c.userId}:${c.type}`));
+
       async function createIfMissing(targetUserId: string, certType: string, teamId?: string) {
-        const existing = await prisma.certificate.findFirst({
-          where: {
-            hackathonId: params.hackathonId,
-            userId: targetUserId,
-            type: certType as any,
-          },
-        });
-        if (existing) return;
+        if (existingSet.has(`${targetUserId}:${certType}`)) return;
 
         const user = userMap.get(targetUserId);
         if (!user) return;
@@ -150,15 +154,20 @@ export async function POST(
 
       const created: any[] = [];
 
+      // Batch check existing certs to avoid N+1
+      const teamUserIds = team.members.map((m) => m.userId);
+      const existingTeamCerts = await prisma.certificate.findMany({
+        where: {
+          hackathonId: params.hackathonId,
+          userId: { in: teamUserIds },
+          type: type as any,
+        },
+        select: { userId: true },
+      });
+      const existingTeamSet = new Set(existingTeamCerts.map((c) => c.userId));
+
       for (const member of team.members) {
-        const existing = await prisma.certificate.findFirst({
-          where: {
-            hackathonId: params.hackathonId,
-            userId: member.userId,
-            type: type as any,
-          },
-        });
-        if (existing) continue;
+        if (existingTeamSet.has(member.userId)) continue;
 
         const user = users.find((u) => u.id === member.userId);
         if (!user) continue;
