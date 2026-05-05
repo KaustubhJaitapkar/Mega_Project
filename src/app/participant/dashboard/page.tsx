@@ -18,11 +18,13 @@ import {
   Award,
   UserCircle,
 } from 'lucide-react';
+import { plainTextFromRichDescription } from '@/lib/plain-text';
 
 interface Hackathon {
   id: string;
   title: string;
   description: string;
+  shortDescription?: string;
   status: string;
   startDate: string;
   endDate: string;
@@ -200,6 +202,12 @@ export default function ParticipantDashboardPage() {
     ? `/participant/my-team?hackathonId=${activeHackathon.id}`
     : '/participant/my-team';
 
+  const activeEventBlurb = activeHackathon
+    ? plainTextFromRichDescription(
+        activeHackathon.shortDescription || activeHackathon.description
+      )
+    : '';
+
   return (
     <div className="font-sans text-[var(--text-primary)]">
       {/* Workspace chrome — horizontal band + inline nav (structure differs from previous masthead + spotlight) */}
@@ -271,9 +279,11 @@ export default function ParticipantDashboardPage() {
                       <h2 className="mt-3 text-xl font-semibold leading-snug tracking-tight text-[var(--text-primary)] sm:text-2xl">
                         {activeHackathon.title}
                       </h2>
-                      <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)] sm:text-[15px]">
-                        {activeHackathon.description}
-                      </p>
+                      {activeEventBlurb ? (
+                        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)] sm:text-[15px]">
+                          {activeEventBlurb}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 
