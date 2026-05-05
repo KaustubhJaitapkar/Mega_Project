@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, ExternalLink, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import HackathonForm from '@/components/HackathonForm';
 
 interface Hackathon {
@@ -21,6 +21,19 @@ interface Hackathon {
 interface Props {
   onSelect: (id: string) => void;
   selectedId: string;
+}
+
+function statusBadgeClass(status: string) {
+  const s = (status || 'DRAFT').toUpperCase();
+  const map: Record<string, string> = {
+    DRAFT: 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]',
+    PUBLISHED: 'bg-[#ddf4ff] text-[#0969da] border-[rgba(9,105,218,0.2)]',
+    REGISTRATION: 'bg-[#ddf4ff] text-[#0550ae] border-[rgba(5,80,174,0.2)]',
+    ONGOING: 'bg-[#dafbe1] text-[#1a7f37] border-[rgba(26,127,55,0.2)]',
+    ENDED: 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]',
+    CANCELLED: 'bg-[#ffebe9] text-[#cf222e] border-[rgba(207,34,46,0.2)]',
+  };
+  return map[s] || 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]';
 }
 
 export default function HackathonManagement({ onSelect, selectedId }: Props) {
@@ -44,92 +57,110 @@ export default function HackathonManagement({ onSelect, selectedId }: Props) {
     loadHackathons();
   }, []);
 
-  const statusColor = (s: string) => {
-    const map: Record<string, string> = {
-      DRAFT: 'bg-gray-600/30 text-gray-400',
-      REGISTRATION: 'bg-blue-500/20 text-blue-400',
-      ONGOING: 'bg-emerald-500/20 text-emerald-400',
-      ENDED: 'bg-purple-500/20 text-purple-400',
-      CANCELLED: 'bg-red-500/20 text-red-400',
-    };
-    return map[s] || 'bg-gray-600/30 text-gray-400';
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <RefreshCw className="w-6 h-6 text-gray-400 animate-spin" />
+        <RefreshCw
+          className="h-6 w-6 animate-spin text-[var(--text-muted)]"
+          aria-hidden
+        />
+        <span className="sr-only">Loading hackathons</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-white">Your Hackathons</h3>
-          <p className="text-sm text-gray-500">Select one to manage in the tabs below</p>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+            Your hackathons
+          </h3>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Select one to enable the other tabs for that event.
+          </p>
         </div>
         <button
+          type="button"
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors"
+          className="inline-flex h-8 shrink-0 items-center gap-2 rounded-[6px] bg-[#1f883d] px-3 text-sm font-semibold text-white shadow-[var(--elevation-sm)] transition-colors hover:bg-[#1a7f37]"
         >
-          <Plus className="w-4 h-4" />
-          Create Hackathon
+          <Plus className="h-4 w-4" aria-hidden />
+          Create hackathon
         </button>
       </div>
 
       {showForm && (
-        <div className="p-6 bg-gray-800/50 border border-gray-700 rounded-xl">
-          <h3 className="text-lg font-semibold text-white mb-4">Create New Hackathon</h3>
+        <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-6 shadow-[var(--elevation-sm)]">
+          <h3 className="mb-4 text-base font-semibold text-[var(--text-primary)]">
+            Create new hackathon
+          </h3>
           <HackathonForm />
         </div>
       )}
 
       {hackathons.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <p className="mb-4">No hackathons created yet</p>
+        <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] py-12 text-center shadow-[var(--elevation-sm)]">
+          <p className="mb-4 text-sm text-[var(--text-secondary)]">
+            No hackathons created yet.
+          </p>
           <button
+            type="button"
             onClick={() => setShowForm(true)}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors"
+            className="inline-flex h-8 items-center rounded-[6px] bg-[#0969da] px-4 text-sm font-semibold text-white shadow-[var(--elevation-sm)] hover:bg-[#0860ca]"
           >
-            Create Your First Hackathon
+            Create your first hackathon
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <ul className="space-y-2" role="list">
           {hackathons.map((h) => (
-            <button
-              key={h.id}
-              onClick={() => onSelect(h.id)}
-              className={`w-full text-left p-4 rounded-lg border transition-colors ${
-                selectedId === h.id
-                  ? 'border-emerald-500/50 bg-emerald-500/10'
-                  : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-white">{h.title}</h4>
-                    <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded ${statusColor(h.status)}`}>
-                      {h.status}
+            <li key={h.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(h.id)}
+                className={`w-full rounded-[6px] border text-left transition-colors ${
+                  selectedId === h.id
+                    ? 'border-[#0969da] bg-[#ddf4ff] shadow-[var(--elevation-sm)]'
+                    : 'border-[var(--border-default)] bg-[var(--bg-root)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface)]'
+                } p-4`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <h4 className="font-semibold text-[var(--text-primary)]">
+                        {h.title}
+                      </h4>
+                      <span
+                        className={`rounded-[6px] border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${statusBadgeClass(h.status)}`}
+                      >
+                        {h.status}
+                      </span>
+                    </div>
+                    <p className="line-clamp-2 text-sm text-[var(--text-secondary)]">
+                      {h.description}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[12px] text-[var(--text-muted)]">
+                      <span>{h.isVirtual ? 'Virtual' : h.location || 'In-person'}</span>
+                      <span>
+                        {h.minTeamSize}–{h.maxTeamSize} members
+                      </span>
+                      <span>
+                        {new Date(h.startDate).toLocaleDateString()} –{' '}
+                        {new Date(h.endDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  {selectedId === h.id && (
+                    <span className="shrink-0 font-mono text-[11px] font-medium text-[#0969da]">
+                      Selected
                     </span>
-                  </div>
-                  <p className="text-sm text-gray-400 line-clamp-1">{h.description}</p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                    <span>{h.isVirtual ? 'Virtual' : h.location || 'In-person'}</span>
-                    <span>{h.minTeamSize}-{h.maxTeamSize} members</span>
-                    <span>{new Date(h.startDate).toLocaleDateString()} - {new Date(h.endDate).toLocaleDateString()}</span>
-                  </div>
+                  )}
                 </div>
-                {selectedId === h.id && (
-                  <span className="text-emerald-400 text-xs font-medium mt-1">Selected</span>
-                )}
-              </div>
-            </button>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

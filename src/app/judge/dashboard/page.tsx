@@ -1,14 +1,30 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { Gavel, ListChecks, Scale, Target } from 'lucide-react';
 
-interface Hackathon { id: string; title: string; status: string; startDate: string; endDate: string }
+interface Hackathon {
+  id: string;
+  title: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  judges?: { id: string }[];
+}
 
-// Card component for hackathon with judging open check
-function JudgeHackathonCard({ hackathon, isMentor, progress }: { hackathon: any, isMentor: boolean, progress: any }) {
+function JudgeHackathonCard({
+  hackathon,
+  isMentor,
+  progress,
+}: {
+  hackathon: Hackathon;
+  isMentor: boolean;
+  progress?: { scored: number; pending: number };
+}) {
   const [judgingOpen, setJudgingOpen] = useState<boolean | null>(null);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -16,127 +32,233 @@ function JudgeHackathonCard({ hackathon, isMentor, progress }: { hackathon: any,
         const res = await fetch(`/api/hackathons/${hackathon.id}/judging-control`);
         const data = await res.json();
         if (mounted) setJudgingOpen(!!data.data?.judgingOpen);
-      } catch { setJudgingOpen(false); }
+      } catch {
+        if (mounted) setJudgingOpen(false);
+      }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [hackathon.id]);
 
   const isJudgingClosed = judgingOpen === false;
   const href = isMentor ? '/mentor/dashboard' : `/judging/${hackathon.id}`;
   const shouldDisable = isJudgingClosed && !isMentor;
 
-  return (
-    <Link href={href} style={{ textDecoration: 'none', pointerEvents: shouldDisable ? 'none' : undefined, opacity: shouldDisable ? 0.6 : 1 }}>
-      <div style={{
-        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-lg)', padding: '1.25rem', transition: 'border-color 0.2s',
-      }}
-        onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--border-strong)'}
-        onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
-      >
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{hackathon.title}</h3>
-        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-          <span className={`org-badge ${hackathon.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-muted'}`}>{hackathon.status}</span>
-          <span className="org-badge org-badge-muted">
-            {new Date(hackathon.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(hackathon.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </span>
-          {!isMentor && progress && (
-            <span className="org-badge org-badge-info">{progress.scored} scored / {progress.pending} pending</span>
-          )}
-        </div>
-        <span className="org-btn-primary" style={{ width: '100%', justifyContent: 'center', background: shouldDisable ? 'var(--border-subtle)' : undefined, color: isJudgingClosed ? 'white' : 'var(--text-primary)' }}>
-          {isMentor ? 'Open Mentoring Panel' : isJudgingClosed ? 'Judging Closed' : judgingOpen === null ? 'Loading...' : 'Start Judging'}
+  const ctaLabel = isMentor
+    ? 'Open mentoring panel'
+    : isJudgingClosed
+      ? 'Judging closed'
+      : judgingOpen === null
+        ? 'Checking access…'
+        : 'Start judging';
+
+  const cardShell =
+    'rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5 shadow-[var(--elevation-sm)] transition-[box-shadow,border-color] duration-200';
+
+  const body = (
+    <>
+      <h3 className="text-base font-semibold leading-snug text-[var(--text-primary)]">{hackathon.title}</h3>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <span
+          className={`org-badge ${hackathon.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-muted'}`}
+        >
+          {hackathon.status}
         </span>
+        <span className="org-badge org-badge-muted">
+          {new Date(hackathon.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
+          {new Date(hackathon.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </span>
+        {!isMentor && progress && (
+          <span className="org-badge org-badge-info">
+            {progress.scored} scored · {progress.pending} pending
+          </span>
+        )}
       </div>
+      <div
+        className={
+          shouldDisable
+            ? 'org-btn-secondary mt-4 flex min-h-[40px] w-full cursor-not-allowed items-center justify-center opacity-80'
+            : 'org-btn-primary mt-4 flex min-h-[40px] w-full items-center justify-center'
+        }
+        role="presentation"
+      >
+        {ctaLabel}
+      </div>
+    </>
+  );
+
+  if (shouldDisable) {
+    return (
+      <div
+        className={`${cardShell} cursor-not-allowed opacity-70`}
+        aria-label={`${hackathon.title}: judging is closed`}
+      >
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className={`group block no-underline ${cardShell} hover:border-[var(--border-strong)] hover:shadow-primer-md`}
+    >
+      {body}
     </Link>
   );
 }
 
 export default function JudgeDashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [progress, setProgress] = useState<Record<string, { scored: number; pending: number }>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const role = (session?.user as any)?.role || 'JUDGE';
+  const role = (session?.user as { role?: string } | undefined)?.role || 'JUDGE';
   const isMentor = role === 'MENTOR';
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // Fetch all hackathons
-        const res = await fetch('/api/hackathons');
-        const list = (await res.json()).data || [];
-        console.log('All hackathons:', list);
-        console.log('Session user:', session?.user);
-        
-        // Filter only those where the judge is assigned
-        const judgeId = (session?.user as any)?.id;
-        console.log('Judge ID:', judgeId);
-        
-        const filtered = list.filter((h: any) => {
-          console.log(`Hackathon ${h.title} judges:`, h.judges);
-          return h.judges?.some((j: any) => j.id === judgeId);
-        });
-        console.log('Filtered hackathons:', filtered);
-        
-        setHackathons(filtered);
-        if (!isMentor) {
-          const entries = await Promise.all(filtered.map(async (h: Hackathon) => {
-            const r = await fetch(`/api/judge/teams?hackathonId=${h.id}`);
-            const d = await r.json();
-            return [h.id, { scored: d.data?.scored || 0, pending: d.data?.pending || 0 }] as const;
-          }));
-          setProgress(Object.fromEntries(entries));
-        }
-      } catch (error) { 
-        console.error('Error fetching hackathons:', error);
-      }
-      finally { setIsLoading(false); }
-    })();
-  }, [session, isMentor]);
+  const totalPending = !isMentor
+    ? Object.values(progress).reduce((a, p) => a + (p?.pending ?? 0), 0)
+    : 0;
+  const totalScored = !isMentor
+    ? Object.values(progress).reduce((a, p) => a + (p?.scored ?? 0), 0)
+    : 0;
 
-  if (isLoading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
-      <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-    </div>
-  );
+  useEffect(() => {
+    if (sessionStatus === 'loading') return;
+
+    const abort = new AbortController();
+
+    (async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/hackathons', { signal: abort.signal });
+        const list: Hackathon[] = (await res.json()).data || [];
+        const judgeId = (session?.user as { id?: string } | undefined)?.id;
+        const filtered = judgeId
+          ? list.filter((h) => h.judges?.some((j) => j.id === judgeId))
+          : [];
+        if (abort.signal.aborted) return;
+        setHackathons(filtered);
+
+        if (!isMentor && filtered.length > 0) {
+          const entries = await Promise.all(
+            filtered.map(async (h) => {
+              const r = await fetch(`/api/judge/teams?hackathonId=${h.id}`, { signal: abort.signal });
+              const d = await r.json();
+              return [h.id, { scored: d.data?.scored || 0, pending: d.data?.pending || 0 }] as const;
+            })
+          );
+          if (!abort.signal.aborted) setProgress(Object.fromEntries(entries));
+        } else if (!abort.signal.aborted) {
+          setProgress({});
+        }
+      } catch {
+        if (!abort.signal.aborted) {
+          setHackathons([]);
+          setProgress({});
+        }
+      } finally {
+        if (!abort.signal.aborted) setIsLoading(false);
+      }
+    })();
+
+    return () => abort.abort();
+  }, [session, isMentor, sessionStatus]);
+
+  if (sessionStatus === 'loading' || isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]"
+            role="status"
+            aria-label="Loading"
+          />
+          <p className="font-mono text-[12px] text-[var(--text-muted)]">Loading workspace</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-        <div>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>{role}</p>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            {isMentor ? 'Mentor Dashboard' : 'Judge Dashboard'}
+    <div className="font-sans text-[var(--text-primary)]">
+      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-2">
+            {isMentor ? (
+              <Target className="h-6 w-6 text-[var(--accent)]" aria-hidden />
+            ) : (
+              <Gavel className="h-6 w-6 text-[var(--accent)]" aria-hidden />
+            )}
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+              {isMentor ? 'Mentor' : 'Judge'}
+            </p>
+          </div>
+          <h1 className="text-[clamp(1.35rem,2.4vw,1.85rem)] font-semibold leading-tight tracking-tight text-[var(--text-primary)]">
+            {isMentor ? 'Mentor dashboard' : 'Judge dashboard'}
           </h1>
-          <p className="org-text" style={{ marginTop: '0.35rem' }}>{isMentor ? 'Guide teams and support evaluation quality.' : 'Review projects and submit fair scores.'}</p>
+          <p className="max-w-2xl text-[15px] leading-relaxed text-[var(--text-secondary)]">
+            {isMentor
+              ? 'Events where you are on staff—open the mentoring panel to support teams.'
+              : 'Events where you are assigned to evaluate work. Pick an event to open the judging workspace.'}
+          </p>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid #818cf8', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
-          <p className="org-label">{isMentor ? 'Assigned Events' : 'Judging Events'}</p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: '#818cf8' }}>{hackathons.length}</p>
+      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 sm:py-10">
+        <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-[6px] border border-[var(--border-default)] border-l-4 border-l-[var(--accent)] bg-[var(--bg-elevated)] p-4 shadow-[var(--elevation-sm)]">
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+              {isMentor ? 'Events on your roster' : 'Assigned events'}
+            </p>
+            <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-[var(--text-primary)]">
+              {hackathons.length}
+            </p>
+          </div>
+          <div className="rounded-[6px] border border-[var(--border-default)] border-l-4 border-l-[var(--warning)] bg-[var(--bg-elevated)] p-4 shadow-[var(--elevation-sm)]">
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+              {isMentor ? 'Focus' : 'Pending reviews'}
+            </p>
+            <p className="mt-2 text-sm font-medium leading-snug text-[var(--text-primary)]">
+              {isMentor
+                ? 'Unblock teams and clarify requirements.'
+                : totalPending > 0
+                  ? `${totalPending} submission${totalPending === 1 ? '' : 's'} still need scores.`
+                  : 'Nothing in the queue right now.'}
+            </p>
+          </div>
+          <div className="rounded-[6px] border border-[var(--border-default)] border-l-4 border-l-[var(--success)] bg-[var(--bg-elevated)] p-4 shadow-[var(--elevation-sm)] sm:col-span-2 lg:col-span-1">
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+              {isMentor ? 'Next step' : 'Completed scores'}
+            </p>
+            <p className="mt-2 text-sm font-medium leading-snug text-[var(--text-primary)]">
+              {isMentor
+                ? 'Choose an event below to open the mentoring tools.'
+                : `${totalScored} score${totalScored === 1 ? '' : 's'} recorded across your events.`}
+            </p>
+          </div>
         </div>
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid var(--accent)', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
-          <p className="org-label">Priority</p>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>{isMentor ? 'Resolve team blockers' : 'Score all pending submissions'}</p>
-        </div>
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderLeft: '3px solid #3ecf8e', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
-          <p className="org-label">Next Step</p>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>Open an event below</p>
-        </div>
-      </div>
 
-      {hackathons.length === 0 ? (
-        <div className="org-empty" style={{ padding: '3rem' }}>No events assigned yet.</div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
-          {hackathons.map((h) => (
-            <JudgeHackathonCard key={h.id} hackathon={h} isMentor={isMentor} progress={progress[h.id]} />
-          ))}
-        </div>
-      )}
+        {hackathons.length === 0 ? (
+          <div className="rounded-[6px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-14 text-center shadow-[var(--elevation-sm)]">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--accent)]">
+              {isMentor ? <ListChecks className="h-6 w-6" aria-hidden /> : <Scale className="h-6 w-6" aria-hidden />}
+            </div>
+            <p className="mt-4 text-[15px] text-[var(--text-secondary)]">No events assigned to you yet.</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Organizers add judges and mentors per hackathon.</p>
+          </div>
+        ) : (
+          <div>
+            <h2 className="mb-4 font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Your events</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {hackathons.map((h) => (
+                <JudgeHackathonCard key={h.id} hackathon={h} isMentor={isMentor} progress={progress[h.id]} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

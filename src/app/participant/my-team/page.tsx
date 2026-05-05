@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ArrowLeft } from 'lucide-react';
 
 type Team = {
   id: string;
@@ -55,24 +56,28 @@ const COMPLEMENTARY_SKILLS: Record<string, string[]> = {
   MongoDB: ['Node.js', 'Express', 'Mongoose'],
 };
 
-const SKILL_COLORS: Record<string, string> = {
-  React: '#61dafb',
-  TypeScript: '#3178c6',
-  Python: '#3776ab',
-  'Node.js': '#339933',
-  'Next.js': '#000000',
-  'UI/UX': '#ff7262',
-  Docker: '#2496ed',
-  PostgreSQL: '#4169e1',
-  MongoDB: '#47a248',
-  'Machine Learning': '#ff6f00',
-  'Data Science': '#0066ff',
-  CSS: '#264de4',
-  JavaScript: '#f7df1e',
-  Java: '#007396',
-  Go: '#00add8',
-  Rust: '#dea584',
-};
+const SKILL_DOT = ['var(--accent)', 'var(--success)', 'var(--warning)'] as const;
+
+function skillVariant(skill: string): number {
+  let i = 0;
+  for (let c = 0; c < skill.length; c++) i = (i + skill.charCodeAt(c)) % 3;
+  return i;
+}
+
+function skillChipStyle(skill: string, compact?: boolean): CSSProperties {
+  const v = skillVariant(skill);
+  const styles: CSSProperties[] = [
+    { background: 'var(--accent-dim)', border: '1px solid var(--border-accent)', color: 'var(--accent)' },
+    { background: 'rgba(26, 127, 55, 0.12)', border: '1px solid rgba(26, 127, 55, 0.35)', color: 'var(--success)' },
+    { background: 'rgba(154, 103, 0, 0.12)', border: '1px solid rgba(154, 103, 0, 0.28)', color: 'var(--warning)' },
+  ];
+  return {
+    ...styles[v],
+    padding: compact ? '0.15rem 0.4rem' : '0.2rem 0.5rem',
+    borderRadius: '999px',
+    fontSize: compact ? '0.6rem' : '0.7rem',
+  };
+}
 
 export default function MyTeamPage() {
   const router = useRouter();
@@ -864,27 +869,27 @@ export default function MyTeamPage() {
     }
   }
 
-  function getSkillColor(skill: string): string {
-    return SKILL_COLORS[skill] || '#888';
-  }
-
   const currentHackathon = hackathons.find((h) => h.id === hackathonId);
 
   if (bootLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
-        <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
+      <div className="flex justify-center py-24 font-sans">
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]"
+          role="status"
+          aria-label="Loading"
+        />
       </div>
     );
   }
 
   if (!hackathonId) {
     return (
-      <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-          <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>No hackathon selected</p>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            Open team page from specific hackathon card, or join a hackathon first.
+      <div className="font-sans px-4 py-8 sm:px-6">
+        <div className="mx-auto max-w-[1200px] rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 shadow-[var(--elevation-sm)]">
+          <p className="font-semibold text-[var(--text-primary)]">No hackathon selected</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            Open the team page from a hackathon, or join an event from Explore first.
           </p>
         </div>
       </div>
@@ -892,36 +897,45 @@ export default function MyTeamPage() {
   }
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>
-            Team Management
-          </p>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            My Team
-          </h1>
-          {currentHackathon && (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              {currentHackathon.title}
-            </p>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <select
-            className="org-input"
-            value={hackathonId}
-            onChange={(e) => handleHackathonChange(e.target.value)}
-            style={{ width: 200 }}
-          >
-            {!hackathons.length && <option value="">Select hackathon</option>}
-            {hackathons.map((h) => (
-              <option key={h.id} value={h.id}>{h.title}</option>
-            ))}
-          </select>
+    <div className="font-sans text-[var(--text-primary)]">
+      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+          <div className="min-w-0">
+            <Link
+              href="/participant/dashboard"
+              className="mb-3 inline-flex items-center gap-1.5 font-mono text-[12px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] transition-colors hover:text-[var(--accent)]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Dashboard
+            </Link>
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Team management</p>
+            <h1 className="mt-2 text-[clamp(1.35rem,2.4vw,1.75rem)] font-semibold leading-tight tracking-tight">My team</h1>
+            {currentHackathon && (
+              <p className="mt-2 text-[15px] text-[var(--text-secondary)]">{currentHackathon.title}</p>
+            )}
+          </div>
+          <div className="w-full sm:w-auto sm:min-w-[240px]">
+            <label htmlFor="myteam-hackathon" className="mb-1 block font-mono text-[12px] text-[var(--text-muted)]">
+              Hackathon
+            </label>
+            <select
+              id="myteam-hackathon"
+              className="org-input h-11 w-full max-w-full rounded-[6px] text-sm"
+              value={hackathonId}
+              onChange={(e) => handleHackathonChange(e.target.value)}
+            >
+              {!hackathons.length && <option value="">Select hackathon</option>}
+              {hackathons.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.title}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
+
+      <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8">
 
       {teamLoading && (
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '0.85rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -970,45 +984,46 @@ export default function MyTeamPage() {
       )}
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', gap: '0.35rem', borderBottom: '1px solid var(--border-default)', paddingBottom: '0.6rem', marginBottom: '1.25rem' }}>
-        {[
-          { key: 'team', label: 'My Team', count: myTeam ? myTeam.members.length : 0 },
-          { key: 'discover', label: 'Discover Teams', count: filteredTeams.length },
-          { key: 'invites', label: 'Invitations', count: invites.length + incoming.length },
-          ...(isLead ? [{ key: 'requirements', label: 'Requirements', count: 0 }] : []),
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            style={{
-              padding: '0.4rem 0.9rem',
-              borderRadius: 999,
-              border: '1px solid',
-              borderColor: activeTab === tab.key ? 'var(--accent)' : 'var(--border-default)',
-              background: activeTab === tab.key ? 'var(--accent)' : 'var(--bg-raised)',
-              color: activeTab === tab.key ? 'var(--text-inverse)' : 'var(--text-secondary)',
-              fontFamily: 'var(--font-display)',
-              fontSize: '0.72rem',
-              cursor: 'pointer',
-              fontWeight: activeTab === tab.key ? 700 : 400,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}
-          >
-            {tab.label}
-            {tab.count > 0 && (
-              <span style={{
-                background: activeTab === tab.key ? 'var(--text-inverse)' : 'var(--accent-dim)',
-                color: activeTab === tab.key ? 'var(--accent)' : 'var(--accent)',
-                padding: '0.1rem 0.4rem',
-                borderRadius: 999,
-                fontSize: '0.6rem',
-                fontWeight: 600,
-              }}>{tab.count}</span>
-            )}
-          </button>
-        ))}
+      <div className="mb-6 overflow-x-auto pb-1">
+        <div
+          className="flex min-w-max gap-1 rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-1.5 shadow-[var(--elevation-sm)]"
+          role="tablist"
+          aria-label="Team workspace"
+        >
+          {[
+            { key: 'team', label: 'My team', count: myTeam ? myTeam.members.length : 0 },
+            { key: 'discover', label: 'Discover', count: filteredTeams.length },
+            { key: 'invites', label: 'Invitations', count: invites.length + incoming.length },
+            ...(isLead ? [{ key: 'requirements', label: 'Requirements', count: 0 }] : []),
+          ].map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(tab.key as 'team' | 'discover' | 'invites' | 'requirements')}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-[6px] px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-[#0969da] text-white shadow-[var(--elevation-sm)]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-root)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                {tab.label}
+                {tab.count > 0 && (
+                  <span
+                    className={`rounded-[6px] px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-[var(--accent-dim)] text-[var(--accent)]'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tab Content */}
@@ -1168,7 +1183,7 @@ export default function MyTeamPage() {
                         }}>
                           <span style={{
                             width: 6, height: 6, borderRadius: '50%',
-                            background: slot.filled ? 'var(--success)' : getSkillColor(slot.skillNeeded),
+                            background: slot.filled ? 'var(--success)' : SKILL_DOT[skillVariant(slot.skillNeeded)],
                           }} />
                           <span style={{
                             fontSize: '0.75rem',
@@ -1274,14 +1289,9 @@ export default function MyTeamPage() {
                           {suggestion.participant?.skills && suggestion.participant.skills.length > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' }}>
                               {suggestion.participant.skills.slice(0, 5).map((s: string) => (
-                                <span key={s} style={{
-                                  padding: '0.15rem 0.4rem',
-                                  background: `${getSkillColor(s)}20`,
-                                  border: `1px solid ${getSkillColor(s)}40`,
-                                  borderRadius: '999px',
-                                  fontSize: '0.6rem',
-                                  color: getSkillColor(s),
-                                }}>{s}</span>
+                                <span key={s} style={skillChipStyle(s, true)}>
+                                  {s}
+                                </span>
                               ))}
                             </div>
                           )}
@@ -1557,14 +1567,9 @@ export default function MyTeamPage() {
                         {p.skills && p.skills.length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' }}>
                             {p.skills.slice(0, 4).map((s) => (
-                              <span key={s} style={{
-                                padding: '0.15rem 0.4rem',
-                                background: `${getSkillColor(s)}20`,
-                                border: `1px solid ${getSkillColor(s)}40`,
-                                borderRadius: '999px',
-                                fontSize: '0.6rem',
-                                color: getSkillColor(s),
-                              }}>{s}</span>
+                              <span key={s} style={skillChipStyle(s, true)}>
+                                {s}
+                              </span>
                             ))}
                           </div>
                         )}
@@ -1755,14 +1760,16 @@ export default function MyTeamPage() {
                     {req.skillsNeeded && req.skillsNeeded.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem' }}>
                         {req.skillsNeeded.slice(0, 4).map((skill: string) => (
-                          <span key={skill} style={{
-                            padding: '0.1rem 0.3rem',
-                            background: `${getSkillColor(skill)}20`,
-                            border: `1px solid ${getSkillColor(skill)}40`,
-                            borderRadius: '999px',
-                            fontSize: '0.55rem',
-                            color: getSkillColor(skill),
-                          }}>{skill}</span>
+                          <span
+                            key={skill}
+                            style={{
+                              ...skillChipStyle(skill, true),
+                              padding: '0.1rem 0.3rem',
+                              fontSize: '0.55rem',
+                            }}
+                          >
+                            {skill}
+                          </span>
                         ))}
                         {req.skillsNeeded.length > 4 && (
                           <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)' }}>+{req.skillsNeeded.length - 4}</span>
@@ -1854,14 +1861,9 @@ export default function MyTeamPage() {
                     {suggestion.team?.skills && suggestion.team.skills.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.75rem' }}>
                         {suggestion.team.skills.slice(0, 4).map((s: string) => (
-                          <span key={s} style={{
-                            padding: '0.15rem 0.4rem',
-                            background: `${getSkillColor(s)}20`,
-                            border: `1px solid ${getSkillColor(s)}40`,
-                            borderRadius: '999px',
-                            fontSize: '0.6rem',
-                            color: getSkillColor(s),
-                          }}>{s}</span>
+                          <span key={s} style={skillChipStyle(s, true)}>
+                            {s}
+                          </span>
                         ))}
                       </div>
                     )}
@@ -1971,14 +1973,16 @@ export default function MyTeamPage() {
                               {member.user?.profile?.skills && member.user.profile.skills.length > 0 && (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.25rem' }}>
                                   {member.user.profile.skills.slice(0, 4).map((skill: string) => (
-                                    <span key={skill} style={{
-                                      padding: '0.1rem 0.4rem',
-                                      background: `${getSkillColor(skill)}20`,
-                                      border: `1px solid ${getSkillColor(skill)}40`,
-                                      borderRadius: '999px',
-                                      fontSize: '0.6rem',
-                                      color: getSkillColor(skill),
-                                    }}>{skill}</span>
+                                    <span
+                                      key={skill}
+                                      style={{
+                                        ...skillChipStyle(skill, true),
+                                        padding: '0.1rem 0.4rem',
+                                        fontSize: '0.6rem',
+                                      }}
+                                    >
+                                      {skill}
+                                    </span>
                                   ))}
                                   {member.user.profile.skills.length > 4 && (
                                     <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
@@ -2089,14 +2093,9 @@ export default function MyTeamPage() {
                     {req.skillsNeeded && req.skillsNeeded.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.75rem' }}>
                         {req.skillsNeeded.map((skill: string) => (
-                          <span key={skill} style={{
-                            padding: '0.15rem 0.4rem',
-                            background: `${getSkillColor(skill)}20`,
-                            border: `1px solid ${getSkillColor(skill)}40`,
-                            borderRadius: '999px',
-                            fontSize: '0.6rem',
-                            color: getSkillColor(skill),
-                          }}>{skill}</span>
+                          <span key={skill} style={skillChipStyle(skill, true)}>
+                            {skill}
+                          </span>
                         ))}
                       </div>
                     )}
@@ -2294,14 +2293,9 @@ export default function MyTeamPage() {
                       <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Skills</p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
                         {selectedMember.user.profile.skills.map((skill: string) => (
-                          <span key={skill} style={{
-                            padding: '0.2rem 0.5rem',
-                            background: `${getSkillColor(skill)}20`,
-                            border: `1px solid ${getSkillColor(skill)}40`,
-                            borderRadius: '999px',
-                            fontSize: '0.7rem',
-                            color: getSkillColor(skill),
-                          }}>{skill}</span>
+                          <span key={skill} style={skillChipStyle(skill)}>
+                            {skill}
+                          </span>
                         ))}
                       </div>
                     </div>
@@ -2405,14 +2399,9 @@ export default function MyTeamPage() {
                   <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Skills</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                     {viewingParticipant.skills.map((skill: string) => (
-                      <span key={skill} style={{
-                        padding: '0.15rem 0.4rem',
-                        background: `${getSkillColor(skill)}20`,
-                        border: `1px solid ${getSkillColor(skill)}40`,
-                        borderRadius: '999px',
-                        fontSize: '0.6rem',
-                        color: getSkillColor(skill),
-                      }}>{skill}</span>
+                      <span key={skill} style={skillChipStyle(skill, true)}>
+                        {skill}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -2421,6 +2410,7 @@ export default function MyTeamPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

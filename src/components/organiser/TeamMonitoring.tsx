@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, RefreshCw } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 interface Team {
   id: string; name: string; description: string | null; status: string;
@@ -32,7 +32,13 @@ export default function TeamMonitoring({ hackathonId }: Props) {
 
   const filtered = teams.filter((t) => !search || t.name.toLowerCase().includes(search.toLowerCase()));
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}><RefreshCw style={{ width: 24, height: 24, color: 'var(--text-muted)', animation: 'auth-spin 0.8s linear infinite' }} /></div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16" role="status" aria-label="Loading teams">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]" />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Award, Download, Lock, CheckCircle, Star, MessageSquare } from 'lucide-react';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  Award,
+  CheckCircle,
+  Download,
+  Lock,
+  MessageSquare,
+  Star,
+} from 'lucide-react';
 
 interface Certificate {
   id: string;
@@ -18,6 +27,19 @@ interface SurveyData {
   bestPart: string;
   improvement: string;
   recommend: string;
+}
+
+function typeBadgeClass(type: string): string {
+  switch (type) {
+    case 'WINNER':
+      return 'org-badge org-badge-warning';
+    case 'RUNNER_UP':
+      return 'org-badge org-badge-muted';
+    case 'BEST_PROJECT':
+      return 'org-badge org-badge-accent';
+    default:
+      return 'org-badge org-badge-success';
+  }
 }
 
 export default function ParticipantCertificatesPage() {
@@ -39,14 +61,15 @@ export default function ParticipantCertificatesPage() {
           try {
             const cRes = await fetch(`/api/hackathons/${h.id}/certificates`);
             const cData = await cRes.json();
-            const certs = (cData.data || []).map((c: any) => ({
+            const certs = (cData.data || []).map((c: Certificate & { hackathon?: unknown }) => ({
               ...c,
               hackathon: { id: h.id, title: h.title },
             }));
             allCerts.push(...certs);
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         }
-        // Deduplicate: only one certificate per hackathon, prefer highest type
         const typePriority: Record<string, number> = {
           WINNER: 4,
           RUNNER_UP: 3,
@@ -92,193 +115,210 @@ export default function ParticipantCertificatesPage() {
     if (url) window.open(url, '_blank');
   }
 
-  const typeColors: Record<string, { bg: string; text: string; border: string }> = {
-    WINNER: { bg: 'rgba(232,164,74,0.08)', text: '#e8a44a', border: 'rgba(232,164,74,0.25)' },
-    RUNNER_UP: { bg: 'rgba(148,163,184,0.08)', text: '#94a3b8', border: 'rgba(148,163,184,0.25)' },
-    PARTICIPANT: { bg: 'rgba(62,207,142,0.08)', text: '#3ecf8e', border: 'rgba(62,207,142,0.25)' },
-    BEST_PROJECT: { bg: 'rgba(129,140,248,0.08)', text: '#818cf8', border: 'rgba(129,140,248,0.25)' },
-  };
-
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div className="flex min-h-[60vh] items-center justify-center font-sans">
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]"
+          role="status"
+          aria-label="Loading"
+        />
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">My Certificates</h1>
-        <p className="text-gray-500 mt-1">Download your certificates after completing the feedback survey.</p>
+    <div className="font-sans text-[var(--text-primary)]">
+      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+        <div className="mx-auto max-w-[900px] px-4 py-5 sm:px-6">
+          <Link
+            href="/participant/dashboard"
+            className="mb-3 inline-flex items-center gap-1.5 font-mono text-[12px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] transition-colors hover:text-[var(--accent)]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            Dashboard
+          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Award className="h-7 w-7 text-[var(--accent)]" aria-hidden />
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Credentials</p>
+          </div>
+          <h1 className="mt-2 text-[clamp(1.35rem,2.4vw,1.85rem)] font-semibold leading-tight tracking-tight">
+            Certificates
+          </h1>
+          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[var(--text-secondary)]">
+            Complete a short feedback survey per event to unlock downloads when organizers issue your certificate.
+          </p>
+        </div>
       </div>
 
-      {certificates.length === 0 ? (
-        <div className="card text-center py-16">
-          <Award className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-          <p className="text-lg font-semibold text-gray-700">No certificates yet</p>
-          <p className="text-sm text-gray-500 mt-2">Certificates will appear here after the hackathon ends and the organiser generates them.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {certificates.map((cert) => {
-            const colors = typeColors[cert.type] || typeColors.PARTICIPANT;
-            const isSurveyDone = surveyDone[cert.hackathon.id];
-            const canDownload = isSurveyDone && (cert.pdfPath || cert.certificateUrl);
+      <div className="mx-auto max-w-[900px] px-4 py-8 sm:px-6 sm:py-10">
+        {certificates.length === 0 ? (
+          <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-6 py-14 text-center shadow-[var(--elevation-sm)]">
+            <Award className="mx-auto mb-4 h-12 w-12 text-[var(--text-muted)]" aria-hidden />
+            <p className="text-lg font-semibold text-[var(--text-primary)]">No certificates yet</p>
+            <p className="mx-auto mt-2 max-w-md text-sm text-[var(--text-secondary)]">
+              They appear here after an event ends and organizers generate credentials for you.
+            </p>
+            <Link
+              href="/participant/hackathons"
+              className="org-btn-secondary mt-6 inline-flex min-h-[40px] items-center justify-center no-underline"
+            >
+              Browse hackathons
+            </Link>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {certificates.map((cert) => {
+              const isSurveyDone = surveyDone[cert.hackathon.id];
+              const canDownload = isSurveyDone && !!(cert.pdfPath || cert.certificateUrl);
 
-            return (
-              <div key={cert.id} className="card flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div
-                    className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: colors.bg, border: `1px solid ${colors.border}` }}
-                  >
-                    <Award className="w-6 h-6" style={{ color: colors.text }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">{cert.title || `${cert.type} Certificate`}</p>
-                    <p className="text-sm text-gray-500 truncate">{cert.hackathon.title}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span
-                        className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded"
-                        style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
-                      >
-                        {cert.type.replace('_', ' ')}
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {new Date(cert.issuedAt).toLocaleDateString()}
-                      </span>
+              return (
+                <li
+                  key={cert.id}
+                  className="flex flex-col gap-4 rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5 shadow-[var(--elevation-sm)] sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+                >
+                  <div className="flex min-w-0 flex-1 items-start gap-4">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[6px] border border-[var(--border-default)] bg-[var(--accent-dim)]"
+                      aria-hidden
+                    >
+                      <Award className="h-6 w-6 text-[var(--accent)]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-[var(--text-primary)]">
+                        {cert.title || `${cert.type.replace(/_/g, ' ')} certificate`}
+                      </p>
+                      <p className="mt-1 truncate text-sm text-[var(--text-secondary)]">{cert.hackathon.title}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={typeBadgeClass(cert.type)}>{cert.type.replace(/_/g, ' ')}</span>
+                        <span className="font-mono text-[12px] text-[var(--text-muted)]">
+                          Issued {new Date(cert.issuedAt).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  {isSurveyDone ? (
-                    <span className="flex items-center gap-1 text-xs text-green-600">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Feedback done
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-xs text-amber-600">
-                      <Lock className="w-3.5 h-3.5" />
-                      Complete survey
-                    </span>
-                  )}
+                  <div className="flex shrink-0 flex-col gap-3 sm:items-end">
+                    {isSurveyDone ? (
+                      <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-[var(--success)]">
+                        <CheckCircle className="h-4 w-4 shrink-0" aria-hidden />
+                        Feedback complete
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-[var(--warning)]">
+                        <Lock className="h-4 w-4 shrink-0" aria-hidden />
+                        Survey required to download
+                      </span>
+                    )}
 
-                  {canDownload ? (
-                    <button
-                      onClick={() => handleDownload(cert)}
-                      className="btn btn-primary flex items-center gap-2 text-sm"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setSurveyOpen(cert.hackathon.id);
-                        setSurvey({ rating: 0, bestPart: '', improvement: '', recommend: '' });
-                      }}
-                      className="btn btn-secondary flex items-center gap-2 text-sm"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      Give Feedback
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                    {canDownload ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(cert)}
+                        className="org-btn-primary inline-flex min-h-[40px] w-full items-center justify-center gap-2 sm:w-auto"
+                      >
+                        <Download className="h-4 w-4" aria-hidden />
+                        Download
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSurveyOpen(cert.hackathon.id);
+                          setSurvey({ rating: 0, bestPart: '', improvement: '', recommend: '' });
+                        }}
+                        className="org-btn-secondary inline-flex min-h-[40px] w-full items-center justify-center gap-2 sm:w-auto"
+                      >
+                        <MessageSquare className="h-4 w-4" aria-hidden />
+                        Give feedback
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
 
-      {/* Survey Modal */}
       {surveyOpen && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-            padding: '1rem',
-          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(31,35,40,0.45)] p-4 backdrop-blur-[1px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="survey-title"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSurveyOpen(null);
           }}
         >
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 className="text-xl font-bold text-gray-900 mb-1">Quick Feedback</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Share your experience to unlock certificate downloads.
+          <div
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-6 shadow-[var(--elevation-sm)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="survey-title" className="text-lg font-semibold text-[var(--text-primary)]">
+              Quick feedback
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Share your experience to unlock certificate downloads for this event.
             </p>
 
-            {/* Rating */}
-            <div className="mb-5">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                How would you rate this hackathon?
+            <div className="mt-6">
+              <label className="mb-2 block font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+                Overall rating
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
+                    type="button"
                     onClick={() => setSurvey((s) => ({ ...s, rating: star }))}
-                    className="p-1 transition-transform hover:scale-110"
+                    className="rounded-[6px] p-1.5 text-[var(--warning)] transition-transform hover:scale-105"
+                    aria-label={`${star} stars`}
                   >
                     <Star
-                      className="w-8 h-8"
-                      fill={star <= survey.rating ? '#e8a44a' : 'none'}
-                      stroke={star <= survey.rating ? '#e8a44a' : '#d1d5db'}
+                      className="h-8 w-8"
+                      fill={star <= survey.rating ? 'currentColor' : 'none'}
+                      stroke="currentColor"
                     />
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Best Part */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                What was the best part?
-              </label>
+            <div className="mt-5">
+              <label className="mb-1 block font-mono text-[12px] text-[var(--text-muted)]">What worked best?</label>
               <textarea
-                className="input min-h-[60px]"
+                className="org-input min-h-[72px] w-full resize-y text-sm"
                 value={survey.bestPart}
                 onChange={(e) => setSurvey((s) => ({ ...s, bestPart: e.target.value }))}
-                placeholder="e.g. The mentors were super helpful..."
+                placeholder="Mentors, venue, pacing…"
               />
             </div>
 
-            {/* Improvement */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                What could be improved?
-              </label>
+            <div className="mt-4">
+              <label className="mb-1 block font-mono text-[12px] text-[var(--text-muted)]">What could improve?</label>
               <textarea
-                className="input min-h-[60px]"
+                className="org-input min-h-[72px] w-full resize-y text-sm"
                 value={survey.improvement}
                 onChange={(e) => setSurvey((s) => ({ ...s, improvement: e.target.value }))}
-                placeholder="e.g. More time for submissions..."
+                placeholder="Honest suggestions help organizers iterate."
               />
             </div>
 
-            {/* Recommend */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Would you recommend this to a friend?
+            <div className="mt-4">
+              <label className="mb-2 block font-mono text-[12px] text-[var(--text-muted)]">
+                Would you recommend this hackathon?
               </label>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2">
                 {['Definitely', 'Maybe', 'Not really'].map((opt) => (
                   <button
                     key={opt}
+                    type="button"
                     onClick={() => setSurvey((s) => ({ ...s, recommend: opt }))}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    className={`rounded-[6px] border px-4 py-2 text-sm font-medium transition-colors ${
                       survey.recommend === opt
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-300'
+                        ? 'border-[var(--accent)] bg-[var(--accent-dim)] text-[var(--accent)]'
+                        : 'border-[var(--border-default)] bg-[var(--bg-root)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     {opt}
@@ -287,19 +327,17 @@ export default function ParticipantCertificatesPage() {
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSurveyOpen(null)}
-                className="btn btn-secondary flex-1"
-              >
+            <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button type="button" className="org-btn-secondary min-h-[40px] flex-1 sm:flex-none" onClick={() => setSurveyOpen(null)}>
                 Cancel
               </button>
               <button
-                onClick={() => handleSurveySubmit(surveyOpen)}
+                type="button"
+                className="org-btn-primary min-h-[40px] flex-1 sm:flex-none disabled:opacity-50"
                 disabled={survey.rating === 0}
-                className="btn btn-primary flex-1 disabled:opacity-50"
+                onClick={() => surveyOpen && handleSurveySubmit(surveyOpen)}
               >
-                Submit & Unlock
+                Submit & unlock
               </button>
             </div>
           </div>

@@ -14,7 +14,7 @@ export default function CreateHackathonPage() {
   }, [session]);
 
   return (
-    <div className="hf-create-page">
+    <div className="org-shell min-h-full hf-create-page">
       <div className="org-page hf-create-inner">
         <header className="hf-create-header">
           <Link href="/organiser/dashboard" className="hf-create-back">

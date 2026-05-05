@@ -1,56 +1,94 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import AnalyticsDashboard from '@/components/organiser/AnalyticsDashboard';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
+import {
+  LayoutDashboard,
+  Users,
+  Upload,
+  Megaphone,
+  LifeBuoy,
+  Scale,
+  LineChart,
+  Award,
+  Briefcase,
+  ExternalLink,
+  Pencil,
+} from 'lucide-react';
 import AnnouncementSystem from '@/components/organiser/AnnouncementSystem';
 import CertificateSystem from '@/components/organiser/CertificateSystem';
-import EditHackathonModal from '@/components/organiser/EditHackathonModal';
 import JudgingControl from '@/components/organiser/JudgingControl';
-import QuickActions from '@/components/organiser/QuickActions';
 import StaffManagement from '@/components/organiser/StaffManagement';
 import SubmissionMonitoring from '@/components/organiser/SubmissionMonitoring';
 import TeamMonitoring from '@/components/organiser/TeamMonitoring';
 import HelpTickets from '@/components/HelpTickets';
 
-interface Stats { totalTeams: number; participantsCount: number; submittedCount: number; openTickets: number }
+interface Stats {
+  totalTeams: number;
+  participantsCount: number;
+  submittedCount: number;
+  openTickets: number;
+}
 
-const TAB_GROUPS = [
-  {
-    name: 'Core',
-    tabs: [
-      { id: 'overview', label: 'Overview', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg> },
-      { id: 'teams', label: 'Teams', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-      { id: 'submissions', label: 'Submissions', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg> },
-    ]
-  },
-  {
-    name: 'Engagement',
-    tabs: [
-      { id: 'announcements', label: 'Announcements', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg> },
-      { id: 'tickets', label: 'Support Queue', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
-    ]
-  },
-  {
-    name: 'The Lab',
-    tabs: [
-      { id: 'judging', label: 'Judging', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="14.31" y1="8" x2="20.05" y2="17.94"/><line x1="9.69" y1="8" x2="21.17" y2="8"/><line x1="7.38" y1="12" x2="13.12" y2="2.06"/><line x1="9.69" y1="16" x2="3.95" y2="6.06"/><line x1="14.31" y1="16" x2="2.83" y2="16"/><line x1="16.62" y1="12" x2="10.88" y2="21.94"/></svg> },
-      { id: 'results', label: 'Results', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
-      { id: 'certificates', label: 'Certificates', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg> },
-    ]
-  },
-  {
-    name: 'People',
-    tabs: [
-      { id: 'staff', label: 'Staff', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg> },
-    ]
-  }
+const TABS = [
+  { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
+  { id: 'teams', label: 'Teams', Icon: Users },
+  { id: 'submissions', label: 'Submissions', Icon: Upload },
+  { id: 'announcements', label: 'Announcements', Icon: Megaphone },
+  { id: 'tickets', label: 'Support', Icon: LifeBuoy },
+  { id: 'judging', label: 'Judging', Icon: Scale },
+  { id: 'results', label: 'Results', Icon: LineChart },
+  { id: 'certificates', label: 'Certificates', Icon: Award },
+  { id: 'staff', label: 'Staff', Icon: Briefcase },
 ] as const;
 
-type TabId = typeof TAB_GROUPS[number]['tabs'][number]['id'];
+type TabId = (typeof TABS)[number]['id'];
 
-export default function CommandCenterPage() {
+function isTabId(v: string | null): v is TabId {
+  return !!v && TABS.some((t) => t.id === v);
+}
+
+function statusLabel(status: string) {
+  const m: Record<string, string> = {
+    DRAFT: 'Draft',
+    REGISTRATION: 'Registration open',
+    ONGOING: 'Ongoing',
+    ENDED: 'Ended',
+    CANCELLED: 'Cancelled',
+  };
+  return m[status] || status;
+}
+
+function statusBadgeClass(status: string) {
+  const s = (status || 'DRAFT').toUpperCase();
+  const map: Record<string, string> = {
+    DRAFT: 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]',
+    REGISTRATION: 'bg-[#ddf4ff] text-[#0550ae] border-[rgba(5,80,174,0.2)]',
+    ONGOING: 'bg-[#dafbe1] text-[#1a7f37] border-[rgba(26,127,55,0.2)]',
+    ENDED: 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]',
+    CANCELLED: 'bg-[#ffebe9] text-[#cf222e] border-[rgba(207,34,46,0.2)]',
+  };
+  return map[s] || 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]';
+}
+
+function statusGuidance(status: string) {
+  const s = (status || 'DRAFT').toUpperCase();
+  const copy: Record<string, string> = {
+    DRAFT: 'Finish event details, then open registration when you are ready.',
+    REGISTRATION: 'Teams can register. Watch teams, submissions, and support tickets.',
+    ONGOING: 'Hacking is in progress. Monitor submissions, judging, and support.',
+    ENDED: 'Event ended. Publish results and issue certificates as needed.',
+    CANCELLED: 'This event was cancelled.',
+  };
+  return copy[s] || copy.DRAFT;
+}
+
+function CommandCenterPage() {
   const params = useParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const hackathonId = params.hackathonId as string;
   const [stats, setStats] = useState<Stats | null>(null);
   const [hackathon, setHackathon] = useState<any>(null);
@@ -58,8 +96,21 @@ export default function CommandCenterPage() {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [feedback, setFeedback] = useState('');
+
+  const selectTab = useCallback(
+    (id: TabId) => {
+      setActiveTab(id);
+      const p = new URLSearchParams(searchParams.toString());
+      if (id === 'overview') {
+        p.delete('tab');
+      } else {
+        p.set('tab', id);
+      }
+      const qs = p.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
 
   useEffect(() => {
     if (!hackathonId) return;
@@ -73,21 +124,29 @@ export default function CommandCenterPage() {
         setStats((await statsRes.json()).data || null);
         setHackathon((await hackRes.json()).data || null);
         setSubmissions((await subRes.json()).data || []);
-      } catch { /* silent */ }
-      finally { setLoading(false); }
+      } catch {
+        /* silent */
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [hackathonId]);
 
   useEffect(() => {
-    const handleSetTab = (e: CustomEvent) => {
-      const allTabs: { id: string }[] = TAB_GROUPS.flatMap(g => [...g.tabs]);
-      if (allTabs.some(t => t.id === e.detail)) {
-        setActiveTab(e.detail as TabId);
-      }
+    const t = searchParams.get('tab');
+    if (isTabId(t)) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handleSetTab = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (isTabId(id)) selectTab(id);
     };
-    window.addEventListener('SET_TAB', handleSetTab as EventListener);
-    return () => window.removeEventListener('SET_TAB', handleSetTab as EventListener);
-  }, []);
+    window.addEventListener('SET_TAB', handleSetTab);
+    return () => window.removeEventListener('SET_TAB', handleSetTab);
+  }, [selectTab]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!hackathonId || isUpdatingStatus) return;
@@ -96,7 +155,7 @@ export default function CommandCenterPage() {
       const res = await fetch(`/api/hackathons/${hackathonId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
         setHackathon({ ...hackathon, status: newStatus });
@@ -104,7 +163,7 @@ export default function CommandCenterPage() {
         const err = await res.json();
         alert(`Failed to update status: ${err.error}`);
       }
-    } catch (err) {
+    } catch {
       alert('Network error while updating status');
     } finally {
       setIsUpdatingStatus(false);
@@ -113,373 +172,328 @@ export default function CommandCenterPage() {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'overview': return <OverviewPanel stats={stats} hackathon={hackathon} submissions={submissions} />;
-      case 'teams': return <TeamMonitoring hackathonId={hackathonId} />;
-      case 'submissions': return <SubmissionMonitoring hackathonId={hackathonId} submissionRequirements={hackathon?.submissionRequirements || []} />;
-      case 'tickets': return <HelpTickets hackathonId={hackathonId} />;
-      case 'announcements': return <AnnouncementSystem hackathonId={hackathonId} />;
-      case 'staff': return <StaffManagement hackathonId={hackathonId} />;
-      case 'judging': return <JudgingControl hackathonId={hackathonId} />;
-      case 'certificates': return <CertificateSystem hackathonId={hackathonId} />;
-      case 'results': return <ResultsPanel hackathonId={hackathonId} />;
-
-      default: return null;
+      case 'overview':
+        return (
+          <OverviewPanel
+            stats={stats}
+            hackathon={hackathon}
+            submissions={submissions}
+            hackathonId={hackathonId}
+            onSelectTab={selectTab}
+          />
+        );
+      case 'teams':
+        return <TeamMonitoring hackathonId={hackathonId} />;
+      case 'submissions':
+        return (
+          <SubmissionMonitoring
+            hackathonId={hackathonId}
+            submissionRequirements={hackathon?.submissionRequirements || []}
+          />
+        );
+      case 'tickets':
+        return <HelpTickets hackathonId={hackathonId} />;
+      case 'announcements':
+        return <AnnouncementSystem hackathonId={hackathonId} />;
+      case 'staff':
+        return <StaffManagement hackathonId={hackathonId} />;
+      case 'judging':
+        return <JudgingControl hackathonId={hackathonId} />;
+      case 'certificates':
+        return <CertificateSystem hackathonId={hackathonId} />;
+      case 'results':
+        return <ResultsPanel hackathonId={hackathonId} />;
+      default:
+        return null;
     }
   };
 
-  return (
-    <div style={{ padding: '2rem', maxWidth: 1400, margin: '0 auto', position: 'relative' }}>
-      <style>{`
-        .btn-premium-ghost {
-          background: transparent;
-          border: 1px solid rgba(255,255,255,0.08);
-          color: var(--text-primary);
-          padding: 0.6rem 1rem;
-          border-radius: var(--radius-sm);
-          font-size: 0.8rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          text-align: left;
-        }
-        .btn-premium-ghost:hover {
-          border-color: rgba(255,255,255,0.25);
-          background: rgba(255,255,255,0.02);
-          box-shadow: 0 0 10px rgba(255,255,255,0.03);
-        }
-        .subnav-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-          width: 100%;
-          text-align: left;
-          background: transparent;
-          border: none;
-          padding: 0.35rem 0.6rem;
-          border-radius: var(--radius-sm);
-          color: #888888;
-          font-size: 0.78rem;
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-        .subnav-btn:hover {
-          background: var(--bg-raised);
-          color: var(--text-primary);
-        }
-        .subnav-btn.active {
-          background: var(--bg-surface);
-          color: var(--text-primary);
-          font-weight: 500;
-          box-shadow: inset 2px 0 0 var(--accent);
-        }
-        .step-col {
-          display: flex;
-          flex-direction: column;
-          justify-content: flex-end;
-          border-left: 1px solid rgba(255,255,255,0.05);
-          padding-left: 0.75rem;
-          position: relative;
-        }
-        .loss-badge {
-          position: absolute;
-          top: 10px;
-          right: -15px;
-          background: #3f1515;
-          color: #ef4444;
-          font-size: 0.55rem;
-          padding: 2px 5px;
-          border-radius: 4px;
-          font-weight: 700;
-          z-index: 10;
-        }
-      `}</style>
+  const scheduleHint =
+    hackathon?.startDate && hackathon?.endDate
+      ? `${new Date(hackathon.startDate).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })} – ${new Date(hackathon.endDate).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}`
+      : null;
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
-        <div>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.2em', color: '#A0A0A0', marginBottom: '0.5rem' }}>
-            Command Center
-          </p>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem, 3vw, 2.5rem)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-            {hackathon?.title || 'Loading...'}
-          </h1>
-        </div>
-        
-        {/* Status Switcher */}
-        {hackathon && (
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button
-              onClick={() => window.location.href = `/organiser/edit/${hackathonId}`}
-              style={{
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                color: 'var(--text-primary)',
-                padding: '0.4rem 1rem',
-                borderRadius: '999px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                transition: 'all 0.2s',
-              }}
-              onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-              onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Edit Hackathon
-            </button>
-            <div style={{ position: 'relative', opacity: isUpdatingStatus ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-              <select
-                value={hackathon.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                disabled={isUpdatingStatus}
-                style={{
-                  appearance: 'none',
-                  background: hackathon.status === 'ONGOING' ? 'rgba(62, 207, 142, 0.1)' : hackathon.status === 'REGISTRATION' ? 'rgba(56, 189, 248, 0.1)' : 'var(--bg-surface)',
-                  border: `1px solid ${hackathon.status === 'ONGOING' ? 'rgba(62, 207, 142, 0.3)' : hackathon.status === 'REGISTRATION' ? 'rgba(56, 189, 248, 0.3)' : 'var(--border-subtle)'}`,
-                  color: hackathon.status === 'ONGOING' ? '#3ecf8e' : hackathon.status === 'REGISTRATION' ? '#38bdf8' : 'var(--text-primary)',
-                  padding: '0.4rem 2rem 0.4rem 1.25rem',
-                  borderRadius: '999px',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                }}
-              >
-                <option value="DRAFT">Draft Mode</option>
-                <option value="REGISTRATION">Registration Open</option>
-                <option value="ONGOING">Hackathon Started</option>
-                <option value="ENDED">Hackathon Ended</option>
-              </select>
-              <svg style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'inherit', opacity: 0.7 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+  return (
+    <div className="org-shell min-h-full">
+      <div className="org-page mx-auto max-w-[1200px]">
+        <Link
+          href="/organiser/dashboard"
+          className="mb-4 inline-flex text-sm font-medium text-[#0969da] hover:text-[#0550ae]"
+        >
+          ← All hackathons
+        </Link>
+        <header className="mb-6 flex flex-col gap-4 border-b border-[var(--border-default)] pb-6 sm:mb-8 sm:flex-row sm:items-start sm:justify-between sm:pb-8">
+          <div className="min-w-0 space-y-1">
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+              Command center
+            </p>
+            <h1 className="text-[clamp(1.25rem,2.5vw,1.75rem)] font-semibold tracking-tight text-[var(--text-primary)]">
+              {hackathon?.title || 'Loading…'}
+            </h1>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              {scheduleHint && (
+                <p className="text-sm text-[var(--text-secondary)]">{scheduleHint}</p>
+              )}
+              {hackathon?.status && (
+                <span
+                  className={`w-fit rounded-[6px] border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${statusBadgeClass(hackathon.status)}`}
+                >
+                  {statusLabel(hackathon.status)}
+                </span>
+              )}
             </div>
           </div>
-        )}
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '3rem', alignItems: 'start' }}>
-        {/* Vertical Sub-Nav Sidebar */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {TAB_GROUPS.map((group) => (
-            <div key={group.name}>
-              <p style={{ color: '#A0A0A0', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.4rem', fontWeight: 600, paddingLeft: '0.6rem' }}>{group.name}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                {group.tabs.map((tab) => (
-                  <button key={tab.id} className={`subnav-btn ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id as TabId)}>
-                    <span style={{ opacity: activeTab === tab.id ? 1 : 0.6 }}>{tab.icon}</span>
-                    {tab.label}
-                  </button>
-                ))}
+          {hackathon && (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+              <Link
+                href={`/organiser/edit/${hackathonId}`}
+                className="inline-flex h-9 min-h-[44px] items-center justify-center gap-2 rounded-[6px] border border-[var(--border-default)] bg-[#f6f8fa] px-3 text-sm font-medium text-[#24292f] shadow-[var(--elevation-sm)] transition-colors hover:bg-[#eef2f6] sm:h-8 sm:min-h-0"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                Edit event
+              </Link>
+              <div className="relative min-w-0 sm:min-w-[200px]">
+                <select
+                  value={hackathon.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  disabled={isUpdatingStatus}
+                  className="h-9 w-full appearance-none rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] py-2 pl-3 pr-9 text-sm font-medium text-[var(--text-primary)] shadow-[var(--elevation-sm)] focus:border-[#0969da] focus:outline-none focus:ring-[3px] focus:ring-[rgba(9,105,218,0.3)] disabled:opacity-50"
+                  aria-label="Hackathon status"
+                >
+                  <option value="DRAFT">Draft</option>
+                  <option value="REGISTRATION">Registration open</option>
+                  <option value="ONGOING">Ongoing</option>
+                  <option value="ENDED">Ended</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </span>
               </div>
             </div>
-          ))}
-        </aside>
+          )}
+        </header>
 
-        {/* Main Content Area */}
-        <main style={{ background: 'var(--bg-root)', minHeight: 400 }}>
-          {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem 0' }}>
-              <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-            </div>
-          ) : renderTab()}
-        </main>
-      </div>
+        <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+          <nav
+            className="-mx-1 flex gap-1 overflow-x-auto pb-1 lg:mx-0 lg:w-[200px] lg:flex-shrink-0 lg:flex-col lg:overflow-visible lg:border-r lg:border-[var(--border-default)] lg:pr-4"
+            role="tablist"
+            aria-label="Command center sections"
+          >
+            {TABS.map(({ id, label, Icon }) => {
+              const active = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  id={`cc-tab-${id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-controls="cc-workspace-panel"
+                  onClick={() => selectTab(id)}
+                  className={`flex shrink-0 items-center gap-2 rounded-[6px] px-3 py-2.5 text-left text-sm font-medium transition-colors lg:w-full lg:py-2 ${
+                    active
+                      ? 'bg-[#0969da] text-white shadow-[var(--elevation-sm)]'
+                      : 'border border-transparent text-[var(--text-secondary)] hover:border-[var(--border-default)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
 
-      {/* Feedback Toast */}
-      {feedback && (
-        <div style={{
-          position: 'fixed',
-          bottom: '2rem',
-          right: '2rem',
-          padding: '0.75rem 1.25rem',
-          background: feedback.includes('error') || feedback.includes('Failed') ? '#fef2f2' : '#f0fdf4',
-          border: `1px solid ${feedback.includes('error') || feedback.includes('Failed') ? '#fecaca' : '#bbf7d0'}`,
-          borderRadius: 'var(--radius-sm)',
-          color: feedback.includes('error') || feedback.includes('Failed') ? '#dc2626' : '#16a34a',
-          fontSize: '0.85rem',
-          fontWeight: 500,
-          zIndex: 1000,
-          animation: 'fadeIn 0.2s ease',
-        }}>
-          {feedback}
+          <main
+            id="cc-workspace-panel"
+            role="tabpanel"
+            aria-labelledby={`cc-tab-${activeTab}`}
+            className="min-h-[min(60vh,480px)] min-w-0 flex-1 scroll-mt-4"
+          >
+            {loading ? (
+              <div className="flex justify-center py-16">
+                <div
+                  className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]"
+                  role="status"
+                  aria-label="Loading"
+                />
+              </div>
+            ) : (
+              renderTab()
+            )}
+          </main>
         </div>
-      )}
-
-      {/* Edit Hackathon Modal */}
-      {showEditModal && hackathon && (
-        <EditHackathonModal
-          hackathon={hackathon}
-          onClose={() => setShowEditModal(false)}
-          onSave={(updated) => {
-            setHackathon((prev: any) => ({ ...prev, ...updated }));
-            setFeedback('Hackathon details updated successfully');
-            setTimeout(() => setFeedback(''), 3000);
-          }}
-        />
-      )}
+      </div>
     </div>
   );
 }
 
-/* ==================== OVERVIEW PANEL ==================== */
-const Sparkline = ({ color }: { color: string }) => (
-  <svg width="48" height="18" viewBox="0 0 48 18" fill="none" style={{ opacity: 0.8 }}>
-    <path d="M0 14 L8 12 L16 15 L24 8 L32 10 L40 4 L48 6" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+function OverviewPanel({
+  stats,
+  hackathon,
+  submissions,
+  hackathonId,
+  onSelectTab,
+}: {
+  stats: Stats | null;
+  hackathon: any;
+  submissions: any[];
+  hackathonId: string;
+  onSelectTab: (id: TabId) => void;
+}) {
+  const openTickets = stats?.openTickets ?? 0;
+  const st = (hackathon?.status || 'DRAFT').toUpperCase();
 
-function OverviewPanel({ stats, hackathon, submissions }: { stats: Stats | null; hackathon: any; submissions: any[] }) {
-  const activePhase = 'development';
-  const PHASES = ['ideation', 'development', 'judging', 'results'];
+  const cards = [
+    {
+      key: 'teams',
+      label: 'Teams',
+      value: stats?.totalTeams ?? '—',
+      hint: 'Registered teams',
+      tab: 'teams' as const,
+      emphasis: false,
+    },
+    {
+      key: 'participants',
+      label: 'Participants',
+      value: stats?.participantsCount ?? '—',
+      hint: 'People on teams',
+      tab: 'teams' as const,
+      emphasis: false,
+    },
+    {
+      key: 'submissions',
+      label: 'Submissions',
+      value: stats?.submittedCount ?? '—',
+      hint: 'Projects submitted',
+      tab: 'submissions' as const,
+      emphasis: false,
+    },
+    {
+      key: 'tickets',
+      label: 'Open tickets',
+      value: openTickets,
+      hint: 'Support queue',
+      tab: 'tickets' as const,
+      emphasis: openTickets > 0,
+    },
+  ];
+
+  const jumps: { id: TabId; label: string }[] = [
+    { id: 'teams', label: 'Teams' },
+    { id: 'submissions', label: 'Submissions' },
+    { id: 'announcements', label: 'Announcements' },
+    { id: 'tickets', label: `Support (${openTickets})` },
+    { id: 'judging', label: 'Judging' },
+    { id: 'results', label: 'Results' },
+    { id: 'certificates', label: 'Certificates' },
+    { id: 'staff', label: 'Staff' },
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-      
-      {/* 1. Left-Aligned Architectural Timeline */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', paddingBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '2rem' }}>
-          {PHASES.map((phase) => {
-            const isActive = activePhase === phase;
-            return (
-              <div key={phase} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', opacity: isActive ? 1 : 0.4 }}>
-                <span style={{ fontSize: '0.7rem', fontWeight: isActive ? 700 : 400, textTransform: 'uppercase', letterSpacing: '0.15em', color: isActive ? 'var(--text-primary)' : '#A0A0A0' }}>
-                  {phase}
-                </span>
-                {isActive && <div style={{ height: 2, width: '140%', background: 'var(--text-primary)', marginLeft: '-10%' }} />}
-              </div>
-            );
-          })}
-        </div>
-        <button className="btn-premium-ghost" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '4px', padding: '0.35rem 0.75rem', fontSize: '0.7rem' }} onClick={() => window.open(`/participant/hackathons/${hackathon?.id}`, '_blank')}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-          View Public Page
-        </button>
+    <div className="space-y-6">
+      <div
+        className="rounded-[6px] border border-[var(--border-default)] bg-[#f6f8fa] px-4 py-3 text-sm leading-snug text-[var(--text-secondary)] shadow-[var(--elevation-sm)]"
+        role="note"
+      >
+        <span className="font-medium text-[var(--text-primary)]">Where you are: </span>
+        {statusGuidance(st)}
       </div>
 
-      {/* 2. Telemetry Strip (Vitals) */}
-      <div style={{ display: 'flex', gap: '3rem', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '1rem 0' }}>
-        {[
-          { label: 'TEAMS', value: stats?.totalTeams ?? 0, color: '#818cf8' },
-          { label: 'PARTICIPANTS', value: stats?.participantsCount ?? 0, color: '#3ecf8e' },
-          { label: 'SUBMISSIONS', value: stats?.submittedCount ?? 0, color: 'var(--accent)' },
-        ].map(s => (
-          <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            <div>
-              <p style={{ color: '#888', fontSize: '0.6rem', fontWeight: 600, letterSpacing: '0.1em', marginBottom: '0.1rem' }}>{s.label}</p>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, lineHeight: 1, color: 'var(--text-primary)' }}>{s.value}</p>
-            </div>
-            <Sparkline color={s.color} />
-          </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map(({ key, label, value, hint, tab, emphasis }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSelectTab(tab)}
+            className={`rounded-[6px] border bg-[var(--bg-root)] p-4 text-left shadow-[var(--elevation-sm)] transition-colors hover:bg-[var(--bg-surface)] ${
+              emphasis
+                ? 'border border-[var(--border-default)] border-l-[3px] border-l-[#cf222e]'
+                : 'border border-[var(--border-default)]'
+            }`}
+          >
+            <p className="font-mono text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+              {label}
+            </p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--text-primary)]">
+              {value}
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">{hint}</p>
+          </button>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '4rem', alignItems: 'start' }}>
-        
-        {/* Main Workspace (Funnel + Live Activity) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '3.5rem' }}>
-          
-           {/* Stepped Architectural Funnel */}
-           <div>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem' }}>
-               <p style={{ color: '#A0A0A0', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>Conversion Funnel</p>
-               <span style={{ fontSize: '0.6rem', color: '#666' }}>LAST 24 HOURS</span>
-             </div>
-             
-             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', height: 120, alignItems: 'end', background: 'repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(255,255,255,0.02) 19px, rgba(255,255,255,0.02) 20px)' }}>
-                <div className="step-col" style={{ height: '100%' }}>
-                  <div className="loss-badge">-32%</div>
-                  <div style={{ background: 'var(--bg-raised)', height: '100%', width: '80%', transition: 'height 0.5s' }} />
-                  <p style={{ marginTop: '0.5rem', fontSize: '0.65rem', color: '#888', letterSpacing: '0.05em' }}>VIEWS (2.4k)</p>
-                </div>
-                <div className="step-col" style={{ height: '68%' }}>
-                  <div className="loss-badge">-15%</div>
-                  <div style={{ background: 'var(--accent-dim)', height: '100%', width: '80%', borderTop: '2px solid var(--accent)' }} />
-                  <p style={{ marginTop: '0.5rem', fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 600, letterSpacing: '0.05em' }}>REGISTERED ({stats?.participantsCount ?? 0})</p>
-                </div>
-                <div className="step-col" style={{ height: '53%' }}>
-                  <div className="loss-badge">-5%</div>
-                  <div style={{ background: 'var(--bg-raised)', height: '100%', width: '80%' }} />
-                  <p style={{ marginTop: '0.5rem', fontSize: '0.65rem', color: '#888', letterSpacing: '0.05em' }}>TEAMED ({stats?.totalTeams ?? 0})</p>
-                </div>
-                <div className="step-col" style={{ height: '48%', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ background: 'rgba(52, 211, 153, 0.1)', height: '100%', width: '80%', borderTop: '2px solid #34d399' }} />
-                  <p style={{ marginTop: '0.5rem', fontSize: '0.65rem', color: '#34d399', fontWeight: 600, letterSpacing: '0.05em' }}>SUBMITTED ({stats?.submittedCount ?? 0})</p>
-                </div>
-             </div>
-           </div>
-
-           {/* Live Activity Terminal */}
-           <div>
-             <p style={{ color: '#A0A0A0', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1rem', fontWeight: 600 }}>Live Activity Log</p>
-             <div style={{ background: '#050505', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '1rem', fontFamily: '"DM Mono", monospace', fontSize: '0.75rem', color: '#A0A0A0', height: 180, overflowY: 'auto' }}>
-               <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
-                 <span style={{ color: '#555' }}>[20:25:10]</span>
-                 <span style={{ color: '#818cf8' }}>System:</span>
-                 <span style={{ color: '#E0E0E0' }}>Registration gateway ping successful (12ms)</span>
-               </div>
-               <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
-                 <span style={{ color: '#555' }}>[20:18:44]</span>
-                 <span style={{ color: '#3ecf8e' }}>Webhooks:</span>
-                 <span style={{ color: '#E0E0E0' }}>Discord sync authenticated.</span>
-               </div>
-               {submissions.length > 0 ? (
-                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
-                   <span style={{ color: '#555' }}>[{new Date().toTimeString().split(' ')[0]}]</span>
-                   <span style={{ color: 'var(--accent)' }}>Submissions:</span>
-                   <span style={{ color: '#E0E0E0' }}>Detected {submissions.length} new commits from registered repositories.</span>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
-                   <span style={{ color: '#555' }}>[{new Date().toTimeString().split(' ')[0]}]</span>
-                   <span style={{ color: '#ef4444' }}>Listener:</span>
-                   <span style={{ color: '#E0E0E0' }}>Awaiting initial POST on /api/submissions...</span>
-                 </div>
-               )}
-               <div style={{ display: 'flex', gap: '1rem' }}>
-                 <span style={{ color: '#555' }}>[{new Date().toTimeString().split(' ')[0]}]</span>
-                 <span style={{ color: '#818cf8' }}>System:</span>
-                 <span style={{ color: '#E0E0E0' }}>Telemetry active.</span>
-                 <span style={{ animation: 'auth-pulse 1.5s infinite', color: '#fff' }}>_</span>
-               </div>
-             </div>
-           </div>
+      <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--elevation-sm)]">
+        <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Jump to section</p>
+        <div className="flex flex-wrap gap-2">
+          {jumps.map(({ id, label: lbl }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onSelectTab(id)}
+              className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-3 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[#eef2f6]"
+            >
+              {lbl}
+            </button>
+          ))}
         </div>
-
-        {/* Intentional Tension (Off-Axis Quick Actions) */}
-        <div style={{ 
-          transform: 'translateY(2rem)', 
-          background: '#0A0A0A', 
-          border: '1px solid rgba(255,255,255,0.1)', 
-          borderRadius: '2px', 
-          padding: '1.5rem',
-          boxShadow: '-10px 20px 40px rgba(0,0,0,0.4)'
-        }}>
-          <p style={{ color: '#777', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1.25rem', fontWeight: 600 }}>Direct Actions</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <button className="btn-premium-ghost" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }} onClick={() => window.dispatchEvent(new CustomEvent('SET_TAB', { detail: 'announcements' }))}>
-              <span>Broadcast Update</span>
-              <span style={{ fontSize: '0.6rem', color: '#666', fontWeight: 400 }}>({stats?.participantsCount || 0} hackers)</span>
-            </button>
-            <button className="btn-premium-ghost" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }} onClick={() => window.dispatchEvent(new CustomEvent('SET_TAB', { detail: 'tickets' }))}>
-              <span>Resolve Tickets</span>
-              <span style={{ fontSize: '0.6rem', color: '#ef4444', fontWeight: 400 }}>({stats?.openTickets || 0} pending)</span>
-            </button>
-            <button className="btn-premium-ghost" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }} onClick={() => window.dispatchEvent(new CustomEvent('SET_TAB', { detail: 'judging' }))}>
-              <span>Manage Judging</span>
-              <span style={{ fontSize: '0.6rem', color: '#666', fontWeight: 400 }}>(Queue empty)</span>
-            </button>
-            <button className="btn-premium-ghost" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }} onClick={() => window.dispatchEvent(new CustomEvent('SET_TAB', { detail: 'staff' }))}>
-              <span>Onboard Staff</span>
-              <span style={{ fontSize: '0.6rem', color: '#666', fontWeight: 400 }}>(0 invites)</span>
-            </button>
-          </div>
+        <div className="mt-4 flex flex-col gap-3 border-t border-[var(--border-default)] pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          {hackathon?.id && (
+            <a
+              href={`/participant/hackathons/${hackathon.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#0969da] hover:text-[#0550ae]"
+            >
+              View public event page
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={() => window.open(`/api/hackathons/${hackathonId}/export`, '_blank')}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#0969da] hover:text-[#0550ae]"
+          >
+            Download event export (CSV)
+          </button>
         </div>
-
       </div>
+
+      <p className="text-sm text-[var(--text-secondary)]">
+        {submissions.length === 0
+          ? 'No submissions yet. Teams will appear here once they submit.'
+          : `${submissions.length} submission${submissions.length === 1 ? '' : 's'} recorded for this event.`}
+      </p>
     </div>
+  );
+}
+
+export default function CommandCenterEntry() {
+  return (
+    <Suspense
+      fallback={
+        <div className="org-shell flex min-h-[50vh] items-center justify-center px-4">
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]"
+            role="status"
+            aria-label="Loading command center"
+          />
+        </div>
+      }
+    >
+      <CommandCenterPage />
+    </Suspense>
   );
 }
 
@@ -919,12 +933,12 @@ function ResultsPanel({ hackathonId }: { hackathonId: string }) {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '0.75rem 0.85rem', background: 'var(--bg-raised)',
                   borderRadius: 'var(--radius-sm)', marginBottom: '0.35rem',
-                  border: idx === 0 ? '1px solid var(--accent)' : winnerInfo ? '1px solid rgba(62,207,142,0.3)' : '1px solid var(--border-subtle)',
+                  border: idx === 0 ? '1px solid #0969da' : winnerInfo ? '1px solid rgba(26,127,55,0.35)' : '1px solid var(--border-default)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <span style={{
                       fontWeight: 700, fontSize: idx < 3 ? '1.1rem' : '0.9rem',
-                      color: idx === 0 ? '#e8a44a' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'var(--text-muted)',
+                      color: idx === 0 ? '#0969da' : idx === 1 ? '#57606a' : idx === 2 ? '#9a6700' : 'var(--text-muted)',
                       minWidth: 24, textAlign: 'center',
                     }}>
                       #{entry.rank}

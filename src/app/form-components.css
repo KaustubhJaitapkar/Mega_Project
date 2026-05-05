@@ -1733,11 +1733,11 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 45% at 12% -5%, rgba(232, 164, 74, 0.07), transparent 55%),
-    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
-  background-size: auto, 52px 52px, 52px 52px;
-  mask-image: radial-gradient(ellipse 85% 70% at 50% 0%, black 40%, transparent 100%);
+    radial-gradient(ellipse 72% 48% at 10% -8%, rgba(9, 105, 218, 0.06), transparent 58%),
+    linear-gradient(rgba(208, 215, 222, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(208, 215, 222, 0.35) 1px, transparent 1px);
+  background-size: auto, 48px 48px, 48px 48px;
+  mask-image: radial-gradient(ellipse 88% 72% at 50% 0%, black 42%, transparent 100%);
   pointer-events: none;
 }
 
@@ -1825,7 +1825,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   padding: clamp(1.5rem, 2.4vw, 2.4rem) clamp(1.35rem, 2.4vw, 2.5rem) clamp(1.9rem, 2.8vw, 2.75rem);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--elevation-sm, 0 1px 3px rgba(31, 35, 40, 0.12));
 }
 
 /* Steps */

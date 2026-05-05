@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, QrCode } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface Hackathon { id: string; title: string; status: string }
@@ -216,7 +218,7 @@ export default function ScanPage() {
       setFileScanBusy(false);
       e.target.value = '';
     }
-  }, [actionOptions, selectedOptionId, handleAction]);
+  }, [handleAction]);
 
   useEffect(() => { return () => { stopCamera(); }; }, [stopCamera]);
 
@@ -246,191 +248,275 @@ export default function ScanPage() {
     } catch { setError('Failed to add event'); }
   }, [hackathonId, mealSchedule, newEventName]);
 
+  const tableColSpan = mealSchedule.length + 2;
+
   return (
-    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-        <div>
-          <p style={sectionLabel}>Operations</p>
-          <h1 style={pageTitle}>QR Scan Station</h1>
-        </div>
-        <select value={hackathonId} onChange={(e) => setHackathonId(e.target.value)} style={selectStyle}>
-          {hackathons.map((h) => <option key={h.id} value={h.id} style={{ background: 'var(--bg-surface)' }}>{h.title}</option>)}
-        </select>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
-        {/* Left: Scanner + Manual */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {/* Camera Scanner */}
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <p style={statLabel}>Camera Scanner</p>
-              <button onClick={cameraActive ? stopCamera : startCamera} className={cameraActive ? 'org-btn-danger' : 'org-btn-primary'} style={{ fontSize: '0.65rem', padding: '0.3rem 0.6rem' }}>
-                {cameraActive ? 'Stop Camera' : 'Start Camera'}
-              </button>
-            </div>
-            <div style={{ position: 'relative' }}>
-              <div id={scannerContainerId} style={{
-                width: '100%', minHeight: cameraActive ? 250 : 0,
-                borderRadius: 'var(--radius-md)', overflow: 'hidden',
-                background: cameraActive ? '#000' : 'var(--bg-raised)',
-              }} />
-              {!cameraActive && (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  pointerEvents: 'none',
-                }}>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', padding: '2rem', textAlign: 'center' }}>
-                    Click &quot;Start Camera&quot; to scan QR codes with your device camera.
-                  </p>
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.6rem' }}>
-              <label className="org-btn-secondary" style={{ fontSize: '0.65rem', padding: '0.3rem 0.6rem', cursor: fileScanBusy ? 'not-allowed' : 'pointer', opacity: fileScanBusy ? 0.6 : 1 }}>
-                Capture QR
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileCapture}
-                  disabled={fileScanBusy}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Scan from a camera snapshot</span>
-            </div>
-          </div>
-
-          {/* Manual Input */}
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
-            <p style={{ ...statLabel, marginBottom: '0.6rem' }}>Manual Entry</p>
-            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
-              <select value={selectedOptionId} onChange={(e) => setSelectedOptionId(e.target.value)} className="org-input" style={{ flex: 1, fontSize: '0.78rem' }}>
-                {actionOptions.length === 0 && <option value="">Add an attendance event</option>}
-                {actionOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            <form onSubmit={handleScan} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
-              <input ref={inputRef} value={scanInput} onChange={(e) => setScanInput(e.target.value)} placeholder="QR code text or user ID" autoComplete="off" className="org-input" style={{ flex: 1, fontSize: '0.78rem' }} />
-              <button type="submit" disabled={!scanInput.trim() || !!loading} className="org-btn-primary" style={{ fontSize: '0.65rem' }}>
-                {loading ? '...' : 'Submit'}
-              </button>
-            </form>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-              Selected: {selectedOption?.label || 'None'}
+    <div className="org-shell min-h-full">
+      <div className="org-page mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
+        <div className="mb-6 flex flex-col gap-4 border-b border-[var(--border-default)] pb-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <Link
+              href="/organiser/dashboard"
+              className="mb-3 inline-flex items-center gap-1.5 font-mono text-[12px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] transition-colors hover:text-[#0969da]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Dashboard
+            </Link>
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[#0969da]">Operations</p>
+            <h1 className="mt-1 flex flex-wrap items-center gap-2 text-[clamp(1.35rem,2.2vw,1.65rem)] font-semibold tracking-tight text-[var(--text-primary)]">
+              <QrCode className="h-7 w-7 shrink-0 text-[#0969da]" aria-hidden />
+              QR scan station
+            </h1>
+            <p className="mt-2 max-w-xl text-[15px] text-[var(--text-secondary)]">
+              Redeem attendance from camera, image capture, or manual token entry. The roster refreshes every few seconds.
             </p>
           </div>
-
-          {/* Add Attendance Event */}
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
-            <p style={{ ...statLabel, marginBottom: '0.6rem' }}>Add Attendance Event</p>
-            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
-              <input className="org-input" value={newEventName} onChange={(e) => setNewEventName(e.target.value)} placeholder="Event name" style={{ flex: 1 }} />
-            </div>
-            <button className="org-btn-secondary" onClick={addAttendanceEvent} disabled={!newEventName.trim()} style={{ fontSize: '0.7rem' }}>
-              Add Event
-            </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[240px]">
+            <label htmlFor="scan-hackathon" className="font-mono text-[12px] text-[var(--text-muted)]">
+              Event
+            </label>
+            <select
+              id="scan-hackathon"
+              value={hackathonId}
+              onChange={(e) => setHackathonId(e.target.value)}
+              className="org-input h-10 min-h-[40px] w-full cursor-pointer rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] text-sm text-[var(--text-primary)]"
+            >
+              {hackathons.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.title}
+                </option>
+              ))}
+            </select>
           </div>
-
-          {/* Last Result */}
-          {error && <div className="org-feedback org-feedback-error">{error}</div>}
-          {lastResult && (
-            <div style={{
-              padding: '0.75rem 1rem',
-              background: lastResult.alreadyDone ? 'rgba(232,164,74,0.06)' : 'rgba(62,207,142,0.06)',
-              border: `1px solid ${lastResult.alreadyDone ? 'rgba(232,164,74,0.2)' : 'rgba(62,207,142,0.2)'}`,
-              borderRadius: 'var(--radius-md)',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                <span style={{
-                  fontFamily: 'var(--font-display)', fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.1em',
-                  padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-sm)',
-                  background: lastResult.alreadyDone ? 'rgba(232,164,74,0.12)' : 'rgba(62,207,142,0.12)',
-                  color: lastResult.alreadyDone ? '#e8a44a' : '#3ecf8e',
-                }}>{lastResult.alreadyDone ? 'ALREADY DONE' : 'SUCCESS'}</span>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{lastResult.time}</span>
-              </div>
-              <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.88rem' }}>{lastResult.userName}</p>
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lastResult.action} &middot; {lastResult.userEmail}</p>
-            </div>
-          )}
-
-          {/* Recent Log */}
-          {recentLog.length > 0 && (
-            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '0.75rem' }}>
-              <p style={statLabel}>Recent Activity</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: 200, overflowY: 'auto' }}>
-                {recentLog.map((entry, i) => {
-                  const actionColor = entry.action === 'Check In' ? '#3ecf8e' : entry.action === 'Breakfast' ? '#f59e0b' : entry.action === 'Lunch' ? '#e8a44a' : entry.action === 'Swag' ? '#818cf8' : '#38bdf8';
-                  return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.5rem', background: 'var(--bg-raised)', borderRadius: 'var(--radius-sm)' }}>
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.5rem', fontWeight: 600, padding: '0.1rem 0.3rem', borderRadius: 3, background: `${actionColor}15`, color: actionColor }}>{entry.action}</span>
-                      <span style={{ flex: 1, fontSize: '0.72rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.userName}</span>
-                      <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{entry.time}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Right: Attendee Table */}
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-          <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-            <p style={statLabel}>Attendees ({attendees.length})</p>
-          </div>
-          <div style={{ maxHeight: 600, overflowY: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <th style={{ padding: '0.5rem 0.6rem', textAlign: 'left', ...statLabel, fontWeight: 500 }}>Name</th>
-                  {mealSchedule.map((event) => (
-                    <th key={event.id} style={{ padding: '0.5rem 0.6rem', textAlign: 'center', ...statLabel, fontWeight: 500 }}>
-                      {event.name || 'Event'}
-                    </th>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <div className="flex flex-col gap-3">
+            <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--elevation-sm)]">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Camera scanner</p>
+                <button
+                  type="button"
+                  onClick={cameraActive ? stopCamera : startCamera}
+                  className={cameraActive ? 'org-btn-danger' : 'org-btn-primary'}
+                >
+                  {cameraActive ? 'Stop camera' : 'Start camera'}
+                </button>
+              </div>
+              <div className="relative">
+                <div
+                  id={scannerContainerId}
+                  className={`w-full overflow-hidden rounded-[6px] ${cameraActive ? 'min-h-[250px] bg-black' : 'min-h-0 bg-[var(--bg-raised)]'}`}
+                />
+                {!cameraActive && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+                    <p className="text-center text-sm text-[var(--text-muted)]">
+                      Use <span className="font-medium text-[var(--text-secondary)]">Start camera</span> to scan QR codes with this device.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <label
+                  className={`org-btn-secondary inline-flex min-h-[32px] cursor-pointer items-center text-sm ${fileScanBusy ? 'pointer-events-none opacity-60' : ''}`}
+                >
+                  Capture QR
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileCapture}
+                    disabled={fileScanBusy}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs text-[var(--text-muted)]">From a photo or screenshot</span>
+              </div>
+            </section>
+
+            <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--elevation-sm)]">
+              <p className="mb-3 font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Manual entry</p>
+              <div className="mb-3">
+                <select
+                  value={selectedOptionId}
+                  onChange={(e) => setSelectedOptionId(e.target.value)}
+                  className="org-input h-10 min-h-[40px] w-full rounded-[6px] text-sm"
+                >
+                  {actionOptions.length === 0 && <option value="">Add an attendance event first</option>}
+                  {actionOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
                   ))}
-                  <th style={{ padding: '0.5rem 0.6rem', textAlign: 'right', ...statLabel, fontWeight: 500 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendees.slice(0, 80).map((a) => (
-                  <tr key={a.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                    <td style={{ padding: '0.5rem 0.6rem' }}>
-                      <p style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)' }}>{a.user.name}</p>
-                      <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{a.user.email}</p>
-                    </td>
-                    {mealSchedule.map((event) => {
-                      const marks = a.eventMarks || {};
-                      const done = !!marks[event.id];
-                      return (
-                        <td key={event.id} style={{ padding: '0.4rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: done ? '#38bdf8' : 'var(--text-muted)' }}>
-                          {done ? '\u2713' : '\u2014'}
-                        </td>
-                      );
-                    })}
-                    <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                      Use scanner
-                    </td>
-                  </tr>
-                ))}
-                {attendees.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>No attendees yet.</td></tr>}
-              </tbody>
-            </table>
+                </select>
+              </div>
+              <form onSubmit={handleScan} className="mb-2 flex flex-col gap-2 sm:flex-row">
+                <input
+                  ref={inputRef}
+                  value={scanInput}
+                  onChange={(e) => setScanInput(e.target.value)}
+                  placeholder="QR token or user ID"
+                  autoComplete="off"
+                  className="org-input h-10 min-h-[40px] min-w-0 flex-1 rounded-[6px] text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={!scanInput.trim() || !!loading}
+                  className="org-btn-primary h-10 min-h-[40px] shrink-0 px-4 sm:w-auto"
+                >
+                  {loading ? '…' : 'Submit'}
+                </button>
+              </form>
+              <p className="text-xs text-[var(--text-muted)]">
+                Selected: <span className="font-medium text-[var(--text-secondary)]">{selectedOption?.label || '—'}</span>
+              </p>
+            </section>
+
+            <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--elevation-sm)]">
+              <p className="mb-3 font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Add attendance event</p>
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  className="org-input h-10 min-h-[40px] min-w-0 flex-1 rounded-[6px] text-sm"
+                  value={newEventName}
+                  onChange={(e) => setNewEventName(e.target.value)}
+                  placeholder="Event name (saved to schedule)"
+                />
+                <button
+                  type="button"
+                  className="org-btn-secondary h-10 min-h-[40px] shrink-0"
+                  onClick={addAttendanceEvent}
+                  disabled={!newEventName.trim()}
+                >
+                  Add event
+                </button>
+              </div>
+            </section>
+
+            {error && <div className="org-feedback org-feedback-error">{error}</div>}
+            {lastResult && (
+              <div
+                className={`rounded-[6px] border p-4 ${
+                  lastResult.alreadyDone
+                    ? 'border-[#d4a72c]/35 bg-[#fff8c5]/50'
+                    : 'border-[#1a7f37]/30 bg-[#dafbe1]/50'
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span
+                    className={`rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${
+                      lastResult.alreadyDone ? 'bg-[#fff8c5] text-[#4d2d00]' : 'bg-[#dafbe1] text-[#0d1f12]'
+                    }`}
+                  >
+                    {lastResult.alreadyDone ? 'Already done' : 'Success'}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)]">{lastResult.time}</span>
+                </div>
+                <p className="font-semibold text-[var(--text-primary)]">{lastResult.userName}</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  {lastResult.action} · {lastResult.userEmail}
+                </p>
+              </div>
+            )}
+
+            {recentLog.length > 0 && (
+              <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 shadow-[var(--elevation-sm)]">
+                <p className="mb-2 font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Recent activity</p>
+                <div className="flex max-h-[200px] flex-col gap-1 overflow-y-auto">
+                  {recentLog.map((entry, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 rounded-[6px] bg-[var(--bg-raised)] px-2 py-1.5"
+                    >
+                      <span className="max-w-[40%] shrink-0 truncate rounded bg-[var(--accent-dim)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-[#0969da]">
+                        {entry.action}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-primary)]">{entry.userName}</span>
+                      <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{entry.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
+
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+            <div className="border-b border-[var(--border-default)] px-4 py-3">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+                    Attendees ({attendees.length})
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                      Checked in <strong className="text-[var(--text-primary)]">{stats.checkedIn}</strong>
+                    </span>
+                    <span className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                      Breakfast <strong className="text-[var(--text-primary)]">{stats.breakfast}</strong>
+                    </span>
+                    <span className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                      Lunch <strong className="text-[var(--text-primary)]">{stats.lunch}</strong>
+                    </span>
+                    <span className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                      Swag <strong className="text-[var(--text-primary)]">{stats.swag}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="max-h-[min(600px,70vh)] overflow-x-auto overflow-y-auto">
+              <table className="w-full min-w-[320px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-default)] bg-[var(--bg-root)]">
+                    <th className="px-3 py-2.5 font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">Name</th>
+                    {mealSchedule.map((event) => (
+                      <th
+                        key={event.id}
+                        className="px-2 py-2.5 text-center font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]"
+                      >
+                        {event.name || 'Event'}
+                      </th>
+                    ))}
+                    <th className="px-3 py-2.5 text-right font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                      Note
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-default)]">
+                  {attendees.slice(0, 80).map((a) => (
+                    <tr key={a.id} className="hover:bg-[var(--bg-root)]/80">
+                      <td className="px-3 py-2 align-top">
+                        <p className="font-medium text-[var(--text-primary)]">{a.user.name}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{a.user.email}</p>
+                      </td>
+                      {mealSchedule.map((event) => {
+                        const marks = a.eventMarks || {};
+                        const done = !!marks[event.id];
+                        return (
+                          <td
+                            key={event.id}
+                            className={`px-2 py-2 text-center text-base font-semibold ${done ? 'text-[#0969da]' : 'text-[var(--text-muted)]'}`}
+                          >
+                            {done ? '✓' : '—'}
+                          </td>
+                        );
+                      })}
+                      <td className="px-3 py-2 text-right text-xs text-[var(--text-muted)]">Scanner</td>
+                    </tr>
+                  ))}
+                  {attendees.length === 0 && (
+                    <tr>
+                      <td colSpan={tableColSpan} className="px-4 py-12 text-center text-[var(--text-secondary)]">
+                        No attendees yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
+        <div id={fileScannerId} className="hidden" aria-hidden />
       </div>
-      <div id={fileScannerId} style={{ display: 'none' }} />
     </div>
   );
 }
-
-const sectionLabel: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' };
-const pageTitle: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' };
-const statLabel: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: '0.58rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '0.25rem' };
-const selectStyle: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontFamily: 'var(--font-display)', fontSize: '0.72rem', padding: '0.5rem 0.75rem', outline: 'none', cursor: 'pointer' };
-const miniBtn = (color: string): React.CSSProperties => ({ padding: '0.15rem 0.35rem', background: 'none', border: `1px solid ${color}30`, borderRadius: 4, color, fontFamily: 'var(--font-display)', fontSize: '0.58rem', fontWeight: 600, cursor: 'pointer' });

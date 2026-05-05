@@ -33,6 +33,8 @@ const config: Config = {
           'Consolas',
           'monospace',
         ],
+        pt: ['var(--font-pt-ui)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'pt-display': ['var(--font-pt-display)', 'ui-serif', 'Georgia', 'serif'],
       },
       borderRadius: {
         primer: '6px',

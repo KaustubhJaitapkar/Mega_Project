@@ -3,139 +3,113 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import ThemeToggle from '@/components/ThemeToggle';
 
-export default function Header() {
+type HeaderProps = {
+  /** When false, user menu is hidden (e.g. account is in the sidebar) */
+  showUserMenu?: boolean;
+  /** Opens the mobile navigation drawer; only the menu button is shown (small screens) */
+  onMenuOpen?: () => void;
+};
+
+export default function Header({ showUserMenu = true, onMenuOpen }: HeaderProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <header style={{
-      background: 'var(--bg-surface)',
-      borderBottom: '1px solid var(--border-subtle)',
-      padding: '0 1.5rem',
-      height: 56,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      flexShrink: 0,
-    }}>
-      {/* Right: user actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {/* User info + menu */}
-        <div style={{ position: 'relative' }}>
+    <header
+      className="flex h-14 shrink-0 items-center justify-end border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:px-4"
+    >
+      <div className="flex w-full min-w-0 items-center justify-between gap-3">
+        {onMenuOpen && (
           <button
-            onClick={() => setShowMenu(!showMenu)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              background: 'none',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
-              padding: '0.35rem 0.75rem',
-              cursor: 'pointer',
-              color: 'var(--text-primary)',
-              transition: 'border-color 0.15s',
-            }}
+            type="button"
+            onClick={onMenuOpen}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-[var(--border-default)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-raised)] md:hidden"
+            aria-label="Open menu"
           >
-            <div style={{
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              background: 'var(--accent-dim)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--font-display)',
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              color: 'var(--accent)',
-            }}>
-              {session?.user?.name?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-            <span style={{
-              fontSize: '0.82rem',
-              fontWeight: 500,
-              maxWidth: 120,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {session?.user?.name}
-            </span>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M3 4.5L6 7.5L9 4.5" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
             </svg>
           </button>
+        )}
 
-          {/* Dropdown */}
-          {showMenu && (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowMenu(false)} />
-              <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 6px)',
-                right: 0,
-                background: 'var(--bg-raised)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                padding: '0.4rem',
-                minWidth: 180,
-                zIndex: 50,
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              }}>
-                <p style={{
-                  padding: '0.5rem 0.75rem',
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  borderBottom: '1px solid var(--border-subtle)',
-                  marginBottom: '0.25rem',
-                }}>
-                  {session?.user?.email}
-                </p>
-                <button
-                  onClick={() => { setShowMenu(false); router.push('/profile'); }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left' as const,
-                    padding: '0.5rem 0.75rem',
-                    background: 'none',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.1s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+        {onMenuOpen && <div className="min-w-0 flex-1 md:hidden" aria-hidden />}
+
+        <div
+          className={`flex min-w-0 items-center justify-end gap-2 sm:gap-3 ${
+            onMenuOpen ? 'flex-1 md:flex-none' : 'w-full'
+          }`}
+        >
+          <ThemeToggle compact />
+          {showUserMenu && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowMenu(!showMenu)}
+                className="flex max-w-[min(100%,220px)] items-center gap-2 rounded-[6px] border border-[var(--border-default)] py-1.5 pl-1.5 pr-2.5 text-[var(--text-primary)] transition-colors hover:border-[var(--border-strong)]"
+              >
+                <div
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[0.65rem] font-bold text-[var(--accent)]"
+                  style={{ background: 'var(--accent-dim)', fontFamily: 'var(--font-display)' }}
                 >
-                  Settings
-                </button>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left' as const,
-                    padding: '0.5rem 0.75rem',
-                    background: 'none',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    color: 'var(--error)',
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.1s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--error-dim)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                  {session?.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+                <span className="hidden min-w-0 truncate text-[0.8125rem] font-medium sm:inline">
+                  {session?.user?.name}
+                </span>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="var(--text-muted)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  className="shrink-0"
                 >
-                  Sign out
-                </button>
-              </div>
-            </>
+                  <path d="M3 4.5L6 7.5L9 4.5" />
+                </svg>
+              </button>
+
+              {showMenu && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-40 cursor-default"
+                    aria-label="Close menu"
+                    onClick={() => setShowMenu(false)}
+                  />
+                  <div
+                    className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[180px] rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] py-1 shadow-[var(--elevation-sm)]"
+                  >
+                    <p className="border-b border-[var(--border-subtle)] px-3 py-2 font-mono text-[11px] text-[var(--text-muted)]">
+                      {session?.user?.email}
+                    </p>
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-[0.8125rem] text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)]"
+                      onClick={() => {
+                        setShowMenu(false);
+                        router.push('/profile');
+                      }}
+                    >
+                      Settings
+                    </button>
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-[0.8125rem] text-[var(--error)] hover:bg-[var(--error-dim)]"
+                      onClick={() => signOut({ callbackUrl: '/login' })}
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>

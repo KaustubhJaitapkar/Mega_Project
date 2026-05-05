@@ -2,15 +2,58 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import {
+  ArrowUpRight,
+  Bell,
+  Calendar,
+  CalendarDays,
+  ExternalLink,
+  FileUp,
+  LayoutGrid,
+  MapPin,
+  QrCode,
+  Radio,
+  Users,
+  Award,
+  UserCircle,
+} from 'lucide-react';
 
 interface Hackathon {
-  id: string; title: string; description: string; status: string;
-  startDate: string; endDate: string; location?: string; isVirtual: boolean;
-  submissionDeadline: string; registrationDeadline: string;
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  location?: string;
+  isVirtual: boolean;
+  submissionDeadline: string;
+  registrationDeadline: string;
   timelines?: Array<{ id: string; title: string; startTime: string; endTime: string }>;
 }
 
+function statusBadge(status: string): { label: string; className: string } {
+  const s = (status || '').toUpperCase();
+  if (s === 'ONGOING') return { label: 'Live', className: 'org-badge org-badge-success' };
+  if (s === 'REGISTRATION') return { label: 'Registration open', className: 'org-badge org-badge-accent' };
+  if (s === 'ENDED') return { label: 'Ended', className: 'org-badge org-badge-muted' };
+  if (s === 'CANCELLED') return { label: 'Cancelled', className: 'org-badge org-badge-danger' };
+  return { label: s || 'Draft', className: 'org-badge org-badge-info' };
+}
+
+const NAV_LINKS = [
+  { href: '/participant/hackathons', label: 'Explore' },
+  { href: '/participant/schedule', label: 'Schedule' },
+  { href: '/participant/certificates', label: 'Certificates' },
+  { href: '/participant/profile', label: 'Profile' },
+] as const;
+
 export default function ParticipantDashboardPage() {
+  const { data: session } = useSession();
+  const firstName =
+    (session?.user as { name?: string } | undefined)?.name?.split(/\s+/)[0] ?? 'there';
+
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [activeHackathon, setActiveHackathon] = useState<Hackathon | null>(null);
   const [announcements, setAnnouncements] = useState<Array<{ id: string; title: string; createdAt: string }>>([]);
@@ -21,7 +64,12 @@ export default function ParticipantDashboardPage() {
   const [qrCode, setQrCode] = useState('');
   const [qrLoading, setQrLoading] = useState(false);
   const [qrError, setQrError] = useState('');
-  const [myAttendance, setMyAttendance] = useState<{ checkInTime: string | null; breakfastRedeemed: boolean; lunchRedeemed: boolean; swagCollected: boolean } | null>(null);
+  const [myAttendance, setMyAttendance] = useState<{
+    checkInTime: string | null;
+    breakfastRedeemed: boolean;
+    lunchRedeemed: boolean;
+    swagCollected: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -38,10 +86,12 @@ export default function ParticipantDashboardPage() {
         const registered = list.filter((h: Hackathon) => ids.includes(h.id));
         setActiveHackathon(
           registered.find((h: Hackathon) => h.status === 'ONGOING') ||
-          registered.find((h: Hackathon) => h.status === 'REGISTRATION') || registered[0] || null
+            registered.find((h: Hackathon) => h.status === 'REGISTRATION') ||
+            registered[0] ||
+            null
         );
-      } catch (e: any) {
-        if (e?.name !== 'AbortError') {
+      } catch (e: unknown) {
+        if ((e as { name?: string })?.name !== 'AbortError') {
           setLoadError('Failed to load dashboard data. Please refresh the page.');
         }
       } finally {
@@ -51,7 +101,10 @@ export default function ParticipantDashboardPage() {
     return () => abort.abort();
   }, []);
 
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!activeHackathon) return;
@@ -60,10 +113,10 @@ export default function ParticipantDashboardPage() {
       try {
         const res = await fetch(`/api/hackathons/${activeHackathon.id}/announcements`, { signal: abort.signal });
         if (!abort.signal.aborted) {
-          setAnnouncements(((await res.json()).data || []).slice(0, 3));
+          setAnnouncements(((await res.json()).data || []).slice(0, 6));
         }
       } catch {
-        // Announcements are non-critical; fail silently
+        /* non-critical */
       }
     })();
     return () => abort.abort();
@@ -87,11 +140,11 @@ export default function ParticipantDashboardPage() {
         if (userId && !abort.signal.aborted) {
           const attRes = await fetch(`/api/hackathons/${activeHackathon.id}/attendance`, { signal: abort.signal });
           const attData = await attRes.json();
-          const myAtt = (attData.data || []).find((a: any) => a.user?.id === userId);
+          const myAtt = (attData.data || []).find((a: { user?: { id: string } }) => a.user?.id === userId);
           if (myAtt && !abort.signal.aborted) setMyAttendance(myAtt);
         }
-      } catch (e: any) {
-        if (e?.name !== 'AbortError') {
+      } catch (e: unknown) {
+        if ((e as { name?: string })?.name !== 'AbortError') {
           setQrError('Could not load check-in status. Please refresh.');
         }
       } finally {
@@ -101,175 +154,440 @@ export default function ParticipantDashboardPage() {
     return () => abort.abort();
   }, [activeHackathon]);
 
-  const target = activeHackathon ? new Date(activeHackathon.status === 'REGISTRATION' ? activeHackathon.registrationDeadline : activeHackathon.submissionDeadline).getTime() : 0;
+  const target = activeHackathon
+    ? new Date(
+        activeHackathon.status === 'REGISTRATION'
+          ? activeHackathon.registrationDeadline
+          : activeHackathon.submissionDeadline
+      ).getTime()
+    : 0;
   const diff = Math.max(0, target - now);
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
-  // Timeline removed
+  const countdownLabel =
+    activeHackathon?.status === 'REGISTRATION' ? 'Registration closes in' : 'Submissions close in';
 
   if (isLoading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
-      <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-    </div>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4 font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]"
+            role="status"
+            aria-label="Loading"
+          />
+          <p className="font-mono text-[12px] text-[var(--text-muted)]">Loading workspace</p>
+        </div>
+      </div>
+    );
   }
 
   if (loadError) {
-    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-      <p style={{ color: '#f87171', marginBottom: '1rem' }}>{loadError}</p>
-      <button className="org-btn-primary" onClick={() => window.location.reload()}>Retry</button>
-    </div>;
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center font-sans">
+        <p className="max-w-md text-[15px] text-[var(--text-primary)]">{loadError}</p>
+        <button type="button" className="org-btn-primary min-h-[40px] px-5" onClick={() => window.location.reload()}>
+          Retry
+        </button>
+      </div>
+    );
   }
 
+  const registeredList = hackathons.filter((h) => registeredIds.includes(h.id));
+  const activeTone = activeHackathon ? statusBadge(activeHackathon.status) : null;
+  const myTeamHref = activeHackathon
+    ? `/participant/my-team?hackathonId=${activeHackathon.id}`
+    : '/participant/my-team';
+
   return (
-    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-        <div>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>
-            Participant
-          </p>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.4rem, 2vw, 1.8rem)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Dashboard
-          </h1>
+    <div className="font-sans text-[var(--text-primary)]">
+      {/* Workspace chrome — horizontal band + inline nav (structure differs from previous masthead + spotlight) */}
+      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-5 px-4 py-5 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
+          <div className="min-w-0 lg:max-w-[62%]">
+            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Participant workspace</p>
+            <h1 className="mt-1 text-[clamp(1.35rem,2.4vw,1.75rem)] font-semibold leading-tight tracking-tight text-[var(--text-primary)]">
+              {firstName === 'there' ? 'Your dashboard' : `${firstName}, here’s your overview`}
+            </h1>
+            <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-[var(--text-secondary)]">
+              Your focused event, check-in, and every registration you have—one place.
+            </p>
+          </div>
+          <nav
+            className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--border-default)] pt-4 font-mono text-[12px] lg:border-t-0 lg:pt-0"
+            aria-label="Participant shortcuts"
+          >
+            {NAV_LINKS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)] hover:underline"
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link
+              href={myTeamHref}
+              className="inline-flex items-center gap-1 font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
+            >
+              My team
+              <ArrowUpRight className="h-3.5 w-3.5 opacity-80" aria-hidden />
+            </Link>
+          </nav>
         </div>
-        <Link href="/participant/hackathons" className="org-btn-primary">Explore Events</Link>
       </div>
 
-      {/* Active Hackathon Hero */}
-      {activeHackathon && (
-        <div style={{
-          background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-lg)', padding: '1.5rem', marginBottom: '1.25rem',
-          display: 'grid', gridTemplateColumns: '1fr auto', gap: '1.5rem', alignItems: 'center',
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-              <span className={`org-badge ${activeHackathon.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-accent'}`}>{activeHackathon.status}</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{activeHackathon.isVirtual ? 'Virtual' : activeHackathon.location || 'Venue TBA'}</span>
-            </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>{activeHackathon.title}</h2>
-            <p className="org-text" style={{ marginBottom: '1rem', maxWidth: 500 }}>{activeHackathon.description}</p>
+      <div className="mx-auto grid max-w-[1200px] gap-8 px-4 py-8 lg:grid-cols-12 lg:gap-10 lg:px-6 lg:py-10">
+        {/* Main column — stacked panels (no clipped polygon hero + rotated QR rail) */}
+        <div className="flex min-w-0 flex-col gap-8 lg:col-span-8">
+          {activeHackathon && activeTone ? (
+            <>
+              <section
+                className="overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-[var(--elevation-sm)]"
+                aria-labelledby="active-event-heading"
+              >
+                <div className="flex flex-col divide-y divide-[var(--border-default)]">
+                  <div className="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span id="active-event-heading" className={activeTone.className}>
+                          {activeTone.label}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-[var(--text-muted)]">
+                          {activeHackathon.isVirtual ? (
+                            <>
+                              <Radio className="h-3.5 w-3.5 text-[var(--accent)]" aria-hidden />
+                              Virtual
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="h-3.5 w-3.5 text-[var(--text-secondary)]" aria-hidden />
+                              {activeHackathon.location || 'Venue TBA'}
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <h2 className="mt-3 text-xl font-semibold leading-snug tracking-tight text-[var(--text-primary)] sm:text-2xl">
+                        {activeHackathon.title}
+                      </h2>
+                      <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)] sm:text-[15px]">
+                        {activeHackathon.description}
+                      </p>
+                    </div>
+                  </div>
 
-            {/* Countdown */}
-            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
-              {[{ v: h, l: 'Hours' }, { v: m, l: 'Min' }, { v: s, l: 'Sec' }].map((t) => (
-                <div key={t.l}>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>{String(t.v).padStart(2, '0')}</p>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.55rem', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t.l}</p>
+                  <div className="grid gap-4 bg-[var(--bg-root)] p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:p-6">
+                    <div>
+                      <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+                        {countdownLabel}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {[
+                          { v: h, l: 'Hr' },
+                          { v: m, l: 'Min' },
+                          { v: s, l: 'Sec' },
+                        ].map((unit) => (
+                          <div
+                            key={unit.l}
+                            className="flex min-w-[4.5rem] flex-col rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-center shadow-[var(--elevation-sm)]"
+                          >
+                            <span className="font-mono text-[clamp(1.5rem,4vw,2rem)] font-semibold tabular-nums leading-none text-[var(--text-primary)]">
+                              {String(unit.v).padStart(2, '0')}
+                            </span>
+                            <span className="mt-1 font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                              {unit.l}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 p-5 sm:p-6">
+                    <Link href={myTeamHref} className="org-btn-secondary inline-flex min-h-[40px] items-center gap-2">
+                      <Users className="h-4 w-4" aria-hidden />
+                      My team
+                    </Link>
+                    {activeHackathon.status === 'ONGOING' && (
+                      <Link
+                        href={`/participant/hackathons/${activeHackathon.id}/submit`}
+                        className="org-btn-primary inline-flex min-h-[40px] items-center gap-2"
+                      >
+                        <FileUp className="h-4 w-4" aria-hidden />
+                        Submit project
+                      </Link>
+                    )}
+                    <Link
+                      href={`/participant/hackathons/${activeHackathon.id}`}
+                      className="org-btn-secondary inline-flex min-h-[40px] items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" aria-hidden />
+                      Event page
+                    </Link>
+                    <Link
+                      href="/participant/schedule"
+                      className="org-btn-secondary inline-flex min-h-[40px] items-center gap-2"
+                    >
+                      <Calendar className="h-4 w-4" aria-hidden />
+                      Schedule
+                    </Link>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </section>
 
-            {/* Quick Actions */}
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <Link href={`/participant/my-team?hackathonId=${activeHackathon.id}`} className="org-btn-primary">My Team</Link>
-              {activeHackathon.status === 'ONGOING' && (
-                <Link href={`/participant/hackathons/${activeHackathon.id}/submit`} className="org-btn-primary" style={{ background: '#3ecf8e', borderColor: '#3ecf8e' }}>
-                  Submit Project
-                </Link>
-              )}
-              <Link href="/participant/schedule" className="org-btn-secondary">Schedule</Link>
+              <section aria-labelledby="updates-heading">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+                    <h3 id="updates-heading" className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+                      Organizer updates
+                    </h3>
+                  </div>
+                </div>
+                <ul className="overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-[var(--elevation-sm)]">
+                  {announcements.length === 0 ? (
+                    <li className="px-4 py-10 text-center text-sm text-[var(--text-secondary)]">
+                      No announcements yet.
+                    </li>
+                  ) : (
+                    announcements.map((a) => (
+                      <li
+                        key={a.id}
+                        className="flex flex-col gap-1 border-b border-[var(--border-default)] px-4 py-4 last:border-b-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
+                      >
+                        <p className="min-w-0 font-medium text-[var(--text-primary)]">{a.title}</p>
+                        <time
+                          className="shrink-0 font-mono text-[12px] text-[var(--text-muted)]"
+                          dateTime={a.createdAt}
+                        >
+                          {new Date(a.createdAt).toLocaleDateString(undefined, {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </time>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </section>
+            </>
+          ) : (
+            <section className="rounded-[6px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-12 text-center shadow-[var(--elevation-sm)]">
+              <LayoutGrid className="mx-auto mb-4 h-10 w-10 text-[var(--text-muted)]" aria-hidden />
+              <p className="text-[15px] font-medium text-[var(--text-primary)]">No active event pinned</p>
+              <p className="mx-auto mt-2 max-w-md text-sm text-[var(--text-secondary)]">
+                Join a hackathon from Explore to see deadlines and check-in tools here.
+              </p>
+              <Link href="/participant/hackathons" className="org-btn-primary mt-6 inline-flex min-h-[40px] items-center gap-2">
+                Explore hackathons
+                <ArrowUpRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </section>
+          )}
+        </div>
+
+        {/* Sidebar — sticky identity rail (replaces offset / rotated QR card) */}
+        <aside className="lg:col-span-4">
+          <div className="flex flex-col gap-6 lg:sticky lg:top-6">
+            <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5 shadow-[var(--elevation-sm)]">
+              <h3 className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Quick paths</h3>
+              <ul className="mt-4 space-y-2">
+                <li>
+                  <Link
+                    href="/participant/hackathons"
+                    className="flex items-center justify-between gap-2 rounded-[6px] border border-transparent px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--border-default)] hover:bg-[var(--bg-root)]"
+                  >
+                    <span className="flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+                      Explore events
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={myTeamHref}
+                    className="flex items-center justify-between gap-2 rounded-[6px] border border-transparent px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--border-default)] hover:bg-[var(--bg-root)]"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+                      My team
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/participant/certificates"
+                    className="flex items-center justify-between gap-2 rounded-[6px] border border-transparent px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--border-default)] hover:bg-[var(--bg-root)]"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Award className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+                      Certificates
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/participant/profile"
+                    className="flex items-center justify-between gap-2 rounded-[6px] border border-transparent px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--border-default)] hover:bg-[var(--bg-root)]"
+                  >
+                    <span className="flex items-center gap-2">
+                      <UserCircle className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+                      Profile
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                  </Link>
+                </li>
+              </ul>
+            </section>
+
+            {activeHackathon && registeredIds.includes(activeHackathon.id) && (
+              <section
+                className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-[var(--elevation-sm)]"
+                aria-labelledby="qr-heading"
+              >
+                <div className="mb-4 flex items-center gap-2 border-b border-[var(--border-default)] pb-4">
+                  <QrCode className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+                  <h3 id="qr-heading" className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+                    Check-in QR
+                  </h3>
+                </div>
+                {qrLoading ? (
+                  <div className="flex aspect-square max-h-[220px] items-center justify-center rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)]">
+                    <div className="h-9 w-9 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]" />
+                  </div>
+                ) : qrError ? (
+                  <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--error-dim)] px-3 py-4 text-center text-sm text-[var(--error)]">
+                    {qrError}
+                  </div>
+                ) : qrCode ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- dynamic QR data URL
+                  <img
+                    src={qrCode}
+                    alt="Your check-in QR code"
+                    className="mx-auto h-auto w-full max-w-[220px] rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-2 shadow-[var(--elevation-sm)]"
+                  />
+                ) : (
+                  <p className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-3 py-8 text-center text-sm text-[var(--text-secondary)]">
+                    QR not available for this event.
+                  </p>
+                )}
+
+                {myAttendance && (
+                  <ul className="mt-5 grid grid-cols-2 gap-2 font-mono text-[11px]" aria-label="Attendance redemption status">
+                    {[
+                      { label: 'Check-in', ok: !!myAttendance.checkInTime },
+                      { label: 'Breakfast', ok: myAttendance.breakfastRedeemed },
+                      { label: 'Lunch', ok: myAttendance.lunchRedeemed },
+                      { label: 'Swag', ok: myAttendance.swagCollected },
+                    ].map((row) => (
+                      <li
+                        key={row.label}
+                        className={`flex items-center justify-between gap-2 rounded-[6px] border px-2.5 py-2 ${
+                          row.ok
+                            ? 'border-[var(--success)] bg-[rgba(26,127,55,0.08)] text-[var(--success)]'
+                            : 'border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-muted)]'
+                        }`}
+                      >
+                        <span>{row.label}</span>
+                        <span aria-hidden>{row.ok ? '✓' : '—'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {/* Registered events — full-width band, row list (replaces ticket grid) */}
+      <div className="border-t border-[var(--border-default)] bg-[var(--bg-surface)]">
+        <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6">
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Registered</p>
+              <h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">
+                Your hackathons
+                <span className="ml-2 font-normal text-[var(--text-secondary)]">({registeredIds.length})</span>
+              </h3>
             </div>
+            <Link
+              href="/participant/hackathons"
+              className="inline-flex items-center gap-1 self-start text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] sm:self-auto"
+            >
+              Browse all
+              <ArrowUpRight className="h-4 w-4" aria-hidden />
+            </Link>
           </div>
 
-          {/* QR Code + Attendance Status */}
-          {registeredIds.includes(activeHackathon.id) && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
-              {qrLoading ? (
-                <div style={{ width: 120, height: 120, background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ width: 20, height: 20, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-                </div>
-              ) : qrError ? (
-                <div style={{ width: 120, height: 120, background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', color: '#f87171', textAlign: 'center', padding: '0.5rem' }}>
-                  {qrError}
-                </div>
-              ) : qrCode ? (
-                <img src={qrCode} alt="Check-in QR" style={{ width: 120, height: 120, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }} />
-              ) : (
-                <div style={{ width: 120, height: 120, background: 'var(--bg-raised)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', padding: '0.5rem' }}>
-                  QR not available
-                </div>
-              )}
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.05em', textAlign: 'center' }}>CHECK-IN QR</p>
-
-              {/* Attendance Status */}
-              {myAttendance && (
-                <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.3rem', marginTop: '0.25rem' }}>
-                  {[
-                    { label: 'Check-in', done: !!myAttendance.checkInTime, color: '#3ecf8e' },
-                    { label: 'Breakfast', done: myAttendance.breakfastRedeemed, color: '#f59e0b' },
-                    { label: 'Lunch', done: myAttendance.lunchRedeemed, color: '#e8a44a' },
-                    { label: 'Swag', done: myAttendance.swagCollected, color: '#818cf8' },
-                  ].map((item) => (
-                    <div key={item.label} style={{
-                      display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.35rem 0.5rem',
-                      background: item.done ? `${item.color}10` : 'var(--bg-raised)',
-                      border: `1px solid ${item.done ? `${item.color}30` : 'var(--border-subtle)'}`,
-                      borderRadius: 'var(--radius-sm)',
-                    }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: item.done ? item.color : 'var(--text-muted)' }}>
-                        {item.done ? '\u2713' : '\u2014'}
-                      </span>
-                      <span style={{ fontSize: '0.65rem', color: item.done ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: 500 }}>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+          {registeredIds.length === 0 ? (
+            <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-6 py-14 text-center shadow-[var(--elevation-sm)]">
+              <p className="mx-auto max-w-lg text-[15px] text-[var(--text-secondary)]">
+                You have not joined an event yet. Open Explore to register.
+              </p>
+              <Link href="/participant/hackathons" className="org-btn-primary mt-6 inline-flex min-h-[40px] items-center gap-2">
+                Go to Explore
+                <ArrowUpRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-[var(--elevation-sm)]">
+              <ul className="divide-y divide-[var(--border-default)]">
+                {registeredList.map((ev) => {
+                  const tone = statusBadge(ev.status);
+                  const start = new Date(ev.startDate);
+                  const end = new Date(ev.endDate);
+                  return (
+                    <li key={ev.id}>
+                      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
+                        <div className="min-w-0 flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+                          <span className={`w-fit shrink-0 ${tone.className}`}>{tone.label}</span>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-[var(--text-primary)]">{ev.title}</p>
+                            <p className="mt-1 font-mono text-[12px] text-[var(--text-muted)]">
+                              {start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              {' — '}
+                              {end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              <span className="text-[var(--border-strong)]"> · </span>
+                              {ev.isVirtual ? 'Virtual' : ev.location || 'Venue TBA'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-shrink-0 flex-wrap gap-2">
+                          <Link
+                            href={`/participant/my-team?hackathonId=${ev.id}`}
+                            className="org-btn-secondary min-h-[36px] px-3 py-2 text-sm"
+                          >
+                            Team
+                          </Link>
+                          {ev.status === 'ONGOING' && (
+                            <Link
+                              href={`/participant/hackathons/${ev.id}/submit`}
+                              className="org-btn-primary min-h-[36px] px-3 py-2 text-sm"
+                            >
+                              Submit
+                            </Link>
+                          )}
+                          <Link
+                            href={`/participant/hackathons/${ev.id}`}
+                            className="org-btn-secondary min-h-[36px] px-3 py-2 text-sm"
+                          >
+                            View
+                          </Link>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           )}
         </div>
-      )}
-
-      {/* Announcements only (timeline hidden) */}
-      {activeHackathon && (
-        <div style={{ marginBottom: '1.25rem' }}>
-          {/* Announcements */}
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-            <p className="org-label" style={{ marginBottom: '0.75rem' }}>Announcements</p>
-            {announcements.map((a) => (
-              <div key={a.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <p style={{ fontWeight: 500, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{a.title}</p>
-                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{new Date(a.createdAt).toLocaleDateString()}</p>
-              </div>
-            ))}
-            {announcements.length === 0 && <p className="org-text">No announcements yet.</p>}
-          </div>
-        </div>
-      )}
-
-      {/* Registered Hackathons */}
-      <div>
-        <p className="org-label" style={{ marginBottom: '0.75rem' }}>Your Hackathons ({registeredIds.length})</p>
-        {registeredIds.length === 0 ? (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '2.5rem', textAlign: 'center' }}>
-            <p className="org-text" style={{ marginBottom: '1rem' }}>You have not registered for any hackathons yet.</p>
-            <Link href="/participant/hackathons" className="org-btn-primary">Browse Hackathons</Link>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
-            {hackathons.filter((h) => registeredIds.includes(h.id)).map((h) => (
-              <div key={h.id} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{h.title}</h3>
-                  <span className={`org-badge ${h.status === 'ONGOING' ? 'org-badge-success' : h.status === 'REGISTRATION' ? 'org-badge-accent' : 'org-badge-muted'}`}>{h.status}</span>
-                </div>
-                <p className="org-text" style={{ fontSize: '0.78rem', marginBottom: '0.75rem' }}>
-                  {new Date(h.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(h.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  {' '}&middot; {h.isVirtual ? 'Virtual' : h.location || 'TBA'}
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <Link href={`/participant/my-team?hackathonId=${h.id}`} className="org-btn-primary" style={{ fontSize: '0.68rem' }}>Team</Link>
-                  {h.status === 'ONGOING' && (
-                    <Link href={`/participant/hackathons/${h.id}/submit`} className="org-btn-primary" style={{ fontSize: '0.68rem', background: '#3ecf8e', borderColor: '#3ecf8e' }}>
-                      Submit
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,7 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState, type ComponentType } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import {
+  ArrowLeft,
+  Calendar,
+  FileText,
+  Palette,
+  Scale,
+  Settings2,
+  Target,
+  Upload,
+  Users,
+  UtensilsCrossed,
+} from 'lucide-react';
 import DatePicker from '@/components/ui/DatePicker';
 
 interface PrizeItem { id: string; title: string; amount: string }
@@ -43,9 +56,22 @@ const SUBMISSION_REQUIREMENTS = [
 const TABS = ['basic', 'branding', 'schedule', 'tracks', 'logistics', 'meals', 'submissions', 'judging', 'people'] as const;
 type TabId = typeof TABS[number];
 
-export default function EditHackathonPage() {
+const TAB_ICONS: Record<TabId, ComponentType<{ className?: string; 'aria-hidden'?: boolean }>> = {
+  basic: FileText,
+  branding: Palette,
+  schedule: Calendar,
+  tracks: Target,
+  logistics: Settings2,
+  meals: UtensilsCrossed,
+  submissions: Upload,
+  judging: Scale,
+  people: Users,
+};
+
+function EditHackathonContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hackathonId = params.hackathonId as string;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -118,6 +144,16 @@ export default function EditHackathonPage() {
       finally { setLoading(false); }
     })();
   }, [hackathonId]);
+
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && (TABS as readonly string[]).includes(t)) setActiveTab(t as TabId);
+  }, [searchParams]);
+
+  function selectTab(tab: TabId) {
+    setActiveTab(tab);
+    router.replace(`/organiser/edit/${hackathonId}?tab=${tab}`, { scroll: false });
+  }
 
   function toLocal(iso: string) {
     const d = new Date(iso);
@@ -217,14 +253,17 @@ export default function EditHackathonPage() {
     setTimeout(() => { setError(''); setSuccess(''); }, 3000);
   }
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
-    <div style={{ width: 28, height: 28, border: '2px solid var(--border-subtle)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-  </div>;
-
-  const tabIcons: Record<TabId, string> = {
-    basic: '📝', branding: '🎨', schedule: '📅', tracks: '🎯',
-    logistics: '⚙️', meals: '🍽️', submissions: '📤', judging: '⚖️', people: '👥',
-  };
+  if (loading) {
+    return (
+      <div className="org-shell flex min-h-full justify-center py-24">
+        <div
+          className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[#0969da]"
+          role="status"
+          aria-label="Loading"
+        />
+      </div>
+    );
+  }
 
   const tabLabels: Record<TabId, string> = {
     basic: 'Basic Info', branding: 'Branding', schedule: 'Schedule', tracks: 'Tracks & Eligibility',
@@ -232,16 +271,29 @@ export default function EditHackathonPage() {
   };
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: 1100, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-        <div>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--accent)', marginBottom: '0.4rem' }}>Edit Hackathon</p>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{form.title || 'Edit Hackathon'}</h1>
+    <div className="org-shell min-h-full">
+      <div className="org-page mx-auto max-w-[1100px] px-4 py-6 sm:px-6">
+      <div className="mb-8 flex flex-col gap-4 border-b border-[var(--border-default)] pb-8 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <Link
+            href="/organiser/dashboard"
+            className="mb-3 inline-flex items-center gap-1.5 font-mono text-[12px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] transition-colors hover:text-[#0969da]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            Dashboard
+          </Link>
+          <p className="font-mono text-[12px] uppercase tracking-wide text-[#0969da]">Edit hackathon</p>
+          <h1 className="mt-2 text-[clamp(1.35rem,2vw,1.55rem)] font-semibold tracking-tight text-[var(--text-primary)]">
+            {form.title || 'Untitled event'}
+          </h1>
         </div>
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
-          <button className="org-btn-secondary" onClick={() => router.push(`/organiser/command-center/${hackathonId}`)}>← Command Center</button>
-          <button className="org-btn-secondary" onClick={() => router.push(`/participant/hackathons/${hackathonId}`)}>Preview</button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="org-btn-secondary" onClick={() => router.push(`/organiser/command-center/${hackathonId}`)}>
+            Command center
+          </button>
+          <button type="button" className="org-btn-secondary" onClick={() => router.push(`/participant/hackathons/${hackathonId}`)}>
+            Preview
+          </button>
         </div>
       </div>
 
@@ -249,44 +301,55 @@ export default function EditHackathonPage() {
       {success && <div className="org-feedback org-feedback-success" style={{ marginBottom: '0.75rem' }}>{success}</div>}
 
       {/* Status Bar */}
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div className="mb-6 rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--elevation-sm)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className={`org-badge ${status === 'ONGOING' ? 'org-badge-success' : status === 'REGISTRATION' ? 'org-badge-accent' : status === 'ENDED' || status === 'CANCELLED' ? 'org-badge-muted' : 'org-badge-info'}`}>{status}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Last updated: {new Date().toLocaleDateString()}</span>
+            <span className="text-xs text-[var(--text-muted)]">Last updated: {new Date().toLocaleDateString()}</span>
           </div>
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-            {status === 'DRAFT' && <button className="org-btn-primary" onClick={() => handleStatusChange('REGISTRATION')}>Publish</button>}
-            {status === 'REGISTRATION' && <button className="org-btn-secondary" onClick={() => handleStatusChange('REGISTRATION_CLOSED')}>Close Registration</button>}
-            {(status === 'REGISTRATION' || status === 'REGISTRATION_CLOSED') && <button className="org-btn-primary" onClick={() => handleStatusChange('ONGOING')}>Start</button>}
-            {status === 'ONGOING' && <button className="org-btn-secondary" onClick={() => handleStatusChange('ENDED')}>End</button>}
-            {status !== 'CANCELLED' && status !== 'ENDED' && <button className="org-btn-danger" onClick={() => { if (confirm('Cancel this hackathon?')) handleStatusChange('CANCELLED'); }}>Cancel</button>}
+          <div className="flex flex-wrap gap-2">
+            {status === 'DRAFT' && <button type="button" className="org-btn-primary" onClick={() => handleStatusChange('REGISTRATION')}>Publish</button>}
+            {status === 'REGISTRATION' && <button type="button" className="org-btn-secondary" onClick={() => handleStatusChange('REGISTRATION_CLOSED')}>Close registration</button>}
+            {(status === 'REGISTRATION' || status === 'REGISTRATION_CLOSED') && <button type="button" className="org-btn-primary" onClick={() => handleStatusChange('ONGOING')}>Start</button>}
+            {status === 'ONGOING' && <button type="button" className="org-btn-secondary" onClick={() => handleStatusChange('ENDED')}>End</button>}
+            {status !== 'CANCELLED' && status !== 'ENDED' && <button type="button" className="org-btn-danger" onClick={() => { if (confirm('Cancel this hackathon?')) handleStatusChange('CANCELLED'); }}>Cancel</button>}
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '1rem', background: 'var(--bg-surface)', padding: '0.35rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-        {[...TABS].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as TabId)}
-            style={{
-              padding: '0.5rem 0.85rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
-              fontSize: '0.78rem', fontWeight: activeTab === tab ? 600 : 400,
-              background: activeTab === tab ? 'var(--accent)' : 'transparent',
-              color: activeTab === tab ? 'var(--text-inverse)' : 'var(--text-secondary)',
-              display: 'flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.15s',
-            }}
-          >
-            <span>{tabIcons[tab as TabId]}</span>
-            <span>{tabLabels[tab as TabId]}</span>
-          </button>
-        ))}
+      <div className="mb-6 overflow-x-auto pb-1">
+        <div
+          className="flex min-w-max gap-1 rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-1.5 shadow-[var(--elevation-sm)]"
+          role="tablist"
+          aria-label="Edit sections"
+        >
+          {[...TABS].map((tab) => {
+            const Icon = TAB_ICONS[tab];
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => selectTab(tab)}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-[6px] px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-[#0969da] text-white shadow-[var(--elevation-sm)]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-root)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                {tabLabels[tab]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Form Container */}
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1.5rem' }}>
+      <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-[var(--elevation-sm)] sm:p-6">
         {/* BASIC INFO */}
         {activeTab === 'basic' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -361,7 +424,7 @@ export default function EditHackathonPage() {
                   <button key={track.id} type="button" onClick={() => toggleTrack(track.id)} style={{
                     padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                     border: `1px solid ${selectedTracks.includes(track.id) ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                    background: selectedTracks.includes(track.id) ? 'rgba(99,102,241,0.1)' : 'var(--bg-raised)',
+                    background: selectedTracks.includes(track.id) ? 'var(--accent-dim)' : 'var(--bg-raised)',
                     color: selectedTracks.includes(track.id) ? 'var(--accent)' : 'var(--text-secondary)',
                     fontSize: '0.8rem', fontWeight: selectedTracks.includes(track.id) ? 600 : 400, textAlign: 'left',
                   }}>{track.label}</button>
@@ -375,9 +438,9 @@ export default function EditHackathonPage() {
                 {BATCHES.map(batch => (
                   <button key={batch} type="button" onClick={() => toggleBatch(batch)} style={{
                     padding: '0.4rem 0.75rem', borderRadius: '999px', cursor: 'pointer',
-                    border: `1px solid ${targetBatches.includes(batch) ? '#10b981' : 'var(--border-subtle)'}`,
-                    background: targetBatches.includes(batch) ? 'rgba(16,185,129,0.1)' : 'transparent',
-                    color: targetBatches.includes(batch) ? '#10b981' : 'var(--text-secondary)',
+                    border: `1px solid ${targetBatches.includes(batch) ? 'var(--success)' : 'var(--border-subtle)'}`,
+                    background: targetBatches.includes(batch) ? 'rgba(26, 127, 55, 0.08)' : 'transparent',
+                    color: targetBatches.includes(batch) ? 'var(--success)' : 'var(--text-secondary)',
                     fontSize: '0.75rem',
                   }}>{batch}</button>
                 ))}
@@ -391,9 +454,9 @@ export default function EditHackathonPage() {
                 {DEPARTMENTS.map(dept => (
                   <button key={dept} type="button" onClick={() => toggleDept(dept)} style={{
                     padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                    border: `1px solid ${allowedDepartments.includes(dept) ? '#f59e0b' : 'var(--border-subtle)'}`,
-                    background: allowedDepartments.includes(dept) ? 'rgba(245,158,11,0.1)' : 'transparent',
-                    color: allowedDepartments.includes(dept) ? '#f59e0b' : 'var(--text-secondary)',
+                    border: `1px solid ${allowedDepartments.includes(dept) ? '#bf8700' : 'var(--border-subtle)'}`,
+                    background: allowedDepartments.includes(dept) ? 'rgba(191, 135, 0, 0.08)' : 'transparent',
+                    color: allowedDepartments.includes(dept) ? '#9a6700' : 'var(--text-secondary)',
                     fontSize: '0.75rem', textAlign: 'left',
                   }}>{dept}</button>
                 ))}
@@ -533,7 +596,7 @@ export default function EditHackathonPage() {
                 <button key={req.id} type="button" onClick={() => toggleSubReq(req.id)} style={{
                   padding: '0.6rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                   border: `1px solid ${submissionRequirements.includes(req.id) ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                  background: submissionRequirements.includes(req.id) ? 'rgba(99,102,241,0.1)' : 'var(--bg-raised)',
+                  background: submissionRequirements.includes(req.id) ? 'var(--accent-dim)' : 'var(--bg-raised)',
                   color: submissionRequirements.includes(req.id) ? 'var(--accent)' : 'var(--text-secondary)',
                   fontSize: '0.78rem', textAlign: 'left',
                 }}>{submissionRequirements.includes(req.id) ? '✓ ' : ''}{req.label}</button>
@@ -644,13 +707,34 @@ export default function EditHackathonPage() {
       </div>
 
       {/* Save Button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-        <button className="org-btn-secondary" onClick={() => router.push(`/organiser/command-center/${hackathonId}`)}>Cancel</button>
-        <button className="org-btn-primary" onClick={handleSave} disabled={saving} style={{ minWidth: 120 }}>
-          {saving ? 'Saving...' : 'Save Changes'}
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <button type="button" className="org-btn-secondary" onClick={() => router.push(`/organiser/command-center/${hackathonId}`)}>Cancel</button>
+        <button type="button" className="org-btn-primary min-w-[120px]" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving…' : 'Save changes'}
         </button>
       </div>
+      </div>
     </div>
+  );
+}
+
+function EditPageSuspenseFallback() {
+  return (
+    <div className="org-shell flex min-h-full justify-center py-24">
+      <div
+        className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[#0969da]"
+        role="status"
+        aria-label="Loading"
+      />
+    </div>
+  );
+}
+
+export default function EditHackathonPage() {
+  return (
+    <Suspense fallback={<EditPageSuspenseFallback />}>
+      <EditHackathonContent />
+    </Suspense>
   );
 }
 

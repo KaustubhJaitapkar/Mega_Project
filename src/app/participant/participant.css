@@ -1,0 +1,5 @@
+/* Participant app shell — uses global design tokens from globals.css only. */
+
+[data-participant-app] .participant-main {
+  background: var(--bg-root);
+}

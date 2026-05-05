@@ -4,6 +4,49 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import {
+  ArrowRight,
+  Award,
+  Clock,
+  FileCode2,
+  MessageSquare,
+  Scale,
+  Users,
+  Zap,
+} from 'lucide-react';
+
+const FEATURES = [
+  {
+    title: 'Team building',
+    desc: 'Form or join teams, match on skills, and keep everyone aligned in one workspace.',
+    icon: Users,
+  },
+  {
+    title: 'Fair judging',
+    desc: 'Rubrics, sealed scores, and clear criteria so great work wins on merit.',
+    icon: Scale,
+  },
+  {
+    title: 'Live timeline',
+    desc: 'Keynotes, workshops, and checkpoints—always know what is on next.',
+    icon: Clock,
+  },
+  {
+    title: 'Submissions',
+    desc: 'Repos, demos, and decks with checks so showcases stay credible.',
+    icon: FileCode2,
+  },
+  {
+    title: 'Mentorship',
+    desc: 'Real-time chat with mentors when teams hit a wall.',
+    icon: MessageSquare,
+  },
+  {
+    title: 'Certificates',
+    desc: 'Credentials for participants and winners—ready when the event wraps.',
+    icon: Award,
+  },
+] as const;
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -16,319 +59,204 @@ export default function HomePage() {
   }, [session, router]);
 
   return (
-    <div style={{ background: 'var(--bg-root)', minHeight: '100vh' }}>
-      {/* Navigation */}
-      <nav style={{
-        position: 'fixed',
-        top: 0,
-        width: '100%',
-        zIndex: 50,
-        background: 'rgba(8, 8, 10, 0.8)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid var(--border-subtle)',
-      }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '1rem 2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <div className="auth-brand__logo" style={{ fontSize: '1rem' }}>
-            <div className="auth-brand__logo-mark" style={{ width: 28, height: 28, fontSize: '0.75rem' }}>H</div>
-            <span>Hackmate</span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+    <div className="min-h-screen bg-[var(--bg-root)] text-[var(--text-primary)] antialiased">
+      {/* Nav */}
+      <header className="fixed top-0 z-50 w-full border-b border-[var(--border-default)] bg-[var(--bg-overlay)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+          <Link href="/" className="auth-brand__logo no-underline">
+            <div className="auth-brand__logo-mark !h-7 !w-7 !text-[0.8rem]">H</div>
+            <span className="font-semibold tracking-tight">Hackmate</span>
+          </Link>
+          <nav className="flex items-center gap-2 sm:gap-3" aria-label="Account">
             <Link
               href="/login"
-              style={{
-                color: 'var(--text-secondary)',
-                textDecoration: 'none',
-                fontFamily: 'var(--font-display)',
-                fontSize: '0.78rem',
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase',
-                padding: '0.5rem 1rem',
-                transition: 'color 0.15s',
-              }}
+              className="font-mono text-[12px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] transition-colors hover:text-[var(--accent)]"
             >
               Sign in
             </Link>
-            <Link
-              href="/signup"
-              className="auth-btn"
-              style={{
-                width: 'auto',
-                padding: '0.55rem 1.25rem',
-                fontSize: '0.78rem',
-              }}
-            >
+            <Link href="/signup" className="org-btn-primary min-h-[38px] px-4 py-2 text-xs sm:min-h-[40px] sm:px-5">
               Get started
             </Link>
-          </div>
+          </nav>
         </div>
-      </nav>
+      </header>
 
       {/* Hero */}
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '6rem 2rem 2rem',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div className="auth-grid-bg" />
-        <div className="auth-orb auth-orb--1" style={{ width: 500, height: 500, top: '-150px', right: '-100px' }} />
-        <div className="auth-orb auth-orb--2" style={{ width: 350, height: 350, bottom: '-100px', left: '-50px' }} />
+      <section className="relative min-h-[min(100svh,920px)] overflow-hidden pt-[4.5rem]">
+        <div className="landing-grid" aria-hidden />
+        <div className="landing-grain" aria-hidden />
 
-        <div style={{ textAlign: 'center', maxWidth: '720px', position: 'relative', zIndex: 1 }}>
-          <p style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '0.72rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.2em',
-            color: 'var(--accent)',
-            marginBottom: '1.5rem',
-          }}>
-            The hackathon platform
-          </p>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(2.5rem, 6vw, 4.5rem)',
-            fontWeight: 700,
-            color: 'var(--text-primary)',
-            lineHeight: 1.1,
-            letterSpacing: '-0.03em',
-            marginBottom: '1.5rem',
-          }}>
-            Build what{' '}
-            <span style={{ color: 'var(--accent)' }}>matters.</span>
-          </h1>
-          <p style={{
-            fontSize: '1.15rem',
-            color: 'var(--text-secondary)',
-            lineHeight: 1.7,
-            maxWidth: '520px',
-            margin: '0 auto 2.5rem',
-          }}>
-            Form teams, build projects, and compete in hackathons — all in one
-            platform designed for developers who ship.
-          </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link
-              href="/signup"
-              className="auth-btn"
-              style={{ width: 'auto', padding: '0.9rem 2rem' }}
-            >
-              Start building
-            </Link>
-            <Link
-              href="/login"
-              className="auth-btn-social"
-              style={{ width: 'auto', padding: '0.9rem 2rem' }}
-            >
-              Sign in
-            </Link>
-          </div>
-        </div>
-      </div>
+        <div
+          className="pointer-events-none absolute -right-[20%] top-1/4 h-[min(520px,55vw)] w-[min(520px,90vw)] rounded-full bg-[var(--accent)] opacity-[0.09] blur-[100px] motion-safe:animate-[auth-float_10s_ease-in-out_infinite]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-32 -left-16 h-[380px] w-[380px] rounded-full bg-[var(--success)] opacity-[0.07] blur-[90px] motion-safe:animate-[auth-float_10s_ease-in-out_infinite]"
+          style={{ animationDelay: '-5s' }}
+          aria-hidden
+        />
 
-      {/* Features */}
-      <div style={{
-        background: 'var(--bg-surface)',
-        borderTop: '1px solid var(--border-subtle)',
-        borderBottom: '1px solid var(--border-subtle)',
-        padding: '6rem 2rem',
-      }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <p style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '0.72rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.2em',
-            color: 'var(--accent)',
-            textAlign: 'center',
-            marginBottom: '0.75rem',
-          }}>
-            Features
-          </p>
-          <h2 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(1.5rem, 3vw, 2.2rem)',
-            fontWeight: 700,
-            color: 'var(--text-primary)',
-            textAlign: 'center',
-            letterSpacing: '-0.02em',
-            marginBottom: '4rem',
-          }}>
-            Everything you need to hack
-          </h2>
+        {/* Diagonal wash */}
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[var(--accent-dim)] via-transparent to-[rgba(26,127,55,0.06)] opacity-90 dark:to-[rgba(63,185,80,0.05)]"
+          aria-hidden
+        />
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '1.5rem',
-          }}>
-            {[
-              {
-                title: 'Team Building',
-                desc: 'Form or join teams, discover teammates by skill match, and collaborate with built-in tools.',
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 00-3-3.87" />
-                    <path d="M16 3.13a4 4 0 010 7.75" />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Fair Judging',
-                desc: 'Transparent evaluation with customizable rubrics, total scoring, and sealed reviews.',
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="8" r="7" />
-                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Live Timeline',
-                desc: 'Real-time schedule management with keynotes, workshops, and automated status updates.',
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Submissions',
-                desc: 'Submit projects with GitHub links, live demos, and pitch decks. Health checks keep things running.',
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Mentorship',
-                desc: 'Connect teams with mentors via real-time chat. Get unstuck fast with expert guidance.',
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Certificates',
-                desc: 'Auto-generate certificates for participants, winners, and special achievements.',
-                icon: (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <path d="M7 8h10" />
-                    <path d="M7 12h6" />
-                    <path d="M7 16h8" />
-                  </svg>
-                ),
-              },
-            ].map((feature) => (
-              <div
-                key={feature.title}
-                style={{
-                  padding: '1.5rem',
-                  background: 'var(--bg-raised)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-lg)',
-                  transition: 'border-color 0.2s',
-                }}
+        <div className="relative z-10 mx-auto flex max-w-[1200px] flex-col gap-14 px-4 pb-20 pt-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:pt-6">
+          <div className="max-w-xl lg:min-w-0 lg:flex-1">
+            <p className="landing-rise font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+              The hackathon platform
+            </p>
+            <h1 className="landing-rise landing-rise-1 mt-5 font-serif text-[clamp(2.25rem,6.5vw,3.85rem)] font-semibold leading-[1.08] tracking-tight text-[var(--text-primary)]">
+              Ship the weekend.
+              <span className="mt-2 block text-[var(--accent)]">Mean it on Monday.</span>
+            </h1>
+            <p className="landing-rise landing-rise-2 mt-6 max-w-[28rem] text-[17px] leading-relaxed text-[var(--text-secondary)]">
+              Teams, submissions, judging, and mentorship—wired together so organizers run a tight event and builders stay in flow.
+            </p>
+            <div className="landing-rise landing-rise-3 mt-9 flex flex-wrap items-center gap-3">
+              <Link href="/signup" className="org-btn-primary inline-flex min-h-[44px] items-center gap-2 px-6 text-sm no-underline">
+                Start building
+                <ArrowRight className="h-4 w-4 opacity-90" aria-hidden />
+              </Link>
+              <Link
+                href="/login"
+                className="org-btn-secondary inline-flex min-h-[44px] items-center px-6 text-sm no-underline"
               >
-                <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'var(--accent-dim)',
-                  color: 'var(--accent)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '1rem',
-                }}>
-                  {feature.icon}
+                Sign in
+              </Link>
+            </div>
+            <p className="landing-rise landing-rise-4 mt-8 font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
+              Participants · Organizers · Judges · Mentors
+            </p>
+          </div>
+
+          {/* Pipeline card — asymmetry + depth */}
+          <div className="landing-rise landing-rise-2 w-full max-w-md shrink-0 lg:max-w-[420px]">
+            <div className="relative overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-[var(--elevation-sm)]">
+              <div className="absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-[var(--accent-dim)] blur-2xl" aria-hidden />
+              <div className="relative border-b border-[var(--border-default)] bg-[var(--bg-surface)] px-5 py-4">
+                <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+                  <Zap className="h-4 w-4 text-[var(--accent)]" aria-hidden />
+                  Event pipeline
                 </div>
-                <h3 style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  color: 'var(--text-primary)',
-                  marginBottom: '0.5rem',
-                }}>
-                  {feature.title}
-                </h3>
-                <p style={{
-                  fontSize: '0.88rem',
-                  color: 'var(--text-muted)',
-                  lineHeight: 1.6,
-                }}>
-                  {feature.desc}
-                </p>
               </div>
-            ))}
+              <ol className="relative space-y-0 divide-y divide-[var(--border-default)] px-5 py-2">
+                {[
+                  { step: '01', label: 'Register & team up', hint: 'Roster + skills' },
+                  { step: '02', label: 'Build & submit', hint: 'Repo · demo · deck' },
+                  { step: '03', label: 'Judge & certify', hint: 'Rubrics + credentials' },
+                ].map((row) => (
+                  <li key={row.step} className="flex gap-4 py-4">
+                    <span className="font-mono text-sm font-bold tabular-nums text-[var(--accent)]">{row.step}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{row.label}</p>
+                      <p className="mt-0.5 font-mono text-[11px] text-[var(--text-muted)]">{row.hint}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Features — bento */}
+      <section
+        className="border-y border-[var(--border-default)] bg-[var(--bg-surface)] py-20 sm:py-24"
+        aria-labelledby="features-heading"
+      >
+        <div className="mx-auto max-w-[1100px] px-4 sm:px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+              Capabilities
+            </p>
+            <h2
+              id="features-heading"
+              className="mt-3 font-serif text-[clamp(1.5rem,3.5vw,2.25rem)] font-semibold tracking-tight text-[var(--text-primary)]"
+            >
+              Built for serious weekends
+            </h2>
+            <p className="mt-3 text-[15px] leading-relaxed text-[var(--text-secondary)]">
+              Everything wired for velocity—without turning your hackathon into spreadsheet chaos.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            {FEATURES.map((feature, i) => {
+              const Icon = feature.icon;
+              const isHero = i === 0;
+              return (
+                <article
+                  key={feature.title}
+                  className="group relative flex flex-col rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5 shadow-[var(--elevation-sm)] transition-[border-color,box-shadow] duration-200 hover:border-[var(--border-strong)] hover:shadow-primer-md"
+                >
+                  <div
+                    className={`mb-4 flex items-center justify-center rounded-[6px] border border-[var(--border-default)] bg-[var(--accent-dim)] text-[var(--accent)] transition-colors group-hover:border-[var(--border-accent)] ${isHero ? 'h-14 w-14' : 'h-11 w-11'}`}
+                  >
+                    <Icon className={isHero ? 'h-7 w-7' : 'h-5 w-5'} strokeWidth={1.5} aria-hidden />
+                  </div>
+                  <h3 className="text-base font-semibold text-[var(--text-primary)]">{feature.title}</h3>
+                  <p
+                    className={`mt-2 text-[var(--text-secondary)] ${isHero ? 'text-[15px] leading-relaxed' : 'text-sm leading-relaxed'}`}
+                  >
+                    {feature.desc}
+                  </p>
+                  {isHero && (
+                    <p className="mt-4 font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
+                      Your hub for collaboration
+                    </p>
+                  )}
+                  <span className="sr-only">{`Feature ${i + 1} of ${FEATURES.length}`}</span>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
       {/* CTA */}
-      <div style={{
-        padding: '6rem 2rem',
-        textAlign: 'center',
-      }}>
-        <h2 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(1.5rem, 3vw, 2.2rem)',
-          fontWeight: 700,
-          color: 'var(--text-primary)',
-          letterSpacing: '-0.02em',
-          marginBottom: '1rem',
-        }}>
-          Ready to build?
-        </h2>
-        <p style={{
-          fontSize: '1.05rem',
-          color: 'var(--text-secondary)',
-          marginBottom: '2rem',
-        }}>
-          Join thousands of developers shipping great projects.
-        </p>
-        <Link
-          href="/signup"
-          className="auth-btn"
-          style={{ width: 'auto', padding: '0.9rem 2.5rem', display: 'inline-flex' }}
-        >
-          Create your account
-        </Link>
-      </div>
+      <section className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28">
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--accent-dim)] via-transparent to-transparent opacity-70"
+          aria-hidden
+        />
+        <div className="relative z-[1] mx-auto max-w-[720px] text-center">
+          <h2 className="font-serif text-[clamp(1.45rem,3.2vw,2rem)] font-semibold tracking-tight text-[var(--text-primary)]">
+            Ready when you are
+          </h2>
+          <p className="mt-3 text-[15px] leading-relaxed text-[var(--text-secondary)]">
+            Create an account, pick your role, and step into your workspace.
+          </p>
+          <Link
+            href="/signup"
+            className="org-btn-primary mx-auto mt-8 inline-flex min-h-[46px] items-center gap-2 px-8 text-sm no-underline"
+          >
+            Create your account
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer style={{
-        borderTop: '1px solid var(--border-subtle)',
-        padding: '2rem',
-        textAlign: 'center',
-      }}>
-        <p style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '0.72rem',
-          color: 'var(--text-muted)',
-          letterSpacing: '0.05em',
-        }}>
-          Hackmate — Built for hackers, by hackers.
-        </p>
+      <footer className="border-t border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-10 sm:px-6">
+        <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-6 sm:flex-row">
+          <div className="auth-brand__logo text-[0.95rem]">
+            <div className="auth-brand__logo-mark !h-7 !w-7">H</div>
+            <span>Hackmate</span>
+          </div>
+          <p className="text-center font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)] sm:text-left">
+            Built for hackers — ship fast, judge fair, celebrate loud.
+          </p>
+          <div className="flex gap-5 font-mono text-[12px]">
+            <Link href="/login" className="text-[var(--accent)] no-underline hover:underline">
+              Sign in
+            </Link>
+            <Link href="/signup" className="text-[var(--accent)] no-underline hover:underline">
+              Sign up
+            </Link>
+          </div>
+        </div>
       </footer>
     </div>
   );

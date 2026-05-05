@@ -1,8 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import OrganiserShell from '@/components/OrganiserShell';
 
 export default async function OrganiserLayout({
   children,
@@ -20,12 +19,6 @@ export default async function OrganiserLayout({
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-root)' }}>
-      <Sidebar role={(session.user as any).role} />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Header />
-        <main style={{ flex: 1, overflow: 'auto' }}>{children}</main>
-      </div>
-    </div>
+    <OrganiserShell role={(session.user as any).role}>{children}</OrganiserShell>
   );
 }
