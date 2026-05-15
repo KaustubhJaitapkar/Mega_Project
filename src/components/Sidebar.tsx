@@ -154,6 +154,12 @@ export default function Sidebar({
       { label: 'Dashboard', path: '/sponsor/dashboard', icon: icons.dashboard },
       { label: 'Profile', path: '/profile', icon: icons.profile },
     ],
+    ADMIN: [
+      { label: 'Overview', path: '/admin/dashboard', icon: icons.dashboard },
+      { label: 'Users', path: '/admin/users', icon: icons.teams },
+      { label: 'Analytics', path: '/admin/analytics', icon: icons.explore },
+      { label: 'Audit Log', path: '/admin/audit-log', icon: icons.submit },
+    ],
   };
 
   const menuItems = menuByRole[role] || [

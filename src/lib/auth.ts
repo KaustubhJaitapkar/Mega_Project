@@ -61,6 +61,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Invalid email or password');
         }
 
+        if ((user as any).isBanned) {
+          throw new Error('Account has been suspended');
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -119,6 +123,16 @@ export const authOptions: NextAuthOptions = {
       return `${baseUrl}/dashboard`;
     },
     async signIn({ user, account }) {
+      // Check if user is banned
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { isBanned: true, role: true, createdAt: true, updatedAt: true },
+      });
+
+      if (dbUser?.isBanned) {
+        return false;
+      }
+
       // For OAuth providers, check if user already exists
       if (account && account.provider !== 'credentials') {
         const existingUser = await prisma.user.findUnique({

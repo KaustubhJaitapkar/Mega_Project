@@ -10,6 +10,7 @@ import {
   Megaphone,
   LifeBuoy,
   Scale,
+  BarChart3,
   LineChart,
   Award,
   Briefcase,
@@ -17,6 +18,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import AnnouncementSystem from '@/components/organiser/AnnouncementSystem';
+import AnalyticsDashboard from '@/components/organiser/AnalyticsDashboard';
 import CertificateSystem from '@/components/organiser/CertificateSystem';
 import JudgingControl from '@/components/organiser/JudgingControl';
 import StaffManagement from '@/components/organiser/StaffManagement';
@@ -37,6 +39,7 @@ const TABS = [
   { id: 'submissions', label: 'Submissions', Icon: Upload },
   { id: 'announcements', label: 'Announcements', Icon: Megaphone },
   { id: 'tickets', label: 'Support', Icon: LifeBuoy },
+  { id: 'analytics', label: 'Analytics', Icon: BarChart3 },
   { id: 'judging', label: 'Judging', Icon: Scale },
   { id: 'results', label: 'Results', Icon: LineChart },
   { id: 'certificates', label: 'Certificates', Icon: Award },
@@ -197,6 +200,8 @@ function CommandCenterPage() {
         return <AnnouncementSystem hackathonId={hackathonId} />;
       case 'staff':
         return <StaffManagement hackathonId={hackathonId} />;
+      case 'analytics':
+        return <AnalyticsDashboard hackathonId={hackathonId} />;
       case 'judging':
         return <JudgingControl hackathonId={hackathonId} />;
       case 'certificates':
@@ -395,6 +400,7 @@ function OverviewPanel({
     { id: 'submissions', label: 'Submissions' },
     { id: 'announcements', label: 'Announcements' },
     { id: 'tickets', label: `Support (${openTickets})` },
+    { id: 'analytics', label: 'Analytics' },
     { id: 'judging', label: 'Judging' },
     { id: 'results', label: 'Results' },
     { id: 'certificates', label: 'Certificates' },

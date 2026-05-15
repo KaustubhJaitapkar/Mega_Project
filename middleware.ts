@@ -13,6 +13,7 @@ export default withAuth(
 
     // Role-based route guards
     const roleRouteMap: Record<string, string> = {
+      '/admin': 'ADMIN',
       '/organiser': 'ORGANISER',
       '/judge': 'JUDGE',
       '/mentor': 'MENTOR',
@@ -47,6 +48,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
+    '/admin/:path*',
     '/organiser/:path*',
     '/participant/:path*',
     '/judge/:path*',

@@ -11,6 +11,10 @@ export default async function DashboardRouterPage() {
 
   const role = (session.user as any)?.role || 'PARTICIPANT';
 
+  if (role === 'ADMIN') {
+    redirect('/admin/dashboard');
+  }
+
   if (role === 'ORGANISER') {
     redirect('/organiser/dashboard');
   }

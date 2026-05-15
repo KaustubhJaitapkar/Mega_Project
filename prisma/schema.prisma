@@ -18,6 +18,17 @@ enum UserRole {
   JUDGE
   MENTOR
   SPONSOR
+  ADMIN
+}
+
+enum AuditAction {
+  USER_BANNED
+  USER_UNBANNED
+  USER_ROLE_CHANGED
+  USER_DELETED
+  HACKATHON_PAUSED
+  HACKATHON_RESUMED
+  HACKATHON_CANCELLED
 }
 
 enum HackathonStatus {
@@ -92,6 +103,8 @@ model User {
   googleId              String?
   githubId              String?
   role                  UserRole              @default(PARTICIPANT)
+  isBanned              Boolean               @default(false)
+  bannedAt              DateTime?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
@@ -114,6 +127,7 @@ model User {
   announcements         Announcement[]
   registrations         HackathonRegistration[]
   requirementInterests RequirementInterest[]
+  auditLogs             AuditLog[]
 
   @@index([email])
   @@index([role])
@@ -197,6 +211,9 @@ model Hackathon {
   chatMessages    ChatMessage[]
   bannerId        String?
   status          HackathonStatus     @default(DRAFT)
+  isPaused        Boolean             @default(false)
+  pausedAt        DateTime?
+  pauseReason     String?
   startDate       DateTime
   endDate         DateTime
   registrationDeadline DateTime
@@ -624,4 +641,21 @@ model RequirementInterest {
   @@index([requirementId])
   @@index([userId])
   @@index([status])
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String
+  action     AuditAction
+  targetType String      // "USER" | "HACKATHON"
+  targetId   String
+  details    Json?
+  createdAt  DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([action])
+  @@index([createdAt])
 }

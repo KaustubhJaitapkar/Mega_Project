@@ -148,6 +148,25 @@ async function main() {
   // ==================== USERS ====================
   console.log("👤 Creating users...");
 
+  // 1 Admin
+  const admin = await prisma.user.create({
+    data: {
+      email: "admin@hackmate.dev",
+      name: "Platform Admin",
+      role: UserRole.ADMIN,
+      password,
+      profile: {
+        create: {
+          bio: "Platform administrator with full access to monitor and manage all hackathons.",
+          skills: ["Platform Management", "Analytics", "User Support"],
+          company: "Hackmate",
+          experience: "senior",
+          isPublic: false,
+        },
+      },
+    },
+  });
+
   // 1 Organiser
   const organiser = await prisma.user.create({
     data: {
@@ -1134,16 +1153,24 @@ Over 500 participants, 120+ projects submitted.`,
   console.log("✅ SEED COMPLETE — All test data created!\n");
   console.log("📊 SUMMARY:");
   console.log(`  • 4 Hackathons (DRAFT, REGISTRATION, ONGOING, ENDED)`);
-  console.log(`  • 1 Organiser, ${judges.length} Judges, ${mentors.length} Mentors`);
+  console.log(`  • 1 Admin, 1 Organiser, ${judges.length} Judges, ${mentors.length} Mentors`);
   console.log(`  • ${participants.length} Participants with realistic profiles`);
   console.log(`  • 8+ Teams across hackathons`);
   console.log(`  • Rubrics with weighted criteria per hackathon`);
-  console.log(`  • Judge scores for submitted projects (sealed)`);]00  console.log(`  • Real GitHub repos linked to submissions`);
+  console.log(`  • Judge scores for submitted projects (sealed)`);
+  console.log(`  • Real GitHub repos linked to submissions`);
   console.log(`  • Attendance records with meal tracking`);
   console.log(`  • Help tickets and mentor assignments`);
   console.log(`  • Certificates for ended hackathon`);
   console.log("");
   console.log("🔑 TEST CREDENTIALS (all use: password123)");
+  console.log("───────────────────────────────────────────────────────");
+  console.log(`  Admin:       admin@hackmate.dev`);
+  console.log(`  Organiser:   organiser@hackmate.dev`);
+  console.log(`  Judge:       judge1@hackmate.dev`);
+  console.log(`  Mentor:      mentor1@hackmate.dev`);
+  console.log(`  Participant: aarav-kumar@hackmate.dev`);
+  console.log(`  Sponsor:     sponsor@hackmate.dev`);
   console.log("───────────────────────────────────────────────────────");
   console.log(`  Organiser:   organiser@hackmate.dev`);
   console.log(`  Judge:       judge1@hackmate.dev`);

@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import { authOptions } from './auth';
 import { prisma } from './prisma';
 
-export type UserRole = 'PARTICIPANT' | 'ORGANISER' | 'JUDGE' | 'MENTOR' | 'SPONSOR';
+export type UserRole = 'PARTICIPANT' | 'ORGANISER' | 'JUDGE' | 'MENTOR' | 'SPONSOR' | 'ADMIN';
 
 export interface AuthUser {
   id: string;
@@ -97,6 +97,11 @@ export async function requireOwnership(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   return user;
+}
+
+/** Require an admin user. Returns the user or a 401/403 NextResponse. */
+export async function requireAdmin(): Promise<AuthUser | NextResponse> {
+  return requireRole('ADMIN');
 }
 
 /** Type guard: returns true if the value is a NextResponse (i.e., an error). */
