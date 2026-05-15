@@ -295,9 +295,9 @@ function ResultsSection({ hackathonId }: { hackathonId: string }) {
                       </span>
                     ) : null;
                   })()}
-                  <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)' }}>
+                  {/* <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--accent)' }}>
                     {entry.totalScore.toFixed(2)}
-                  </span>
+                  </span> */}
                 </div>
               </div>
             ))}

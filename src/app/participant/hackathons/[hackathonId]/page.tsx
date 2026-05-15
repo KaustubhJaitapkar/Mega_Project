@@ -188,9 +188,9 @@ function ResultsSection({
                 {prizeLabel !== '—' && (
                   <span className="org-badge org-badge-accent text-[11px]">{prizeLabel}</span>
                 )}
-                <span className="font-mono text-base font-semibold tabular-nums text-[var(--accent)]">
+                {/* <span className="font-mono text-base font-semibold tabular-nums text-[var(--accent)]">
                   {entry.totalScore.toFixed(2)}
-                </span>
+                </span> */}
               </div>
             </li>
           );
