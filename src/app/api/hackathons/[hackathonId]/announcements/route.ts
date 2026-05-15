@@ -11,17 +11,35 @@ export async function GET(
   { params }: { params: { hackathonId: string } }
 ) {
   try {
-    const limit = parseInt(new URL(req.url).searchParams.get('limit') || '0', 10);
-    const announcements = await prisma.announcement.findMany({
-      where: { hackathonId: params.hackathonId },
-      include: {
-        author: { select: { id: true, name: true, image: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: limit > 0 ? limit : undefined,
-    });
+    const searchParams = new URL(req.url).searchParams;
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const skip = (page - 1) * limit;
 
-    return NextResponse.json({ data: announcements });
+    const [announcements, total] = await Promise.all([
+      prisma.announcement.findMany({
+        where: { hackathonId: params.hackathonId },
+        include: {
+          author: { select: { id: true, name: true, image: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+      prisma.announcement.count({
+        where: { hackathonId: params.hackathonId },
+      }),
+    ]);
+
+    return NextResponse.json({
+      data: announcements,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error('Get announcements error:', error);
     return NextResponse.json(

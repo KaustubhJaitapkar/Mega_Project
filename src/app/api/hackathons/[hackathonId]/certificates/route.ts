@@ -275,18 +275,39 @@ export async function POST(
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { hackathonId: string } }
 ) {
   try {
-    const certificates = await prisma.certificate.findMany({
-      where: { hackathonId: params.hackathonId },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
+    const searchParams = new URL(req.url).searchParams;
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const skip = (page - 1) * limit;
+
+    const [certificates, total] = await Promise.all([
+      prisma.certificate.findMany({
+        where: { hackathonId: params.hackathonId },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+        take: limit,
+        skip,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.certificate.count({
+        where: { hackathonId: params.hackathonId },
+      }),
+    ]);
+
+    return NextResponse.json({
+      data: certificates,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
-
-    return NextResponse.json({ data: certificates });
   } catch (error) {
     console.error('Get certificates error:', error);
     return NextResponse.json(

@@ -174,7 +174,7 @@ model VerificationToken {
 model Profile {
   id              String    @id @default(cuid())
   userId          String    @unique
-  bio             String?
+  bio             String?             @db.Text
   skills          String[]
   skillsNeeded    String[]  @default([]) // Skills the participant is looking for in teammates
   experience      String?   // junior, mid, senior
@@ -273,6 +273,7 @@ model Hackathon {
   @@index([organiserId])
   @@index([status])
   @@index([startDate])
+  @@index([organiserId, status])
 }
 
 model Timeline {
@@ -319,6 +320,7 @@ model Team {
   @@unique([hackathonId, name])
   @@index([hackathonId])
   @@index([creatorId])
+  @@index([hackathonId, status])
 }
 
 model TeamMember {
@@ -334,6 +336,7 @@ model TeamMember {
   @@unique([teamId, userId])
   @@index([teamId])
   @@index([userId])
+  @@index([userId, teamId])
 }
 
 model JoinRequest {
@@ -386,6 +389,7 @@ model HackathonRegistration {
   @@unique([hackathonId, userId])
   @@index([hackathonId])
   @@index([userId])
+  @@index([hackathonId, selectedTrack])
 }
 
 model Submission {
@@ -509,6 +513,9 @@ model HelpTicket {
   @@index([hackathonId])
   @@index([creatorId])
   @@index([status])
+  @@index([assignedToId])
+  @@index([hackathonId, status])
+  @@index([hackathonId, createdAt])
 }
 
 model Attendance {
@@ -529,6 +536,7 @@ model Attendance {
 
   @@unique([hackathonId, userId])
   @@index([hackathonId])
+  @@index([userId])
 }
 
 model Certificate {
@@ -550,9 +558,8 @@ model Certificate {
 
   @@index([hackathonId])
   @@index([userId])
+  @@index([hackathonId, userId, type])
 }
-
-
 
 model StaffInvite {
   id            String     @id @default(cuid())

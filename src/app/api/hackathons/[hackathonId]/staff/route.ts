@@ -31,34 +31,26 @@ export async function GET(
       }, { status: 403 });
     }
 
-    const hackathon = await prisma.hackathon.findUnique({
-      where: { id: params.hackathonId },
-      select: { organiserId: true },
-    });
-    
-    if (!hackathon) {
-      return NextResponse.json({ error: 'Hackathon not found', code: 'HACKATHON_NOT_FOUND' }, { status: 404 });
-    }
-
-    if (hackathon.organiserId !== user.id) {
-      return NextResponse.json({ 
-        error: 'Forbidden - User is not the organiser of this hackathon', 
-        code: 'NOT_HACKATHON_ORGANISER',
-        userId: user.id,
-        organiserId: hackathon.organiserId
-      }, { status: 403 });
-    }
-
     const q = new URL(req.url).searchParams.get('q') || '';
     const hackathonData = await prisma.hackathon.findUnique({
       where: { id: params.hackathonId },
-      include: {
+      select: {
+        organiserId: true,
         judges: { select: { id: true, name: true, email: true, role: true } },
         mentors: { select: { id: true, name: true, email: true, role: true } },
       },
     });
     if (!hackathonData) {
       return NextResponse.json({ error: 'Hackathon not found' }, { status: 404 });
+    }
+
+    if (hackathonData.organiserId !== user.id) {
+      return NextResponse.json({ 
+        error: 'Forbidden - User is not the organiser of this hackathon', 
+        code: 'NOT_HACKATHON_ORGANISER',
+        userId: user.id,
+        organiserId: hackathonData.organiserId
+      }, { status: 403 });
     }
 
     let candidates: any[] = [];
@@ -94,8 +86,14 @@ export async function POST(
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const actor = await prisma.user.findUnique({ where: { email: session.user.email } });
-    const hackathon = await prisma.hackathon.findUnique({ where: { id: params.hackathonId } });
+    const actor = await prisma.user.findUnique({ 
+      where: { email: session.user.email },
+      select: { id: true }
+    });
+    const hackathon = await prisma.hackathon.findUnique({ 
+      where: { id: params.hackathonId },
+      select: { organiserId: true }
+    });
     if (!actor || !hackathon || hackathon.organiserId !== actor.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -105,7 +103,10 @@ export async function POST(
       return NextResponse.json({ error: 'email and valid type required' }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ 
+      where: { email },
+      select: { id: true, role: true }
+    });
     if (!user) {
       return NextResponse.json({ error: 'User does not exist' }, { status: 404 });
     }

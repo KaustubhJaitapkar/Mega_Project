@@ -35,43 +35,56 @@ export async function GET(req: Request) {
     const blindMode = !!meta.blindMode;
     const anonymousMap = meta.anonymousMap || {};
 
-    const teams = await Promise.all(
-      hackathon.teams.map(async (team) => {
-        const scoreCount = team.submission
-          ? await prisma.score.count({
-              where: { submissionId: team.submission.id, judgerId: user.id },
-            })
-          : 0;
+    // Batch fetch all score counts to avoid N+1 queries
+    const submissionIds = hackathon.teams
+      .filter((t) => t.submission)
+      .map((t) => t.submission!.id);
 
-        // Parse files from pitchDeckUrl if it exists
-        let parsedSubmission = null;
-        if (team.submission) {
-          parsedSubmission = { ...team.submission };
-          if (team.submission.pitchDeckUrl) {
-            try {
-              const files = JSON.parse(team.submission.pitchDeckUrl);
-              parsedSubmission = {
-                ...parsedSubmission,
-                pitchDeckUrl: undefined,
-                files,
-              };
-            } catch (e) {
-              // Keep original if parsing fails
-            }
+    const scoreCounts = await prisma.score.groupBy({
+      by: ['submissionId'],
+      where: {
+        submissionId: { in: submissionIds },
+        judgerId: user.id,
+      },
+      _count: { id: true },
+    });
+    const scoreCountMap = new Map(
+      scoreCounts.map((s) => [s.submissionId, s._count.id])
+    );
+
+    const teams = hackathon.teams.map((team) => {
+      const scoreCount = team.submission
+        ? scoreCountMap.get(team.submission.id) || 0
+        : 0;
+
+      // Parse files from pitchDeckUrl if it exists
+      let parsedSubmission = null;
+      if (team.submission) {
+        parsedSubmission = { ...team.submission };
+        if (team.submission.pitchDeckUrl) {
+          try {
+            const files = JSON.parse(team.submission.pitchDeckUrl);
+            parsedSubmission = {
+              ...parsedSubmission,
+              pitchDeckUrl: undefined,
+              files,
+            };
+          } catch (e) {
+            // Keep original if parsing fails
           }
         }
+      }
 
-        return {
-          id: team.id,
-          name: blindMode ? anonymousMap[team.id] || `Team ${team.id.slice(-4)}` : team.name,
-          // realName is intentionally omitted in blind mode to prevent de-anonymization
-          ...(blindMode ? {} : { realName: team.name }),
-          submissionId: team.submission?.id || null,
-          submission: parsedSubmission,
-          scored: scoreCount > 0,
-        };
-      })
-    );
+      return {
+        id: team.id,
+        name: blindMode ? anonymousMap[team.id] || `Team ${team.id.slice(-4)}` : team.name,
+        // realName is intentionally omitted in blind mode to prevent de-anonymization
+        ...(blindMode ? {} : { realName: team.name }),
+        submissionId: team.submission?.id || null,
+        submission: parsedSubmission,
+        scored: scoreCount > 0,
+      };
+    });
 
     return NextResponse.json({
       data: {

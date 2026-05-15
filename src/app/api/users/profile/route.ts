@@ -18,7 +18,16 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { profile: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        githubUsername: true,
+        role: true,
+        createdAt: true,
+        profile: true,
+      },
     });
 
     if (!user) {
@@ -59,6 +68,7 @@ export async function PUT(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      select: { id: true, name: true },
     });
 
     if (!user) {

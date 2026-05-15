@@ -13,22 +13,38 @@ export async function GET(
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const skip = (page - 1) * limit;
 
     const where: any = { hackathonId: params.hackathonId };
     if (status) {
       where.status = status;
     }
 
-    const tickets = await prisma.helpTicket.findMany({
-      where,
-      include: {
-        creator: { select: { id: true, name: true, email: true } },
-        assignedTo: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [tickets, total] = await Promise.all([
+      prisma.helpTicket.findMany({
+        where,
+        include: {
+          creator: { select: { id: true, name: true, email: true } },
+          assignedTo: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+      prisma.helpTicket.count({ where }),
+    ]);
 
-    return NextResponse.json({ data: tickets });
+    return NextResponse.json({
+      data: tickets,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error('Get tickets error:', error);
     return NextResponse.json(

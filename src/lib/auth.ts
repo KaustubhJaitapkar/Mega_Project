@@ -99,17 +99,6 @@ export const authOptions: NextAuthOptions = {
         token.role = session.role;
       }
 
-      // Re-fetch role from DB on each JWT refresh to stay in sync
-      if (token.id && !user) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { role: true },
-        });
-        if (dbUser) {
-          token.role = dbUser.role;
-        }
-      }
-
       return token;
     },
     async session({ session, token }) {
