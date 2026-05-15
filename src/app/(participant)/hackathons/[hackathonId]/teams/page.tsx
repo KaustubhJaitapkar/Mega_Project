@@ -121,7 +121,7 @@ export default function TeamsPage() {
                       </span>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-500">Match score: {rec.score} - {rec.reason}</p>
+                  
                 </div>
               ))}
             </div>

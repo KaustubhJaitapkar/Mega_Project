@@ -1224,9 +1224,9 @@ export default function MyTeamClient({
                               <p style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-primary)' }}>
                                 {suggestion.participant?.name}
                               </p>
-                              <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                              {/* <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                                 Match Score: {suggestion.score}%
-                              </p>
+                              </p> */}
                             </div>
                           </div>
                           <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontStyle: 'italic' }}>

@@ -108,8 +108,8 @@ export default function HomePage() {
               The hackathon platform
             </p>
             <h1 className="landing-rise landing-rise-1 mt-5 font-serif text-[clamp(2.25rem,6.5vw,3.85rem)] font-semibold leading-[1.08] tracking-tight text-[var(--text-primary)]">
-              Ship the weekend.
-              <span className="mt-2 block text-[var(--accent)]">Mean it on Monday.</span>
+              One platform for
+              <span className="mt-2 block text-[var(--accent)]">Every hackathon need</span>
             </h1>
             <p className="landing-rise landing-rise-2 mt-6 max-w-[28rem] text-[17px] leading-relaxed text-[var(--text-secondary)]">
               Teams, submissions, judging, and mentorship—wired together so organizers run a tight event and builders stay in flow.
@@ -143,9 +143,9 @@ export default function HomePage() {
               </div>
               <ol className="relative space-y-0 divide-y divide-[var(--border-default)] px-5 py-2">
                 {[
-                  { step: '01', label: 'Register & team up', hint: 'Roster + skills' },
-                  { step: '02', label: 'Build & submit', hint: 'Repo · demo · deck' },
-                  { step: '03', label: 'Judge & certify', hint: 'Rubrics + credentials' },
+                  { step: '01', label: 'Register & team up' },
+                  { step: '02', label: 'Build & submit' },
+                  { step: '03', label: 'Judge & certify'},
                 ].map((row) => (
                   <li key={row.step} className="flex gap-4 py-4">
                     <span className="font-mono text-sm font-bold tabular-nums text-[var(--accent)]">{row.step}</span>
@@ -171,15 +171,7 @@ export default function HomePage() {
             <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
               Capabilities
             </p>
-            <h2
-              id="features-heading"
-              className="mt-3 font-serif text-[clamp(1.5rem,3.5vw,2.25rem)] font-semibold tracking-tight text-[var(--text-primary)]"
-            >
-              Built for serious weekends
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-[var(--text-secondary)]">
-              Everything wired for velocity—without turning your hackathon into spreadsheet chaos.
-            </p>
+           
           </div>
 
           <div className="mt-14 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
@@ -245,9 +237,9 @@ export default function HomePage() {
             <div className="auth-brand__logo-mark !h-7 !w-7">H</div>
             <span>Hackmate</span>
           </div>
-          <p className="text-center font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)] sm:text-left">
+          {/* <p className="text-center font-mono text-[11px] uppercase tracking-wider text-[var(--text-muted)] sm:text-left">
             Built for hackers — ship fast, judge fair, celebrate loud.
-          </p>
+          </p> */}
           <div className="flex gap-5 font-mono text-[12px]">
             <Link href="/login" className="text-[var(--accent)] no-underline hover:underline">
               Sign in
