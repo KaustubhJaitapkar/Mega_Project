@@ -13,7 +13,7 @@ const MESSAGES: Record<string, string> = {
   OAuthSignin:
     'Google could not start sign-in. Verify GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, and in Google Cloud Console add this exact redirect URI under Authorized redirect URIs: {origin}/api/auth/callback/google',
   OAuthCallback:
-    'Google sign-in did not complete. If this persists, confirm the redirect URI in Google Cloud matches this app and try again.',
+    'Google sign-in did not finish. Open /login, click “Continue with Google” again (do not refresh or reuse the Google redirect tab). Clear cookies for this site if it keeps failing. Redirect URI in Google Cloud must be: {origin}/api/auth/callback/google',
   OAuthCreateAccount: 'Could not create your account via Google. Try again or use email sign-up.',
   OAuthAccountNotLinked:
     'This Google account is linked to a different sign-in method. Use the method you used originally.',

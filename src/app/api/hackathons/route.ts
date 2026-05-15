@@ -51,9 +51,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const mineOnly = searchParams.get('mine') === 'true';
     const publishedWhere = { status: { in: ['REGISTRATION', 'ONGOING', 'ENDED'] as Prisma.EnumHackathonStatusFilter<'Hackathon'>['in'] } };
     const visibilityWhere = organiserId
-      ? { OR: [publishedWhere, { organiserId }] }
+      ? mineOnly
+        ? { organiserId }
+        : { OR: [publishedWhere, { organiserId }] }
       : publishedWhere;
 
     const finalWhere = Object.keys(where).length

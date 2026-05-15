@@ -75,7 +75,7 @@ export default function OrganiserDashboardPage() {
   useEffect(() => {
     async function fetchHackathons() {
       try {
-        const res = await fetch('/api/hackathons');
+        const res = await fetch('/api/hackathons?mine=true');
         const data = await res.json();
         setHackathons(data.data || []);
       } catch {

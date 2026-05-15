@@ -4,13 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import RoleCard from '@/components/RoleCard';
-import {
-  Users,
-  Zap,
-  Award,
-  Lightbulb,
-  Briefcase,
-} from 'lucide-react';
+import { Users, Zap } from 'lucide-react';
 
 const ROLES = [
   {
@@ -37,42 +31,6 @@ const ROLES = [
       'Award certificates',
     ],
   },
-  {
-    value: 'JUDGE',
-    title: 'Judge',
-    description: 'Evaluate projects and score teams',
-    icon: Award,
-    benefits: [
-      'Review submissions',
-      'Score projects fairly',
-      'Provide feedback',
-      'Help select winners',
-    ],
-  },
-  {
-    value: 'MENTOR',
-    title: 'Mentor',
-    description: 'Help teams solve problems',
-    icon: Lightbulb,
-    benefits: [
-      'Guide team development',
-      'Offer technical expertise',
-      'Share best practices',
-      'Support learning',
-    ],
-  },
-  {
-    value: 'SPONSOR',
-    title: 'Sponsor',
-    description: 'Engage with participants and offer prizes',
-    icon: Briefcase,
-    benefits: [
-      'Showcase your brand',
-      'Connect with talent',
-      'Offer prizes/resources',
-      'Build company visibility',
-    ],
-  },
 ];
 
 export default function RoleSelection() {
@@ -88,9 +46,6 @@ export default function RoleSelection() {
   const roleRoutes: Record<string, string> = {
     PARTICIPANT: '/participant/dashboard',
     ORGANISER: '/organiser/dashboard',
-    JUDGE: '/judge/dashboard',
-    MENTOR: '/mentor/dashboard',
-    SPONSOR: '/sponsor/dashboard',
   };
 
   async function handleConfirm() {
@@ -151,7 +106,7 @@ export default function RoleSelection() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 max-w-3xl mx-auto">
           {ROLES.map((role) => (
             <RoleCard
               key={role.value}

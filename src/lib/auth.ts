@@ -8,8 +8,11 @@ import { prisma } from './prisma';
 import bcrypt from 'bcryptjs';
 import { sendVerificationEmail } from './email';
 
+const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith('https://') ?? false;
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  useSecureCookies,
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID || '',
@@ -46,6 +49,15 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            image: true,
+            role: true,
+            password: true,
+            isBanned: true,
+          },
         });
 
         if (!user || !user.password) {
@@ -61,7 +73,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Invalid email or password');
         }
 
-        if ((user as any).isBanned) {
+        if (user.isBanned) {
           throw new Error('Account has been suspended');
         }
 
@@ -123,33 +135,30 @@ export const authOptions: NextAuthOptions = {
       return `${baseUrl}/dashboard`;
     },
     async signIn({ user, account }) {
-      // Check if user is banned
-      const dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { isBanned: true, role: true, createdAt: true, updatedAt: true },
-      });
-
-      if (dbUser?.isBanned) {
-        return false;
-      }
-
-      // For OAuth providers, check if user already exists
-      if (account && account.provider !== 'credentials') {
-        const existingUser = await prisma.user.findUnique({
+      try {
+        const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
-          select: { role: true, createdAt: true, updatedAt: true },
+          select: { isBanned: true, createdAt: true, updatedAt: true },
         });
 
-        // If user was just created (createdAt === updatedAt within 2s), they need role selection
-        if (existingUser) {
-          const diff = Math.abs(existingUser.updatedAt.getTime() - existingUser.createdAt.getTime());
-          if (diff < 2000) {
-            // New OAuth user - redirect to role selection
+        if (dbUser?.isBanned) {
+          return false;
+        }
+
+        if (account && account.provider !== 'credentials' && dbUser) {
+          const diff = Math.abs(
+            dbUser.updatedAt.getTime() - dbUser.createdAt.getTime()
+          );
+          if (diff < 30000) {
             return '/role-selection';
           }
         }
+
+        return true;
+      } catch (error) {
+        console.error('[auth] signIn callback failed:', error);
+        return false;
       }
-      return true;
     },
   },
   pages: {
@@ -167,11 +176,16 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   events: {
-    async signIn({ user }) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { updatedAt: new Date() },
-      });
+    async signIn({ user, isNewUser }) {
+      if (isNewUser) return;
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { updatedAt: new Date() },
+        });
+      } catch (error) {
+        console.error('[auth] signIn event failed:', error);
+      }
     },
   },
 };

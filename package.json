@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
-    "dev": "next dev -H 0.0.0.0",
+    "dev": "next dev",
     "dev:socket": "npx tsx server.ts",
     "build": "next build",
     "start": "next start",
