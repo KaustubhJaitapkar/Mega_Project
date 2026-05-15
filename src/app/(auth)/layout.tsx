@@ -44,16 +44,16 @@ export default async function AuthLayout({
 
         <div className="auth-brand__stats">
           <div className="auth-brand__stat">
-            <span className="auth-brand__stat-value"></span>
-            <span className="auth-brand__stat-label"></span>
+            <span className="auth-brand__stat-value">500+</span>
+            <span className="auth-brand__stat-label">Hackathons</span>
           </div>
           <div className="auth-brand__stat">
-            <span className="auth-brand__stat-value"></span>
-            <span className="auth-brand__stat-label"></span>
+            <span className="auth-brand__stat-value">12k+</span>
+            <span className="auth-brand__stat-label">Builders</span>
           </div>
           <div className="auth-brand__stat">
-            <span className="auth-brand__stat-value"></span>
-            <span className="auth-brand__stat-label"></span>
+            <span className="auth-brand__stat-value">98%</span>
+            <span className="auth-brand__stat-label">Satisfaction</span>
           </div>
         </div>
       </div>

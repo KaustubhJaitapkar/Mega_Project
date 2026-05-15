@@ -16,6 +16,9 @@ function getPasswordStrength(password: string): number {
   return score;
 }
 
+const strengthLabels = ['Weak', 'Fair', 'Good', 'Strong'];
+const strengthColors = ['var(--error)', 'var(--warning)', '#84CC16', 'var(--success)'];
+
 export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -130,24 +133,12 @@ export default function SignupPage() {
         </div>
       )}
 
-      <div className="auth-animate-in auth-animate-in-delay-1" style={{ display: 'flex', gap: '0.65rem' }}>
-        {/* <button
-          onClick={() => handleOAuthSignIn('github')}
-          disabled={!!loadingProvider}
-          className="auth-btn-social"
-          style={{ flex: 1, padding: '0.6rem' }}
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.868-.013-1.703-2.782.603-3.369-1.342-3.369-1.342-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clipRule="evenodd" />
-          </svg>
-          {loadingProvider === 'github' ? 'Connecting...' : 'GitHub'}
-        </button> */}
-
+      <div className="auth-animate-in auth-animate-in-delay-1" style={{ display: 'flex', gap: '0.6rem' }}>
         <button
           onClick={() => handleOAuthSignIn('google')}
           disabled={!!loadingProvider}
           className="auth-btn-social"
-          style={{ flex: 1, padding: '0.6rem' }}
+          style={{ flex: 1 }}
         >
           <svg viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -218,6 +209,15 @@ export default function SignupPage() {
                   }`}
                 />
               ))}
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: strengthColors[passwordStrength - 1] || 'var(--text-muted)',
+                marginLeft: '8px',
+                minWidth: '40px',
+              }}>
+                {passwordStrength > 0 ? strengthLabels[passwordStrength - 1] : ''}
+              </span>
             </div>
           )}
           {fieldErrors.password && <p className="auth-field__error">{fieldErrors.password}</p>}
@@ -239,7 +239,7 @@ export default function SignupPage() {
         </div>
 
         <div className="auth-field" style={{ marginBottom: '1.5rem' }}>
-          <p className="auth-field__label">Profile Type</p>
+          <label className="auth-field__label">Profile Type</label>
           <div className="auth-role-grid" style={{ marginBottom: 0 }}>
             <div
               className={`auth-role-card ${role === 'PARTICIPANT' ? 'auth-role-card--selected' : ''}`}
@@ -252,22 +252,22 @@ export default function SignupPage() {
                   setRole('PARTICIPANT');
                 }
               }}
-              style={{ padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
             >
-              <div className="auth-role-card__check" style={{ top: '0.4rem', right: '0.4rem' }}>
+              <div className="auth-role-card__check">
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                   <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <div className="auth-role-card__icon" style={{ marginBottom: '0.5rem', width: '32px', height: '32px' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <div className="auth-role-card__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
                   <path d="M23 21v-2a4 4 0 00-3-3.87" />
                   <path d="M16 3.13a4 4 0 010 7.75" />
                 </svg>
               </div>
-              <p className="auth-role-card__name" style={{ fontSize: '0.75rem', marginBottom: '0.1rem' }}>Participant</p>
+              <p className="auth-role-card__name">Participant</p>
+              <p className="auth-role-card__desc">Join teams and compete</p>
             </div>
 
             <div
@@ -281,19 +281,19 @@ export default function SignupPage() {
                   setRole('ORGANISER');
                 }
               }}
-              style={{ padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
             >
-              <div className="auth-role-card__check" style={{ top: '0.4rem', right: '0.4rem' }}>
+              <div className="auth-role-card__check">
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                   <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <div className="auth-role-card__icon" style={{ marginBottom: '0.5rem', width: '32px', height: '32px' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <div className="auth-role-card__icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
               </div>
-              <p className="auth-role-card__name" style={{ fontSize: '0.75rem', marginBottom: '0.1rem' }}>Organiser</p>
+              <p className="auth-role-card__name">Organiser</p>
+              <p className="auth-role-card__desc">Create hackathons</p>
             </div>
           </div>
           {fieldErrors.role && <p className="auth-field__error">{fieldErrors.role}</p>}

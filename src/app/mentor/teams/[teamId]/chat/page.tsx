@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { ArrowLeft, Send } from 'lucide-react';
 
 interface Mentor {
   id: string;
@@ -39,9 +41,8 @@ export default function MentorTeamChatPage() {
   const activeMentor = useMemo(() => mentors[0], [mentors]);
 
   useEffect(() => {
-    if (!session) {
-      router.push('/login');
-    }
+    if (session) return;
+    router.push('/login');
   }, [session, router]);
 
   async function loadChat() {
@@ -127,46 +128,50 @@ export default function MentorTeamChatPage() {
 
   if (loading) {
     return (
-      <div className="p-8 flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex items-center justify-center p-8" style={{ minHeight: '50vh' }}>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]" />
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Team Chat</h1>
-          <p className="text-sm text-gray-600">Team: {teamName || 'Unknown'}</p>
+          <Link
+            href="/mentor/dashboard"
+            className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Dashboard
+          </Link>
+          <h1 className="font-display text-2xl font-bold text-[var(--text-primary)]">Team Chat</h1>
+          <p className="text-[13px] text-[var(--text-secondary)]">Team: {teamName || 'Unknown'}</p>
         </div>
-        <button className="btn btn-secondary" onClick={() => router.push('/mentor/dashboard')}>
-          Back to Mentor Dashboard
-        </button>
       </div>
 
-      <div className="card flex items-center justify-between">
+      <div className="card flex items-center justify-between p-4">
         <div>
-          <p className="text-sm text-gray-500">Assigned Mentor</p>
-          <p className="font-semibold">
+          <p className="text-[12px] text-[var(--text-muted)]">Assigned Mentor</p>
+          <p className="text-[14px] font-semibold text-[var(--text-primary)]">
             {activeMentor ? activeMentor.name : 'No mentor assigned yet'}
           </p>
         </div>
         {activeMentor?.email && (
-          <span className="text-sm text-gray-500">{activeMentor.email}</span>
+          <span className="text-[13px] text-[var(--text-muted)]">{activeMentor.email}</span>
         )}
       </div>
 
       {error && (
-        <div className="card">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="rounded-[var(--radius-md)] border border-[rgba(239,68,68,0.2)] bg-[var(--error-dim)] p-4">
+          <p className="text-[13px] text-[var(--error)]">{error}</p>
         </div>
       )}
 
-      <div className="card space-y-4">
-        <div className="max-h-[420px] overflow-y-auto space-y-3 pr-2">
+      <div className="card space-y-4 p-4">
+        <div className="max-h-[420px] space-y-3 overflow-y-auto pr-2">
           {messages.length === 0 ? (
-            <p className="text-sm text-gray-500">No messages yet. Say hello!</p>
+            <p className="text-[13px] text-[var(--text-muted)]">No messages yet. Say hello!</p>
           ) : (
             messages.map((msg) => {
               const isMentor = msg.isFromMentor;
@@ -176,10 +181,14 @@ export default function MentorTeamChatPage() {
                   key={msg.id}
                   className={`flex ${isMentor ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMentor ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-900'}`}>
-                    <p className="text-xs opacity-70 mb-1">{senderName}</p>
-                    <p className="text-sm leading-relaxed">{msg.content}</p>
-                    <p className="text-[10px] opacity-70 mt-2">
+                  <div className={`max-w-[80%] rounded-[var(--radius-lg)] px-4 py-3 ${
+                    isMentor
+                      ? 'bg-[var(--accent)] text-[var(--text-inverse)]'
+                      : 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-default)]'
+                  }`}>
+                    <p className="mb-1 text-[10px] opacity-70">{senderName}</p>
+                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{msg.content}</p>
+                    <p className="mt-2 text-[10px] opacity-70">
                       {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -190,7 +199,7 @@ export default function MentorTeamChatPage() {
           <div ref={endRef} />
         </div>
 
-        <div className="border-t pt-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 border-t border-[var(--border-default)] pt-4">
           <textarea
             className="input"
             placeholder="Type your message..."
@@ -205,7 +214,12 @@ export default function MentorTeamChatPage() {
             rows={3}
           />
           <div className="flex justify-end">
-            <button className="btn btn-primary" onClick={sendMessage} disabled={sending || !content.trim()}>
+            <button
+              className="btn btn-primary inline-flex items-center gap-2"
+              onClick={sendMessage}
+              disabled={sending || !content.trim()}
+            >
+              <Send className="h-4 w-4" />
               {sending ? 'Sending...' : 'Send Message'}
             </button>
           </div>

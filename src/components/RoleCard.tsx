@@ -15,7 +15,6 @@ interface RoleCardProps {
 }
 
 export default function RoleCard({
-  role,
   title,
   description,
   icon: Icon,
@@ -26,50 +25,110 @@ export default function RoleCard({
   return (
     <div
       onClick={onClick}
-      className={`p-6 rounded-2xl border-2 cursor-pointer transition-all min-h-[320px] flex flex-col transform hover:scale-105 active:scale-95 ${
-        isSelected
-          ? 'border-indigo-600 bg-indigo-50 shadow-lg'
-          : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-md'
-      }`}
+      className={`auth-role-card ${isSelected ? 'auth-role-card--selected' : ''}`}
+      style={{
+        padding: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '300px',
+        cursor: 'pointer',
+      }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg">
-          <Icon className="w-6 h-6 text-indigo-600" />
-        </div>
-        {isSelected && (
-          <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center animate-scale-in">
-            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )}
+      <div className="auth-role-card__check" style={{ top: '16px', right: '16px' }}>
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+          <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </div>
 
-      <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-      <p className="text-sm text-gray-600 mb-4">{description}</p>
+      <div className="auth-role-card__icon" style={{ width: '44px', height: '44px', marginBottom: '16px' }}>
+        <Icon className="h-5 w-5" strokeWidth={1.5} />
+      </div>
 
-      <div className="flex-1">
-        <p className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide">What you&apos;ll do:</p>
-        <ul className="space-y-2">
+      <h3 style={{
+        fontFamily: 'var(--font-display)',
+        fontSize: '17px',
+        fontWeight: 700,
+        color: 'var(--text-primary)',
+        marginBottom: '4px',
+      }}>
+        {title}
+      </h3>
+      <p style={{
+        fontSize: '13px',
+        color: 'var(--text-muted)',
+        marginBottom: '16px',
+        lineHeight: 1.5,
+      }}>
+        {description}
+      </p>
+
+      <div style={{ flex: 1 }}>
+        <p style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '10px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          color: 'var(--text-muted)',
+          marginBottom: '10px',
+        }}>
+          What you&apos;ll do
+        </p>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {benefits.map((benefit, idx) => (
-            <li key={idx} className="text-xs text-gray-600 flex items-start gap-2">
-              <span className="text-indigo-600 mt-1">•</span>
+            <li
+              key={idx}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                fontSize: '13px',
+                color: 'var(--text-secondary)',
+                marginBottom: '8px',
+                lineHeight: 1.4,
+              }}
+            >
+              <span style={{
+                color: isSelected ? 'var(--accent)' : 'var(--text-muted)',
+                marginTop: '2px',
+                flexShrink: 0,
+                transition: 'color 200ms',
+              }}>•</span>
               <span>{benefit}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <button
-          className={`w-full py-2 rounded-lg font-medium transition-all ${
-            isSelected
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
+      <div style={{
+        marginTop: '16px',
+        paddingTop: '16px',
+        borderTop: '1px solid var(--border-subtle)',
+      }}>
+        <div
+          style={{
+            width: '100%',
+            padding: '10px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '13px',
+            fontWeight: 600,
+            textAlign: 'center',
+            transition: 'all 200ms',
+            background: isSelected ? 'var(--accent)' : 'var(--bg-root)',
+            color: isSelected ? 'var(--text-inverse)' : 'var(--text-secondary)',
+            border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-default)',
+          }}
         >
-          {isSelected ? '✓ Selected' : 'Select Role'}
-        </button>
+          {isSelected ? 'Selected' : 'Select Role'}
+        </div>
       </div>
     </div>
   );

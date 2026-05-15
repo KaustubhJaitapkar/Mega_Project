@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import RoleCard from '@/components/RoleCard';
 import { Users, Zap } from 'lucide-react';
+import Link from 'next/link';
 
 const ROLES = [
   {
@@ -22,7 +23,7 @@ const ROLES = [
   {
     value: 'ORGANISER',
     title: 'Organiser',
-    description: 'Create and manage hackathons',
+    description: 'Create and manage hackathons from start to finish',
     icon: Zap,
     benefits: [
       'Create hackathons',
@@ -75,7 +76,7 @@ export default function RoleSelection() {
       setTimeout(() => {
         router.push(roleRoutes[selectedRole] || '/dashboard');
       }, 500);
-    } catch (err) {
+    } catch {
       setError('An error occurred while setting your role');
     } finally {
       setIsLoading(false);
@@ -83,58 +84,97 @@ export default function RoleSelection() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-4">
-            Choose Your Role
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Select how you want to participate in Hackmate and unlock role-specific features
-          </p>
+    <div className="min-h-screen bg-[var(--bg-root)] flex flex-col">
+      {/* Header */}
+      <header className="border-b border-[var(--border-default)] bg-[var(--bg-overlay)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
+          <Link href="/" className="flex items-center gap-2.5 no-underline">
+            <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent)] text-[14px] font-bold text-[var(--text-inverse)]">
+              H
+            </div>
+            <span className="font-display text-[16px] font-bold tracking-tight text-[var(--text-primary)]">
+              Hackmate
+            </span>
+          </Link>
         </div>
+      </header>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg max-w-2xl mx-auto">
-            {error}
+      {/* Content */}
+      <div className="flex-1 flex items-center justify-center px-5 py-12 sm:px-8">
+        <div className="w-full max-w-[760px]">
+          {/* Header */}
+          <div className="text-center mb-10">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="h-[1px] w-6 bg-[var(--accent)]" />
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                Welcome aboard
+              </span>
+              <div className="h-[1px] w-6 bg-[var(--accent)]" />
+            </div>
+            <h1 className="font-display text-[clamp(2rem,4vw,2.8rem)] font-bold leading-tight tracking-tight text-[var(--text-primary)] mb-3">
+              Choose your role
+            </h1>
+            <p className="text-[15px] text-[var(--text-secondary)] max-w-lg mx-auto leading-relaxed">
+              Select how you want to participate in Hackmate. You can change this later from your dashboard.
+            </p>
           </div>
-        )}
 
-        {success && (
-          <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg max-w-2xl mx-auto">
-            {success}
+          {/* Error / Success */}
+          {error && (
+            <div className="auth-error mb-6 max-w-2xl mx-auto">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M8 4.5v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="8" cy="11" r="0.75" fill="currentColor" />
+              </svg>
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="org-feedback org-feedback-success mb-6 max-w-2xl mx-auto">
+              {success}
+            </div>
+          )}
+
+          {/* Role cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {ROLES.map((role) => (
+              <RoleCard
+                key={role.value}
+                role={role.value as any}
+                title={role.title}
+                description={role.description}
+                icon={role.icon}
+                benefits={role.benefits}
+                isSelected={selectedRole === role.value}
+                onClick={() => setSelectedRole(role.value)}
+              />
+            ))}
           </div>
-        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 max-w-3xl mx-auto">
-          {ROLES.map((role) => (
-            <RoleCard
-              key={role.value}
-              role={role.value as any}
-              title={role.title}
-              description={role.description}
-              icon={role.icon}
-              benefits={role.benefits}
-              isSelected={selectedRole === role.value}
-              onClick={() => setSelectedRole(role.value)}
-            />
-          ))}
-        </div>
+          {/* Actions */}
+          <div className="flex flex-col items-center gap-4">
+            <button
+              onClick={handleConfirm}
+              disabled={isLoading || !selectedRole}
+              className="auth-btn"
+              style={{ maxWidth: '320px', width: '100%' }}
+            >
+              {isLoading ? (
+                <>
+                  <span className="auth-spinner" />
+                  Setting role...
+                </>
+              ) : (
+                'Continue to Dashboard'
+              )}
+            </button>
 
-        <div className="flex gap-4 justify-center mb-8">
-          <button
-            onClick={handleConfirm}
-            disabled={isLoading || !selectedRole}
-            className="btn btn-primary px-8 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Setting role...' : 'Continue to Dashboard'}
-          </button>
-        </div>
-
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
-            You can change your role anytime from the dashboard header
-          </p>
+            <p className="text-[13px] text-[var(--text-muted)]">
+              You can change your role anytime from the dashboard
+            </p>
+          </div>
         </div>
       </div>
     </div>

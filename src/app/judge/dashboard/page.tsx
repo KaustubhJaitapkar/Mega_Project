@@ -54,23 +54,23 @@ function JudgeHackathonCard({
         : 'Start judging';
 
   const cardShell =
-    'rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5 shadow-[var(--elevation-sm)] transition-[box-shadow,border-color] duration-200';
+    'rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 transition-[box-shadow,border-color] duration-200';
 
   const body = (
     <>
       <h3 className="text-base font-semibold leading-snug text-[var(--text-primary)]">{hackathon.title}</h3>
       <div className="mt-2 flex flex-wrap gap-2">
         <span
-          className={`org-badge ${hackathon.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-muted'}`}
+          className={`badge ${hackathon.status === 'ONGOING' ? 'badge badge-success' : 'badge badge-muted'}`}
         >
           {hackathon.status}
         </span>
-        <span className="org-badge org-badge-muted">
+        <span className="badge badge-muted">
           {new Date(hackathon.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
           {new Date(hackathon.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </span>
         {!isMentor && progress && (
-          <span className="org-badge org-badge-info">
+          <span className="badge badge-primary">
             {progress.scored} scored · {progress.pending} pending
           </span>
         )}
@@ -78,8 +78,8 @@ function JudgeHackathonCard({
       <div
         className={
           shouldDisable
-            ? 'org-btn-secondary mt-4 flex min-h-[40px] w-full cursor-not-allowed items-center justify-center opacity-80'
-            : 'org-btn-primary mt-4 flex min-h-[40px] w-full items-center justify-center'
+            ? 'btn btn-secondary mt-4 flex min-h-[40px] w-full cursor-not-allowed items-center justify-center opacity-80'
+            : 'btn btn-primary mt-4 flex min-h-[40px] w-full items-center justify-center'
         }
         role="presentation"
       >
@@ -102,7 +102,7 @@ function JudgeHackathonCard({
   return (
     <Link
       href={href}
-      className={`group block no-underline ${cardShell} hover:border-[var(--border-strong)] hover:shadow-primer-md`}
+      className={`group block no-underline ${cardShell} hover:border-[var(--border-strong)] hover:shadow-md`}
     >
       {body}
     </Link>
@@ -168,7 +168,7 @@ export default function JudgeDashboardPage() {
 
   if (sessionStatus === 'loading' || isLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center font-sans">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div
             className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]"
@@ -182,8 +182,8 @@ export default function JudgeDashboardPage() {
   }
 
   return (
-    <div className="font-sans text-[var(--text-primary)]">
-      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+    <div className="text-[var(--text-primary)]">
+      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-sm">
         <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-5 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
             {isMentor ? (
@@ -208,7 +208,7 @@ export default function JudgeDashboardPage() {
 
       <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 sm:py-10">
         <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-[6px] border border-[var(--border-default)] border-l-4 border-l-[var(--accent)] bg-[var(--bg-elevated)] p-4 shadow-[var(--elevation-sm)]">
+          <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] border-l-4 border-l-[var(--accent)] bg-[var(--bg-elevated)] p-4 shadow-sm">
             <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
               {isMentor ? 'Events on your roster' : 'Assigned events'}
             </p>
@@ -216,7 +216,7 @@ export default function JudgeDashboardPage() {
               {hackathons.length}
             </p>
           </div>
-          <div className="rounded-[6px] border border-[var(--border-default)] border-l-4 border-l-[var(--warning)] bg-[var(--bg-elevated)] p-4 shadow-[var(--elevation-sm)]">
+          <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] border-l-4 border-l-[var(--warning)] bg-[var(--bg-elevated)] p-4 shadow-sm">
             <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
               {isMentor ? 'Focus' : 'Pending reviews'}
             </p>
@@ -228,7 +228,7 @@ export default function JudgeDashboardPage() {
                   : 'Nothing in the queue right now.'}
             </p>
           </div>
-          <div className="rounded-[6px] border border-[var(--border-default)] border-l-4 border-l-[var(--success)] bg-[var(--bg-elevated)] p-4 shadow-[var(--elevation-sm)] sm:col-span-2 lg:col-span-1">
+          <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] border-l-4 border-l-[var(--success)] bg-[var(--bg-elevated)] p-4 shadow-sm sm:col-span-2 lg:col-span-1">
             <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
               {isMentor ? 'Next step' : 'Completed scores'}
             </p>
@@ -241,8 +241,8 @@ export default function JudgeDashboardPage() {
         </div>
 
         {hackathons.length === 0 ? (
-          <div className="rounded-[6px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-14 text-center shadow-[var(--elevation-sm)]">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--accent)]">
+          <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-14 text-center shadow-sm">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--accent)]">
               {isMentor ? <ListChecks className="h-6 w-6" aria-hidden /> : <Scale className="h-6 w-6" aria-hidden />}
             </div>
             <p className="mt-4 text-[15px] text-[var(--text-secondary)]">No events assigned to you yet.</p>

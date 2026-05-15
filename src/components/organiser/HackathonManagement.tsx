@@ -26,14 +26,14 @@ interface Props {
 function statusBadgeClass(status: string) {
   const s = (status || 'DRAFT').toUpperCase();
   const map: Record<string, string> = {
-    DRAFT: 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]',
-    PUBLISHED: 'bg-[#ddf4ff] text-[#0969da] border-[rgba(9,105,218,0.2)]',
-    REGISTRATION: 'bg-[#ddf4ff] text-[#0550ae] border-[rgba(5,80,174,0.2)]',
-    ONGOING: 'bg-[#dafbe1] text-[#1a7f37] border-[rgba(26,127,55,0.2)]',
-    ENDED: 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]',
-    CANCELLED: 'bg-[#ffebe9] text-[#cf222e] border-[rgba(207,34,46,0.2)]',
+    DRAFT: 'bg-[var(--bg-raised)] text-[var(--text-muted)] border-[var(--border-default)]',
+    PUBLISHED: 'bg-[var(--accent-dim)] text-[var(--accent)] border-[var(--border-accent)]',
+    REGISTRATION: 'bg-[var(--accent-dim)] text-[var(--accent)] border-[var(--border-accent)]',
+    ONGOING: 'bg-[var(--success-dim)] text-[var(--success)] border-[rgba(16,185,129,0.2)]',
+    ENDED: 'bg-[var(--bg-raised)] text-[var(--text-muted)] border-[var(--border-default)]',
+    CANCELLED: 'bg-[var(--error-dim)] text-[var(--error)] border-[rgba(239,68,68,0.2)]',
   };
-  return map[s] || 'bg-[#f6f8fa] text-[#57606a] border-[#d0d7de]';
+  return map[s] || 'bg-[var(--bg-raised)] text-[var(--text-muted)] border-[var(--border-default)]';
 }
 
 export default function HackathonManagement({ onSelect, selectedId }: Props) {
@@ -83,7 +83,7 @@ export default function HackathonManagement({ onSelect, selectedId }: Props) {
         <button
           type="button"
           onClick={() => setShowForm(!showForm)}
-          className="inline-flex h-8 shrink-0 items-center gap-2 rounded-[6px] bg-[#1f883d] px-3 text-sm font-semibold text-white shadow-[var(--elevation-sm)] transition-colors hover:bg-[#1a7f37]"
+          className="btn btn-primary !min-h-[32px] !text-[12px]"
         >
           <Plus className="h-4 w-4" aria-hidden />
           Create hackathon
@@ -107,7 +107,7 @@ export default function HackathonManagement({ onSelect, selectedId }: Props) {
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="inline-flex h-8 items-center rounded-[6px] bg-[#0969da] px-4 text-sm font-semibold text-white shadow-[var(--elevation-sm)] hover:bg-[#0860ca]"
+            className="btn btn-primary !min-h-[32px] !text-[12px]"
           >
             Create your first hackathon
           </button>
@@ -121,7 +121,7 @@ export default function HackathonManagement({ onSelect, selectedId }: Props) {
                 onClick={() => onSelect(h.id)}
                 className={`w-full rounded-[6px] border text-left transition-colors ${
                   selectedId === h.id
-                    ? 'border-[#0969da] bg-[#ddf4ff] shadow-[var(--elevation-sm)]'
+                    ? 'border-[var(--accent)] bg-[var(--accent-dim)]'
                     : 'border-[var(--border-default)] bg-[var(--bg-root)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface)]'
                 } p-4`}
               >
@@ -152,7 +152,7 @@ export default function HackathonManagement({ onSelect, selectedId }: Props) {
                     </div>
                   </div>
                   {selectedId === h.id && (
-                    <span className="shrink-0 font-mono text-[11px] font-medium text-[#0969da]">
+                    <span className="shrink-0 font-mono text-[11px] font-medium text-[var(--accent)]">
                       Selected
                     </span>
                   )}

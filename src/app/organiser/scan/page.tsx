@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, QrCode } from 'lucide-react';
+import { QrCode } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface Hackathon { id: string; title: string; status: string }
@@ -93,7 +93,7 @@ export default function ScanPage() {
       label: meal.name || `Event Day ${meal.day}`,
       action: 'EVENT' as const,
       eventId: meal.id,
-      color: '#38bdf8',
+      color: 'var(--accent)',
     })),
   ]), [mealSchedule]);
 
@@ -157,7 +157,6 @@ export default function ScanPage() {
     handleAction(option, { qrToken: scanInput.trim() });
   }, [scanInput, handleAction]);
 
-  // Camera scanner
   const startCamera = useCallback(async () => {
     if (cameraActive) return;
     try {
@@ -182,10 +181,10 @@ export default function ScanPage() {
           if (!option) { setError('Add an attendance event first'); return; }
           handleAction(option, { qrToken: decodedText.trim() });
         },
-        () => {} // ignore errors during scanning
+        () => {}
       );
       setCameraActive(true);
-    } catch (err) {
+    } catch {
       setError('Camera access denied or not available');
     }
   }, [cameraActive, handleAction]);
@@ -251,35 +250,43 @@ export default function ScanPage() {
   const tableColSpan = mealSchedule.length + 2;
 
   return (
-    <div className="org-shell min-h-full">
-      <div className="org-page mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
-        <div className="mb-6 flex flex-col gap-4 border-b border-[var(--border-default)] pb-6 sm:flex-row sm:items-start sm:justify-between">
+    <div className="min-h-full">
+      <div className="mx-auto max-w-[1200px] px-5 py-8 sm:px-8 sm:py-10">
+        {/* Header */}
+        <div className="mb-8 flex flex-col gap-4 border-b border-[var(--border-default)] pb-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <Link
               href="/organiser/dashboard"
-              className="mb-3 inline-flex items-center gap-1.5 font-mono text-[12px] font-semibold uppercase tracking-wide text-[var(--text-secondary)] transition-colors hover:text-[#0969da]"
+              className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
             >
-              <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
               Dashboard
             </Link>
-            <p className="font-mono text-[12px] uppercase tracking-wide text-[#0969da]">Operations</p>
-            <h1 className="mt-1 flex flex-wrap items-center gap-2 text-[clamp(1.35rem,2.2vw,1.65rem)] font-semibold tracking-tight text-[var(--text-primary)]">
-              <QrCode className="h-7 w-7 shrink-0 text-[#0969da]" aria-hidden />
+            <div className="flex items-center gap-2.5">
+              <div className="h-[1px] w-6 bg-[var(--accent)]" />
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+                Operations
+              </p>
+            </div>
+            <h1 className="mt-2 flex flex-wrap items-center gap-2 font-display text-[clamp(1.35rem,2.2vw,1.65rem)] font-bold tracking-tight text-[var(--text-primary)]">
+              <QrCode className="h-6 w-6 shrink-0 text-[var(--accent)]" aria-hidden />
               QR scan station
             </h1>
-            <p className="mt-2 max-w-xl text-[15px] text-[var(--text-secondary)]">
+            <p className="mt-2 max-w-xl text-[14px] text-[var(--text-secondary)]">
               Redeem attendance from camera, image capture, or manual token entry. The roster refreshes every few seconds.
             </p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[240px]">
-            <label htmlFor="scan-hackathon" className="font-mono text-[12px] text-[var(--text-muted)]">
+            <label htmlFor="scan-hackathon" className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
               Event
             </label>
             <select
               id="scan-hackathon"
               value={hackathonId}
               onChange={(e) => setHackathonId(e.target.value)}
-              className="org-input h-10 min-h-[40px] w-full cursor-pointer rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] text-sm text-[var(--text-primary)]"
+              className="input"
             >
               {hackathons.map((h) => (
                 <option key={h.id} value={h.id}>
@@ -290,15 +297,18 @@ export default function ScanPage() {
           </div>
         </div>
 
+        {/* Content grid */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          {/* Left column */}
           <div className="flex flex-col gap-3">
-            <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--elevation-sm)]">
+            {/* Camera scanner */}
+            <section className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Camera scanner</p>
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Camera scanner</p>
                 <button
                   type="button"
                   onClick={cameraActive ? stopCamera : startCamera}
-                  className={cameraActive ? 'org-btn-danger' : 'org-btn-primary'}
+                  className={cameraActive ? 'btn btn-danger !min-h-[32px] !text-[12px]' : 'btn btn-primary !min-h-[32px] !text-[12px]'}
                 >
                   {cameraActive ? 'Stop camera' : 'Start camera'}
                 </button>
@@ -306,11 +316,11 @@ export default function ScanPage() {
               <div className="relative">
                 <div
                   id={scannerContainerId}
-                  className={`w-full overflow-hidden rounded-[6px] ${cameraActive ? 'min-h-[250px] bg-black' : 'min-h-0 bg-[var(--bg-raised)]'}`}
+                  className={`w-full overflow-hidden rounded-[var(--radius-md)] ${cameraActive ? 'min-h-[250px] bg-black' : 'min-h-0 bg-[var(--bg-raised)]'}`}
                 />
                 {!cameraActive && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
-                    <p className="text-center text-sm text-[var(--text-muted)]">
+                    <p className="text-center text-[13px] text-[var(--text-muted)]">
                       Use <span className="font-medium text-[var(--text-secondary)]">Start camera</span> to scan QR codes with this device.
                     </p>
                   </div>
@@ -318,7 +328,7 @@ export default function ScanPage() {
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <label
-                  className={`org-btn-secondary inline-flex min-h-[32px] cursor-pointer items-center text-sm ${fileScanBusy ? 'pointer-events-none opacity-60' : ''}`}
+                  className={`btn btn-secondary !min-h-[32px] !text-[12px] inline-flex cursor-pointer items-center ${fileScanBusy ? 'pointer-events-none opacity-60' : ''}`}
                 >
                   Capture QR
                   <input
@@ -330,17 +340,18 @@ export default function ScanPage() {
                     className="hidden"
                   />
                 </label>
-                <span className="text-xs text-[var(--text-muted)]">From a photo or screenshot</span>
+                <span className="text-[11px] text-[var(--text-muted)]">From a photo or screenshot</span>
               </div>
             </section>
 
-            <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--elevation-sm)]">
-              <p className="mb-3 font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Manual entry</p>
+            {/* Manual entry */}
+            <section className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4">
+              <p className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Manual entry</p>
               <div className="mb-3">
                 <select
                   value={selectedOptionId}
                   onChange={(e) => setSelectedOptionId(e.target.value)}
-                  className="org-input h-10 min-h-[40px] w-full rounded-[6px] text-sm"
+                  className="input"
                 >
                   {actionOptions.length === 0 && <option value="">Add an attendance event first</option>}
                   {actionOptions.map((opt) => (
@@ -357,33 +368,34 @@ export default function ScanPage() {
                   onChange={(e) => setScanInput(e.target.value)}
                   placeholder="QR token or user ID"
                   autoComplete="off"
-                  className="org-input h-10 min-h-[40px] min-w-0 flex-1 rounded-[6px] text-sm"
+                  className="input flex-1"
                 />
                 <button
                   type="submit"
                   disabled={!scanInput.trim() || !!loading}
-                  className="org-btn-primary h-10 min-h-[40px] shrink-0 px-4 sm:w-auto"
+                  className="btn btn-primary !min-h-[40px] shrink-0 px-4 sm:w-auto"
                 >
                   {loading ? '…' : 'Submit'}
                 </button>
               </form>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-[11px] text-[var(--text-muted)]">
                 Selected: <span className="font-medium text-[var(--text-secondary)]">{selectedOption?.label || '—'}</span>
               </p>
             </section>
 
-            <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 shadow-[var(--elevation-sm)]">
-              <p className="mb-3 font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Add attendance event</p>
+            {/* Add attendance event */}
+            <section className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-4">
+              <p className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Add attendance event</p>
               <div className="mb-3 flex flex-col gap-2 sm:flex-row">
                 <input
-                  className="org-input h-10 min-h-[40px] min-w-0 flex-1 rounded-[6px] text-sm"
+                  className="input flex-1"
                   value={newEventName}
                   onChange={(e) => setNewEventName(e.target.value)}
                   placeholder="Event name (saved to schedule)"
                 />
                 <button
                   type="button"
-                  className="org-btn-secondary h-10 min-h-[40px] shrink-0"
+                  className="btn btn-secondary !min-h-[40px] shrink-0"
                   onClick={addAttendanceEvent}
                   disabled={!newEventName.trim()}
                 >
@@ -392,45 +404,55 @@ export default function ScanPage() {
               </div>
             </section>
 
-            {error && <div className="org-feedback org-feedback-error">{error}</div>}
+            {/* Error */}
+            {error && (
+              <div className="rounded-[var(--radius-md)] border border-[rgba(239,68,68,0.2)] bg-[var(--error-dim)] px-4 py-3 text-[13px] font-medium text-[var(--error)]">
+                {error}
+              </div>
+            )}
+
+            {/* Last result */}
             {lastResult && (
               <div
-                className={`rounded-[6px] border p-4 ${
+                className={`rounded-[var(--radius-lg)] border p-4 ${
                   lastResult.alreadyDone
-                    ? 'border-[#d4a72c]/35 bg-[#fff8c5]/50'
-                    : 'border-[#1a7f37]/30 bg-[#dafbe1]/50'
+                    ? 'border-[rgba(245,158,11,0.2)] bg-[var(--warning-dim)]'
+                    : 'border-[rgba(16,185,129,0.2)] bg-[var(--success-dim)]'
                 }`}
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span
-                    className={`rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${
-                      lastResult.alreadyDone ? 'bg-[#fff8c5] text-[#4d2d00]' : 'bg-[#dafbe1] text-[#0d1f12]'
+                    className={`rounded-[var(--radius-full)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${
+                      lastResult.alreadyDone
+                        ? 'bg-[var(--warning-dim)] text-[var(--warning)]'
+                        : 'bg-[var(--success-dim)] text-[var(--success)]'
                     }`}
                   >
                     {lastResult.alreadyDone ? 'Already done' : 'Success'}
                   </span>
-                  <span className="text-xs text-[var(--text-muted)]">{lastResult.time}</span>
+                  <span className="text-[11px] text-[var(--text-muted)]">{lastResult.time}</span>
                 </div>
-                <p className="font-semibold text-[var(--text-primary)]">{lastResult.userName}</p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                <p className="text-[14px] font-semibold text-[var(--text-primary)]">{lastResult.userName}</p>
+                <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
                   {lastResult.action} · {lastResult.userEmail}
                 </p>
               </div>
             )}
 
+            {/* Recent activity */}
             {recentLog.length > 0 && (
-              <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3 shadow-[var(--elevation-sm)]">
-                <p className="mb-2 font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Recent activity</p>
+              <section className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
+                <p className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Recent activity</p>
                 <div className="flex max-h-[200px] flex-col gap-1 overflow-y-auto">
                   {recentLog.map((entry, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-2 rounded-[6px] bg-[var(--bg-raised)] px-2 py-1.5"
+                      className="flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--bg-raised)] px-2.5 py-1.5"
                     >
-                      <span className="max-w-[40%] shrink-0 truncate rounded bg-[var(--accent-dim)] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-[#0969da]">
+                      <span className="max-w-[40%] shrink-0 truncate rounded-full bg-[var(--accent-dim)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-[var(--accent)]">
                         {entry.action}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-primary)]">{entry.userName}</span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--text-primary)]">{entry.userName}</span>
                       <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{entry.time}</span>
                     </div>
                   ))}
@@ -439,24 +461,25 @@ export default function ScanPage() {
             )}
           </div>
 
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+          {/* Right column: Attendees */}
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)]">
             <div className="border-b border-[var(--border-default)] px-4 py-3">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">
+                  <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                     Attendees ({attendees.length})
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                    <span className="rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--bg-root)] px-2.5 py-1 font-mono text-[10px] text-[var(--text-secondary)]">
                       Checked in <strong className="text-[var(--text-primary)]">{stats.checkedIn}</strong>
                     </span>
-                    <span className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                    <span className="rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--bg-root)] px-2.5 py-1 font-mono text-[10px] text-[var(--text-secondary)]">
                       Breakfast <strong className="text-[var(--text-primary)]">{stats.breakfast}</strong>
                     </span>
-                    <span className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                    <span className="rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--bg-root)] px-2.5 py-1 font-mono text-[10px] text-[var(--text-secondary)]">
                       Lunch <strong className="text-[var(--text-primary)]">{stats.lunch}</strong>
                     </span>
-                    <span className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                    <span className="rounded-[var(--radius-full)] border border-[var(--border-default)] bg-[var(--bg-root)] px-2.5 py-1 font-mono text-[10px] text-[var(--text-secondary)]">
                       Swag <strong className="text-[var(--text-primary)]">{stats.swag}</strong>
                     </span>
                   </div>
@@ -464,29 +487,29 @@ export default function ScanPage() {
               </div>
             </div>
             <div className="max-h-[min(600px,70vh)] overflow-x-auto overflow-y-auto">
-              <table className="w-full min-w-[320px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[320px] border-collapse text-left text-[13px]">
                 <thead>
-                  <tr className="border-b border-[var(--border-default)] bg-[var(--bg-root)]">
-                    <th className="px-3 py-2.5 font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">Name</th>
+                  <tr className="border-b border-[var(--border-default)]">
+                    <th className="px-3 py-2.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Name</th>
                     {mealSchedule.map((event) => (
                       <th
                         key={event.id}
-                        className="px-2 py-2.5 text-center font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]"
+                        className="px-2 py-2.5 text-center font-mono text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]"
                       >
                         {event.name || 'Event'}
                       </th>
                     ))}
-                    <th className="px-3 py-2.5 text-right font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                    <th className="px-3 py-2.5 text-right font-mono text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                       Note
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border-default)]">
+                <tbody className="divide-y divide-[var(--border-subtle)]">
                   {attendees.slice(0, 80).map((a) => (
-                    <tr key={a.id} className="hover:bg-[var(--bg-root)]/80">
-                      <td className="px-3 py-2 align-top">
+                    <tr key={a.id} className="transition-colors hover:bg-[var(--bg-raised)]">
+                      <td className="px-3 py-2.5 align-top">
                         <p className="font-medium text-[var(--text-primary)]">{a.user.name}</p>
-                        <p className="text-xs text-[var(--text-muted)]">{a.user.email}</p>
+                        <p className="text-[11px] text-[var(--text-muted)]">{a.user.email}</p>
                       </td>
                       {mealSchedule.map((event) => {
                         const marks = a.eventMarks || {};
@@ -494,13 +517,13 @@ export default function ScanPage() {
                         return (
                           <td
                             key={event.id}
-                            className={`px-2 py-2 text-center text-base font-semibold ${done ? 'text-[#0969da]' : 'text-[var(--text-muted)]'}`}
+                            className={`px-2 py-2.5 text-center text-base font-semibold ${done ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}
                           >
                             {done ? '✓' : '—'}
                           </td>
                         );
                       })}
-                      <td className="px-3 py-2 text-right text-xs text-[var(--text-muted)]">Scanner</td>
+                      <td className="px-3 py-2.5 text-right text-[11px] text-[var(--text-muted)]">Scanner</td>
                     </tr>
                   ))}
                   {attendees.length === 0 && (

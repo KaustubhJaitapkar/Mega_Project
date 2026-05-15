@@ -61,9 +61,9 @@ interface ChatMessage {
 
 function priorityBadgeClass(p: string): string {
   const x = (p || '').toLowerCase();
-  if (x === 'high') return 'org-badge org-badge-danger';
-  if (x === 'low') return 'org-badge org-badge-muted';
-  return 'org-badge org-badge-info';
+  if (x === 'high') return 'badge badge-danger';
+  if (x === 'low') return 'badge badge-muted';
+  return 'badge badge-primary';
 }
 
 function categoryAbbrev(c: string): string {
@@ -312,7 +312,7 @@ export default function MentorDashboardPage() {
   }
 
   const shellCls =
-    'rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-[var(--elevation-sm)]';
+    'rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)]';
 
   // --- Hackathon selector ---
   if (!selectedHackathon) {
@@ -332,8 +332,8 @@ export default function MentorDashboardPage() {
     }
 
     return (
-      <div className="font-sans text-[var(--text-primary)]">
-        <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+      <div className="text-[var(--text-primary)]">
+        <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-sm">
           <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-5 sm:px-6">
             <div className="flex flex-wrap items-center gap-2">
               <Target className="h-6 w-6 text-[var(--accent)]" aria-hidden />
@@ -373,8 +373,8 @@ export default function MentorDashboardPage() {
           </div>
 
           {hackathons.length === 0 ? (
-            <div className="rounded-[6px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-14 text-center shadow-[var(--elevation-sm)]">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--accent)]">
+            <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-14 text-center shadow-sm">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--accent)]">
                 <Inbox className="h-6 w-6" aria-hidden />
               </div>
               <p className="mt-4 text-[15px] text-[var(--text-secondary)]">No hackathons assigned yet.</p>
@@ -391,19 +391,19 @@ export default function MentorDashboardPage() {
                     key={h.id}
                     type="button"
                     onClick={() => setSelectedHackathon(h)}
-                    className={`${shellCls} group text-left transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-primer-md`}
+                    className={`${shellCls} group text-left transition-[box-shadow,border-color] hover:border-[var(--border-strong)] hover:shadow-md`}
                   >
                     <h3 className="text-base font-semibold text-[var(--text-primary)]">{h.title}</h3>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <span className={`org-badge ${h.status === 'ONGOING' ? 'org-badge-success' : 'org-badge-muted'}`}>
                         {h.status}
                       </span>
-                      <span className="org-badge org-badge-muted">
+                      <span className="badge badge-muted">
                         {new Date(h.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
                         {new Date(h.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
-                    <span className="org-btn-primary mt-4 flex min-h-[40px] w-full items-center justify-center">
+                    <span className="btn btn-primary mt-4 flex min-h-[40px] w-full items-center justify-center">
                       Open mentoring panel
                     </span>
                   </button>
@@ -418,8 +418,8 @@ export default function MentorDashboardPage() {
 
   // --- Workspace ---
   return (
-    <div className="font-sans text-[var(--text-primary)]">
-      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
+    <div className="text-[var(--text-primary)]">
+      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-sm">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6">
           <div className="min-w-0">
             <button
@@ -447,8 +447,8 @@ export default function MentorDashboardPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:pt-1">
             <span className="font-mono text-[11px] text-[var(--text-muted)]">Queue</span>
-            <span className="org-badge org-badge-warning">{openQueue.length} open</span>
-            <span className="org-badge org-badge-info">{inProgress.length} active</span>
+            <span className="badge badge-warning">{openQueue.length} open</span>
+            <span className="badge badge-primary">{inProgress.length} active</span>
           </div>
         </div>
       </div>
@@ -457,7 +457,7 @@ export default function MentorDashboardPage() {
         {notice && (
           <div
             role="status"
-            className={`mb-6 rounded-[6px] border px-4 py-3 text-sm font-medium ${
+            className={`mb-6 rounded-[var(--radius-lg)] border px-4 py-3 text-sm font-medium ${
               noticeType === 'success'
                 ? 'border-[var(--success)] bg-[rgba(26,127,55,0.08)] text-[var(--success)]'
                 : 'border-[var(--error)] bg-[var(--error-dim)] text-[var(--error)]'
@@ -495,7 +495,7 @@ export default function MentorDashboardPage() {
             </label>
             <select
               id="mentor-ticket-category"
-              className="org-input h-11 w-full max-w-xs rounded-[6px] text-sm"
+              className="input h-11 w-full max-w-xs rounded-[var(--radius-lg)] text-sm"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
             >
@@ -521,7 +521,7 @@ export default function MentorDashboardPage() {
             </div>
             <div className="flex max-h-[min(520px,70vh)] flex-col gap-2 overflow-y-auto pr-1">
               {openQueue.map((t) => (
-                <div key={t.id} className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] p-3">
+                <div key={t.id} className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-root)] p-3">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
@@ -537,7 +537,7 @@ export default function MentorDashboardPage() {
                     <span className="text-[11px] text-[var(--text-muted)]">{t.creator?.name || 'Unknown'}</span>
                     <button
                       type="button"
-                      className="org-btn-primary min-h-[32px] px-3 py-1.5 text-xs"
+                      className="btn btn-primary min-h-[32px] px-3 py-1.5 text-xs"
                       onClick={() => claim(t.id)}
                       disabled={claiming === t.id}
                     >
@@ -567,7 +567,7 @@ export default function MentorDashboardPage() {
               <span className="font-mono text-[11px] text-[var(--text-muted)]">{inProgress.length} active</span>
             </div>
             {inProgress.length > 1 && !activeTicketId && (
-              <p className="mb-3 rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+              <p className="mb-3 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-root)] px-3 py-2 text-xs text-[var(--text-secondary)]">
                 Select a ticket below to add resolution notes.
               </p>
             )}
@@ -577,14 +577,14 @@ export default function MentorDashboardPage() {
                 return (
                   <div
                     key={t.id}
-                    className={`rounded-[6px] border p-3 transition-colors ${
+                    className={`rounded-[var(--radius-lg)] border p-3 transition-colors ${
                       isFocused
                         ? 'border-[var(--border-accent)] bg-[var(--accent-dim)]'
                         : 'border-[var(--border-default)] bg-[var(--bg-root)]'
                     }`}
                   >
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <span className="org-badge org-badge-info">In progress</span>
+                      <span className="badge badge-primary">In progress</span>
                       <span className="font-mono text-[11px] text-[var(--text-muted)]">{timeSince(t.createdAt)}</span>
                     </div>
                     <p className="text-sm font-semibold text-[var(--text-primary)]">{t.title}</p>
@@ -606,14 +606,14 @@ export default function MentorDashboardPage() {
                     {isFocused && (
                       <div className="mt-3 flex flex-col gap-2">
                         <textarea
-                          className="org-input min-h-[60px] resize-y text-sm"
+                          className="input min-h-[60px] resize-y text-sm"
                           placeholder="Resolution notes…"
                           value={resolution}
                           onChange={(e) => setResolution(e.target.value)}
                         />
                         <button
                           type="button"
-                          className="org-btn-primary min-h-[38px] w-full text-sm"
+                          className="btn btn-primary min-h-[38px] w-full text-sm"
                           onClick={() => resolveTicket(t.id)}
                           disabled={resolving}
                         >
@@ -660,7 +660,7 @@ export default function MentorDashboardPage() {
                   return (
                     <div
                       key={entry.team?.id}
-                      className={`rounded-[6px] border p-3 ${
+                      className={`rounded-[var(--radius-lg)] border p-3 ${
                         isSelected
                           ? 'border-[var(--border-accent)] bg-[var(--accent-dim)]'
                           : 'border-[var(--border-default)] bg-[var(--bg-root)]'
@@ -722,7 +722,7 @@ export default function MentorDashboardPage() {
                 </div>
                 <button
                   type="button"
-                  className="org-btn-secondary inline-flex min-h-[32px] items-center gap-1.5 px-3 text-xs"
+                  className="btn btn-secondary inline-flex min-h-[32px] items-center gap-1.5 px-3 text-xs"
                   onClick={() => loadChat({ refreshing: true })}
                   disabled={chatRefreshing || !selectedTeamId}
                 >
@@ -732,12 +732,12 @@ export default function MentorDashboardPage() {
               </div>
 
               {chatError && (
-                <div className="mb-3 rounded-[6px] border border-[var(--error)] bg-[var(--error-dim)] px-3 py-2 text-xs text-[var(--error)]">
+                <div className="mb-3 rounded-[var(--radius-lg)] border border-[var(--error)] bg-[var(--error-dim)] px-3 py-2 text-xs text-[var(--error)]">
                   {chatError}
                 </div>
               )}
 
-              <div className="flex min-h-[220px] max-h-[320px] flex-col gap-2 overflow-y-auto rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] p-2">
+              <div className="flex min-h-[220px] max-h-[320px] flex-col gap-2 overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-root)] p-2">
                 {!selectedTeamId ? (
                   <div className="grid flex-1 place-items-center px-4 text-center text-sm text-[var(--text-muted)]">
                     No team selected.
@@ -778,7 +778,7 @@ export default function MentorDashboardPage() {
 
               <div className="mt-3 flex flex-col gap-2 border-t border-[var(--border-default)] pt-3">
                 <textarea
-                  className="org-input min-h-[84px] resize-y text-sm"
+                  className="input min-h-[84px] resize-y text-sm"
                   placeholder={selectedTeamId ? 'Reply to team…' : 'Select a team to chat'}
                   value={chatContent}
                   onChange={(e) => setChatContent(e.target.value)}
@@ -795,7 +795,7 @@ export default function MentorDashboardPage() {
                   <p className="text-[11px] text-[var(--text-muted)]">Enter sends · Shift+Enter for newline</p>
                   <button
                     type="button"
-                    className="org-btn-primary inline-flex min-h-[38px] items-center gap-2 px-4 text-sm"
+                    className="btn btn-primary inline-flex min-h-[38px] items-center gap-2 px-4 text-sm"
                     onClick={sendChatMessage}
                     disabled={!selectedTeamId || chatSending || !chatContent.trim()}
                   >
@@ -817,7 +817,7 @@ export default function MentorDashboardPage() {
                 {resolved.map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-root)] px-2.5 py-2"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-[var(--text-secondary)]">{t.title}</p>
@@ -825,7 +825,7 @@ export default function MentorDashboardPage() {
                         {t.resolvedAt ? timeSince(t.resolvedAt) : ''}
                       </p>
                     </div>
-                    <span className="org-badge org-badge-success shrink-0">Done</span>
+                    <span className="badge badge-success shrink-0">Done</span>
                   </div>
                 ))}
                 {resolved.length === 0 && (

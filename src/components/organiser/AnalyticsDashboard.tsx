@@ -59,7 +59,7 @@ interface Props {
   hackathonId: string;
 }
 
-const COLORS = ['#0969da', '#1a7f37', '#8250df', '#bf8700', '#cf222e', '#0a7ea4', '#57606a', '#6f42c1'];
+const COLORS = ['#0EA5E9', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#71717A', '#A78BFA'];
 
 function csvEscape(value: string | number | null | undefined) {
   const text = String(value ?? '');
@@ -296,7 +296,7 @@ function AverageVisual({ rows, mode }: { rows: AverageRow[]; mode: AverageChart 
             {rows.map((row) => (
               <tr key={row.label} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <td style={{ padding: '0.6rem 0.4rem', color: 'var(--text-primary)', fontWeight: 600 }}>{row.label}</td>
-                <td style={{ padding: '0.6rem 0.4rem', textAlign: 'right', color: '#0969da', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{row.average.toFixed(2)}</td>
+                <td style={{ padding: '0.6rem 0.4rem', textAlign: 'right', color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{row.average.toFixed(2)}</td>
                 <td style={{ padding: '0.6rem 0.4rem', textAlign: 'right', color: 'var(--text-secondary)' }}>{row.count}</td>
               </tr>
             ))}
@@ -328,7 +328,7 @@ function AverageVisual({ rows, mode }: { rows: AverageRow[]; mode: AverageChart 
             const height = Math.max(8, (row.average / max) * 170);
             return (
               <div key={row.label} style={{ flex: '1 0 56px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#0969da', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700 }}>{row.average.toFixed(1)}</span>
+                <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700 }}>{row.average.toFixed(1)}</span>
                 <div style={{ width: '100%', maxWidth: 42, height, borderRadius: '7px 7px 3px 3px', background: COLORS[index % COLORS.length] }} />
                 <span title={row.label} style={{ maxWidth: 70, minHeight: 34, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center', color: 'var(--text-primary)', fontSize: '0.72rem', fontWeight: 650, lineHeight: 1.15 }}>
                   {row.label}
@@ -349,7 +349,7 @@ function AverageVisual({ rows, mode }: { rows: AverageRow[]; mode: AverageChart 
           <div style={{ height: 12, borderRadius: 7, background: 'var(--bg-raised)', overflow: 'hidden' }}>
             <div style={{ width: `${(row.average / max) * 100}%`, height: '100%', background: COLORS[index % COLORS.length], borderRadius: 7 }} />
           </div>
-          <span style={{ textAlign: 'right', color: '#0969da', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700 }}>{row.average.toFixed(2)}</span>
+          <span style={{ textAlign: 'right', color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700 }}>{row.average.toFixed(2)}</span>
         </div>
       ))}
     </div>
@@ -393,8 +393,8 @@ function TrackVisual({ rows, mode }: { rows: TrackRow[]; mode: CountChart }) {
           <div key={row.label} style={{ border: '1px solid var(--border-default)', borderRadius: 8, background: 'var(--bg-raised)', padding: '0.75rem' }}>
             <p style={{ marginBottom: 8, color: 'var(--text-primary)', fontWeight: 800 }}>{row.label}</p>
             {[
-              ['Participants', row.participants, '#0969da'],
-              ['Teams', row.teams, '#1a7f37'],
+              ['Participants', row.participants, 'var(--accent)'],
+              ['Teams', row.teams, 'var(--success)'],
               ['Submissions', row.submissions, '#8250df'],
             ].map(([name, value, color]) => (
               <div key={name} style={{ display: 'grid', gridTemplateColumns: '95px 1fr 42px', gap: 8, alignItems: 'center', marginTop: 6 }}>
@@ -436,7 +436,7 @@ function ScoreSpreadVisual({ rows, mode }: { rows: ScoreSpreadRow[]; mode: Score
                 <td style={{ padding: '0.6rem 0.4rem', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{row.minScore.toFixed(2)}</td>
                 <td style={{ padding: '0.6rem 0.4rem', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{row.averageScore.toFixed(2)}</td>
                 <td style={{ padding: '0.6rem 0.4rem', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>{row.maxScore.toFixed(2)}</td>
-                <td style={{ padding: '0.6rem 0.4rem', textAlign: 'right', color: '#0969da', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>{row.totalScore.toFixed(2)}</td>
+                <td style={{ padding: '0.6rem 0.4rem', textAlign: 'right', color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>{row.totalScore.toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -456,7 +456,7 @@ function ScoreSpreadVisual({ rows, mode }: { rows: ScoreSpreadRow[]; mode: Score
                 <p style={{ color: 'var(--text-primary)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.teamName}</p>
                 <p className="org-text">{row.track} - {row.scoresCount} scores</p>
               </div>
-              <span style={{ color: '#0969da', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>{row.totalScore.toFixed(2)}</span>
+              <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>{row.totalScore.toFixed(2)}</span>
             </div>
             <div style={{ height: 10, borderRadius: 7, background: 'var(--bg-root)', overflow: 'hidden' }}>
               <div style={{ width: `${width}%`, height: '100%', borderRadius: 7, background: '#8250df' }} />
@@ -577,12 +577,12 @@ export default function AnalyticsDashboard({ hackathonId }: Props) {
   }
 
   const statCards = [
-    { label: 'Teams', value: stats.totalTeams, icon: Users, color: '#0969da' },
-    { label: 'Participants', value: stats.participantsCount, icon: Users, color: '#1a7f37' },
+    { label: 'Teams', value: stats.totalTeams, icon: Users, color: 'var(--accent)' },
+    { label: 'Participants', value: stats.participantsCount, icon: Users, color: 'var(--success)' },
     { label: 'Submissions', value: stats.submittedCount, icon: FileText, color: '#8250df' },
-    { label: 'Healthy submissions', value: stats.healthyCount, icon: CheckCircle, color: '#1a7f37' },
+    { label: 'Healthy submissions', value: stats.healthyCount, icon: CheckCircle, color: 'var(--success)' },
     { label: 'Open tickets', value: stats.openTickets, icon: AlertCircle, color: '#bf8700' },
-    { label: 'Check-ins', value: stats.totalAttendances, icon: Users, color: '#0969da' },
+    { label: 'Check-ins', value: stats.totalAttendances, icon: Users, color: 'var(--accent)' },
   ];
 
   const countSource: Record<string, CountRow[]> = {

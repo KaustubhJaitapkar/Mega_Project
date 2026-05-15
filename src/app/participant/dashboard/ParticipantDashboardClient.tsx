@@ -35,11 +35,11 @@ interface Hackathon {
 
 function statusBadge(status: string): { label: string; className: string } {
   const s = (status || '').toUpperCase();
-  if (s === 'ONGOING') return { label: 'Live', className: 'org-badge org-badge-success' };
-  if (s === 'REGISTRATION') return { label: 'Registration open', className: 'org-badge org-badge-accent' };
-  if (s === 'ENDED') return { label: 'Ended', className: 'org-badge org-badge-muted' };
-  if (s === 'CANCELLED') return { label: 'Cancelled', className: 'org-badge org-badge-danger' };
-  return { label: s || 'Draft', className: 'org-badge org-badge-info' };
+  if (s === 'ONGOING') return { label: 'Live', className: 'badge badge-success' };
+  if (s === 'REGISTRATION') return { label: 'Registration open', className: 'badge badge-primary' };
+  if (s === 'ENDED') return { label: 'Ended', className: 'badge badge-muted' };
+  if (s === 'CANCELLED') return { label: 'Cancelled', className: 'badge badge-danger' };
+  return { label: s || 'Draft', className: 'badge badge-muted' };
 }
 
 const NAV_LINKS = [
@@ -154,34 +154,40 @@ export default function ParticipantDashboardClient({ firstName, hackathons, regi
   const registeredList = hackathons.filter((h) => registeredIds.includes(h.id));
 
   return (
-    <div className="font-sans text-[var(--text-primary)]">
-      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] shadow-[var(--elevation-sm)]">
-        <div className="mx-auto flex max-w-[1200px] flex-col gap-5 px-4 py-5 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
+    <div className="text-[var(--text-primary)]">
+      {/* Header band */}
+      <div className="border-b border-[var(--border-default)] bg-[var(--bg-surface)]">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-5 px-5 py-6 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
           <div className="min-w-0 lg:max-w-[62%]">
-            <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Participant workspace</p>
-            <h1 className="mt-1 text-[clamp(1.35rem,2.4vw,1.75rem)] font-semibold leading-tight tracking-tight text-[var(--text-primary)]">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="h-[1px] w-6 bg-[var(--accent)]" />
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+                Participant workspace
+              </p>
+            </div>
+            <h1 className="font-display text-[clamp(1.35rem,2.4vw,1.75rem)] font-bold leading-tight tracking-tight text-[var(--text-primary)]">
               {firstName === 'there' ? 'Your dashboard' : `${firstName}, here's your overview`}
             </h1>
-            <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-[var(--text-secondary)]">
-              Your focused event, check-in, and every registration you have—one place.
+            <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-[var(--text-secondary)]">
+              Your focused event, check-in, and every registration you have — one place.
             </p>
           </div>
           <nav
-            className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--border-default)] pt-4 font-mono text-[12px] lg:border-t-0 lg:pt-0"
+            className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--border-default)] pt-4 font-mono text-[11px] lg:border-t-0 lg:pt-0"
             aria-label="Participant shortcuts"
           >
             {NAV_LINKS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)] hover:underline"
+                className="font-semibold uppercase tracking-wide text-[var(--text-muted)] transition-colors hover:text-[var(--accent)]"
               >
                 {item.label}
               </Link>
             ))}
             <Link
               href={myTeamHref}
-              className="inline-flex items-center gap-1 font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
+              className="inline-flex items-center gap-1 font-semibold uppercase tracking-wide text-[var(--accent)] hover:text-[var(--accent-hover)]"
             >
               My team
               <ArrowUpRight className="h-3.5 w-3.5 opacity-80" aria-hidden />
@@ -190,17 +196,19 @@ export default function ParticipantDashboardClient({ firstName, hackathons, regi
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-[1200px] gap-8 px-4 py-8 lg:grid-cols-12 lg:gap-10 lg:px-6 lg:py-10">
+      {/* Main content */}
+      <div className="mx-auto grid max-w-[1200px] gap-8 px-5 py-8 lg:grid-cols-12 lg:gap-10 lg:px-8 lg:py-10">
         <div className="flex min-w-0 flex-col gap-8 lg:col-span-8">
           {activeHackathon && activeTone ? (
             <>
-              <section className="overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-[var(--elevation-sm)]" aria-labelledby="active-event-heading">
-                <div className="flex flex-col divide-y divide-[var(--border-default)]">
+              {/* Active event card */}
+              <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)]" aria-labelledby="active-event-heading">
+                <div className="flex flex-col divide-y divide-[var(--border-subtle)]">
                   <div className="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span id="active-event-heading" className={activeTone.className}>{activeTone.label}</span>
-                        <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-[var(--text-muted)]">
+                        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-muted)]">
                           {activeHackathon.isVirtual ? (
                             <><Radio className="h-3.5 w-3.5 text-[var(--accent)]" aria-hidden />Virtual</>
                           ) : (
@@ -208,67 +216,70 @@ export default function ParticipantDashboardClient({ firstName, hackathons, regi
                           )}
                         </span>
                       </div>
-                      <h2 className="mt-3 text-xl font-semibold leading-snug tracking-tight text-[var(--text-primary)] sm:text-2xl">
+                      <h2 className="mt-3 font-display text-xl font-bold leading-snug tracking-tight text-[var(--text-primary)] sm:text-2xl">
                         {activeHackathon.title}
                       </h2>
                       {activeEventBlurb ? (
-                        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[var(--text-secondary)] sm:text-[15px]">
+                        <p className="mt-3 line-clamp-3 text-[14px] leading-relaxed text-[var(--text-secondary)]">
                           {activeEventBlurb}
                         </p>
                       ) : null}
                     </div>
                   </div>
 
+                  {/* Countdown */}
                   <div className="grid gap-4 bg-[var(--bg-root)] p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:p-6">
                     <div>
-                      <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">{countdownLabel}</p>
+                      <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{countdownLabel}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {[{ v: h, l: 'Hr' }, { v: m, l: 'Min' }, { v: s, l: 'Sec' }].map((unit) => (
-                          <div key={unit.l} className="flex min-w-[4.5rem] flex-col rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-center shadow-[var(--elevation-sm)]">
-                            <span className="font-mono text-[clamp(1.5rem,4vw,2rem)] font-semibold tabular-nums leading-none text-[var(--text-primary)]">
+                          <div key={unit.l} className="flex min-w-[4.5rem] flex-col rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2.5 text-center">
+                            <span className="font-mono text-[clamp(1.5rem,4vw,2rem)] font-bold tabular-nums leading-none text-[var(--text-primary)]">
                               {String(unit.v).padStart(2, '0')}
                             </span>
-                            <span className="mt-1 font-mono text-[11px] font-medium uppercase tracking-wide text-[var(--text-muted)]">{unit.l}</span>
+                            <span className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{unit.l}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   </div>
 
+                  {/* Action buttons */}
                   <div className="flex flex-wrap gap-2 p-5 sm:p-6">
-                    <Link href={myTeamHref} className="org-btn-secondary inline-flex min-h-[40px] items-center gap-2">
+                    <Link href={myTeamHref} className="btn btn-secondary !min-h-[40px] !text-[13px]">
                       <Users className="h-4 w-4" aria-hidden />My team
                     </Link>
                     {activeHackathon.status === 'ONGOING' && (
-                      <Link href={`/participant/hackathons/${activeHackathon.id}/submit`} className="org-btn-primary inline-flex min-h-[40px] items-center gap-2">
+                      <Link href={`/participant/hackathons/${activeHackathon.id}/submit`} className="btn btn-primary !min-h-[40px] !text-[13px]">
                         <FileUp className="h-4 w-4" aria-hidden />Submit project
                       </Link>
                     )}
-                    <Link href={`/participant/hackathons/${activeHackathon.id}`} className="org-btn-secondary inline-flex min-h-[40px] items-center gap-2">
+                    <Link href={`/participant/hackathons/${activeHackathon.id}`} className="btn btn-secondary !min-h-[40px] !text-[13px]">
                       <ExternalLink className="h-4 w-4" aria-hidden />Event page
                     </Link>
-                    <Link href="/participant/schedule" className="org-btn-secondary inline-flex min-h-[40px] items-center gap-2">
+                    <Link href="/participant/schedule" className="btn btn-secondary !min-h-[40px] !text-[13px]">
                       <Calendar className="h-4 w-4" aria-hidden />Schedule
                     </Link>
                   </div>
                 </div>
               </section>
 
+              {/* Announcements */}
               <section aria-labelledby="updates-heading">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Bell className="h-4 w-4 text-[var(--accent)]" aria-hidden />
-                    <h3 id="updates-heading" className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Organizer updates</h3>
+                    <h3 id="updates-heading" className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Organizer updates</h3>
                   </div>
                 </div>
-                <ul className="overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-[var(--elevation-sm)]">
+                <ul className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)]">
                   {announcements.length === 0 ? (
-                    <li className="px-4 py-10 text-center text-sm text-[var(--text-secondary)]">No announcements yet.</li>
+                    <li className="px-4 py-10 text-center text-[13px] text-[var(--text-secondary)]">No announcements yet.</li>
                   ) : (
                     announcements.map((a) => (
-                      <li key={a.id} className="flex flex-col gap-1 border-b border-[var(--border-default)] px-4 py-4 last:border-b-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
-                        <p className="min-w-0 font-medium text-[var(--text-primary)]">{a.title}</p>
-                        <time className="shrink-0 font-mono text-[12px] text-[var(--text-muted)]" dateTime={a.createdAt}>
+                      <li key={a.id} className="flex flex-col gap-1 border-b border-[var(--border-subtle)] px-4 py-4 last:border-b-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+                        <p className="min-w-0 text-[14px] font-medium text-[var(--text-primary)]">{a.title}</p>
+                        <time className="shrink-0 font-mono text-[11px] text-[var(--text-muted)]" dateTime={a.createdAt}>
                           {new Date(a.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                         </time>
                       </li>
@@ -278,24 +289,27 @@ export default function ParticipantDashboardClient({ firstName, hackathons, regi
               </section>
             </>
           ) : (
-            <section className="rounded-[6px] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-12 text-center shadow-[var(--elevation-sm)]">
+            /* Empty state */
+            <section className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-12 text-center">
               <LayoutGrid className="mx-auto mb-4 h-10 w-10 text-[var(--text-muted)]" aria-hidden />
-              <p className="text-[15px] font-medium text-[var(--text-primary)]">No active event pinned</p>
-              <p className="mx-auto mt-2 max-w-md text-sm text-[var(--text-secondary)]">
+              <p className="text-[15px] font-semibold text-[var(--text-primary)]">No active event pinned</p>
+              <p className="mx-auto mt-2 max-w-md text-[13px] text-[var(--text-secondary)]">
                 Join a hackathon from Explore to see deadlines and check-in tools here.
               </p>
-              <Link href="/participant/hackathons" className="org-btn-primary mt-6 inline-flex min-h-[40px] items-center gap-2">
+              <Link href="/participant/hackathons" className="btn btn-primary mx-auto mt-6 inline-flex items-center gap-2">
                 Explore hackathons<ArrowUpRight className="h-4 w-4" aria-hidden />
               </Link>
             </section>
           )}
         </div>
 
+        {/* Sidebar */}
         <aside className="lg:col-span-4">
           <div className="flex flex-col gap-6 lg:sticky lg:top-6">
-            <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5 shadow-[var(--elevation-sm)]">
-              <h3 className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Quick paths</h3>
-              <ul className="mt-4 space-y-2">
+            {/* Quick paths */}
+            <section className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-5">
+              <h3 className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Quick paths</h3>
+              <ul className="mt-4 space-y-1.5">
                 {[
                   { href: '/participant/hackathons', icon: CalendarDays, label: 'Explore events' },
                   { href: myTeamHref, icon: Users, label: 'My team' },
@@ -303,43 +317,44 @@ export default function ParticipantDashboardClient({ firstName, hackathons, regi
                   { href: '/participant/profile', icon: UserCircle, label: 'Profile' },
                 ].map((item) => (
                   <li key={item.href}>
-                    <Link href={item.href} className="flex items-center justify-between gap-2 rounded-[6px] border border-transparent px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] hover:border-[var(--border-default)] hover:bg-[var(--bg-root)]">
-                      <span className="flex items-center gap-2">
+                    <Link href={item.href} className="flex items-center justify-between gap-2 rounded-[var(--radius-md)] px-3 py-2.5 text-[13px] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-raised)]">
+                      <span className="flex items-center gap-2.5">
                         <item.icon className="h-4 w-4 text-[var(--accent)]" aria-hidden />{item.label}
                       </span>
-                      <ArrowUpRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                      <ArrowUpRight className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden />
                     </Link>
                   </li>
                 ))}
               </ul>
             </section>
 
+            {/* QR Check-in */}
             {activeHackathon && registeredIds.includes(activeHackathon.id) && (
-              <section className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-surface)] p-5 shadow-[var(--elevation-sm)]" aria-labelledby="qr-heading">
-                <div className="mb-4 flex items-center gap-2 border-b border-[var(--border-default)] pb-4">
+              <section className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-5" aria-labelledby="qr-heading">
+                <div className="mb-4 flex items-center gap-2 border-b border-[var(--border-subtle)] pb-4">
                   <QrCode className="h-4 w-4 text-[var(--accent)]" aria-hidden />
-                  <h3 id="qr-heading" className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Check-in QR</h3>
+                  <h3 id="qr-heading" className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Check-in QR</h3>
                 </div>
                 {qrLoading ? (
-                  <div className="flex aspect-square max-h-[220px] items-center justify-center rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)]">
-                    <div className="h-9 w-9 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]" />
+                  <div className="flex aspect-square max-h-[220px] items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-root)]">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)]" />
                   </div>
                 ) : qrError ? (
-                  <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--error-dim)] px-3 py-4 text-center text-sm text-[var(--error)]">{qrError}</div>
+                  <div className="rounded-[var(--radius-md)] border border-[rgba(239,68,68,0.2)] bg-[var(--error-dim)] px-3 py-4 text-center text-[13px] text-[var(--error)]">{qrError}</div>
                 ) : qrCode ? (
-                  <img src={qrCode} alt="Your check-in QR code" className="mx-auto h-auto w-full max-w-[220px] rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-2 shadow-[var(--elevation-sm)]" />
+                  <img src={qrCode} alt="Your check-in QR code" className="mx-auto h-auto w-full max-w-[220px] rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-2" />
                 ) : (
-                  <p className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-root)] px-3 py-8 text-center text-sm text-[var(--text-secondary)]">QR not available for this event.</p>
+                  <p className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-root)] px-3 py-8 text-center text-[13px] text-[var(--text-secondary)]">QR not available for this event.</p>
                 )}
                 {myAttendance && (
-                  <ul className="mt-5 grid grid-cols-2 gap-2 font-mono text-[11px]" aria-label="Attendance redemption status">
+                  <ul className="mt-5 grid grid-cols-2 gap-2 font-mono text-[10px]" aria-label="Attendance redemption status">
                     {[
                       { label: 'Check-in', ok: !!myAttendance.checkInTime },
                       { label: 'Breakfast', ok: myAttendance.breakfastRedeemed },
                       { label: 'Lunch', ok: myAttendance.lunchRedeemed },
                       { label: 'Swag', ok: myAttendance.swagCollected },
                     ].map((row) => (
-                      <li key={row.label} className={`flex items-center justify-between gap-2 rounded-[6px] border px-2.5 py-2 ${row.ok ? 'border-[var(--success)] bg-[rgba(26,127,55,0.08)] text-[var(--success)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-muted)]'}`}>
+                      <li key={row.label} className={`flex items-center justify-between gap-2 rounded-[var(--radius-md)] border px-2.5 py-2 ${row.ok ? 'border-[rgba(16,185,129,0.2)] bg-[var(--success-dim)] text-[var(--success)]' : 'border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-muted)]'}`}>
                         <span>{row.label}</span>
                         <span aria-hidden>{row.ok ? '✓' : '—'}</span>
                       </li>
@@ -352,30 +367,31 @@ export default function ParticipantDashboardClient({ firstName, hackathons, regi
         </aside>
       </div>
 
+      {/* Registered hackathons */}
       <div className="border-t border-[var(--border-default)] bg-[var(--bg-surface)]">
-        <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-[1200px] px-5 py-10 sm:px-8">
           <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-[12px] uppercase tracking-wide text-[var(--text-muted)]">Registered</p>
-              <h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Registered</p>
+              <h3 className="mt-1 font-display text-lg font-bold text-[var(--text-primary)]">
                 Your hackathons<span className="ml-2 font-normal text-[var(--text-secondary)]">({registeredIds.length})</span>
               </h3>
             </div>
-            <Link href="/participant/hackathons" className="inline-flex items-center gap-1 self-start text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] sm:self-auto">
-              Browse all<ArrowUpRight className="h-4 w-4" aria-hidden />
+            <Link href="/participant/hackathons" className="inline-flex items-center gap-1 self-start text-[13px] font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] sm:self-auto">
+              Browse all<ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>
 
           {registeredIds.length === 0 ? (
-            <div className="rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-6 py-14 text-center shadow-[var(--elevation-sm)]">
-              <p className="mx-auto max-w-lg text-[15px] text-[var(--text-secondary)]">You have not joined an event yet. Open Explore to register.</p>
-              <Link href="/participant/hackathons" className="org-btn-primary mt-6 inline-flex min-h-[40px] items-center gap-2">
+            <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-6 py-14 text-center">
+              <p className="mx-auto max-w-lg text-[14px] text-[var(--text-secondary)]">You have not joined an event yet. Open Explore to register.</p>
+              <Link href="/participant/hackathons" className="btn btn-primary mx-auto mt-6 inline-flex items-center gap-2">
                 Go to Explore<ArrowUpRight className="h-4 w-4" aria-hidden />
               </Link>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-[6px] border border-[var(--border-default)] bg-[var(--bg-elevated)] shadow-[var(--elevation-sm)]">
-              <ul className="divide-y divide-[var(--border-default)]">
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)]">
+              <ul className="divide-y divide-[var(--border-subtle)]">
                 {registeredList.map((ev) => {
                   const tone = statusBadge(ev.status);
                   const start = new Date(ev.startDate);
@@ -386,8 +402,8 @@ export default function ParticipantDashboardClient({ firstName, hackathons, regi
                         <div className="min-w-0 flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
                           <span className={`w-fit shrink-0 ${tone.className}`}>{tone.label}</span>
                           <div className="min-w-0">
-                            <p className="font-semibold text-[var(--text-primary)]">{ev.title}</p>
-                            <p className="mt-1 font-mono text-[12px] text-[var(--text-muted)]">
+                            <p className="text-[14px] font-semibold text-[var(--text-primary)]">{ev.title}</p>
+                            <p className="mt-0.5 font-mono text-[11px] text-[var(--text-muted)]">
                               {start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                               {' — '}
                               {end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -397,11 +413,11 @@ export default function ParticipantDashboardClient({ firstName, hackathons, regi
                           </div>
                         </div>
                         <div className="flex flex-shrink-0 flex-wrap gap-2">
-                          <Link href={`/participant/my-team?hackathonId=${ev.id}`} className="org-btn-secondary min-h-[36px] px-3 py-2 text-sm">Team</Link>
+                          <Link href={`/participant/my-team?hackathonId=${ev.id}`} className="btn btn-secondary !min-h-[34px] !px-3 !py-1.5 !text-[12px]">Team</Link>
                           {ev.status === 'ONGOING' && (
-                            <Link href={`/participant/hackathons/${ev.id}/submit`} className="org-btn-primary min-h-[36px] px-3 py-2 text-sm">Submit</Link>
+                            <Link href={`/participant/hackathons/${ev.id}/submit`} className="btn btn-primary !min-h-[34px] !px-3 !py-1.5 !text-[12px]">Submit</Link>
                           )}
-                          <Link href={`/participant/hackathons/${ev.id}`} className="org-btn-secondary min-h-[36px] px-3 py-2 text-sm">View</Link>
+                          <Link href={`/participant/hackathons/${ev.id}`} className="btn btn-secondary !min-h-[34px] !px-3 !py-1.5 !text-[12px]">View</Link>
                         </div>
                       </div>
                     </li>

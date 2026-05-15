@@ -43,7 +43,7 @@ export default function OrganiserShell({
       {mobileNavOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-40 cursor-default bg-[rgba(31,35,40,0.35)] backdrop-blur-[1px] md:hidden"
+          className="fixed inset-0 z-40 cursor-default bg-black/60 backdrop-blur-sm md:hidden"
           aria-label="Close navigation menu"
           onClick={() => setMobileNavOpen(false)}
         />
@@ -59,7 +59,9 @@ export default function OrganiserShell({
           showUserMenu={false}
           onMenuOpen={() => setMobileNavOpen(true)}
         />
-        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</main>
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          {children}
+        </main>
       </div>
     </div>
   );
