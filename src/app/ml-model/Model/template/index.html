@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enterprise ML Talent Matcher</title>
+    <style>
+        /* Base Styles */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
+        .header { background-color: #004d99; color: white; padding: 20px 40px; border-bottom: 5px solid #002e5a; }
+        .header h1 { margin: 0; font-size: 28px; display: flex; align-items: center; }
+        .header p { margin: 5px 0 0; font-size: 14px; opacity: 0.8; }
+        .content-container { max-width: 1300px; margin: 30px auto; padding: 0 20px; display: flex; gap: 20px; }
+        .panel { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 30px; flex: 1; }
+        
+        /* Input and Buttons */
+        .input-group { display: flex; gap: 10px; align-items: center; margin-bottom: 20px;}
+        input[type="text"], input[type="file"] { flex-grow: 1; padding: 12px; border: 2px solid #ccc; border-radius: 6px; font-size: 16px; transition: border-color 0.3s; }
+        input[type="text"]:focus { border-color: #007bff; outline: none; }
+        button { padding: 12px 25px; background-color: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600; transition: background-color 0.3s; }
+        button:hover { background-color: #0056b3; }
+        
+        /* Table and Results Styling */
+        .results-section { margin-top: 20px; }
+        .result-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; font-size: 14px; }
+        .result-table th, .result-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        .result-table th { background-color: #f8f9fa; font-weight: 600; color: #495057; border-top: none; }
+        .result-table tr:nth-child(even) { background-color: #fcfcfc; }
+        .result-table tr:hover { background-color: #e9f7ff; cursor: default; }
+        .top-match { background-color: #d4edda !important; font-weight: bold; }
+        
+        /* Utility Classes */
+        .badge { display: inline-block; padding: 4px 8px; margin: 3px 3px 3px 0; border-radius: 4px; font-size: 12px; font-weight: 700; }
+        .badge-score { background-color: #ffc107; color: #343a40; }
+        .badge-skills { background-color: #17a2b8; color: white; }
+        .badge-tag { background-color: #6c757d; color: white; }
+        .info { font-style: italic; color: #6c757d; margin-bottom: 15px; }
+
+        /* Resume Parser Specific */
+        #parser-output { border-left: 3px solid #007bff; padding-left: 15px; margin-top: 15px; }
+        .parsed-name { font-size: 20px; font-weight: bold; color: #004d99; }
+        .parsed-info p { margin: 5px 0; }
+        .upload-input-group { flex-direction: column; align-items: stretch; }
+        .upload-input-group input[type="file"] { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚙️ Candidate Recommendation System</h1>
+        <p>Fine-Tuned Model Simulation for Resume Parsing and Candidate Ranking</p>
+    </div>
+
+    <div class="content-container">
+        
+        <div class="panel" style="flex: 1;">
+            <h2>1. Live Document Parsing (PDF)</h2>
+            <p class="info">Simulates the NER model running on a raw uploaded document (PDF).</p>
+            
+            <div class="input-group upload-input-group">
+                <input type="file" id="resume-upload" accept=".pdf">
+                <button class="btn-submit" onclick="uploadAndParse()">Upload & Extract Data</button>
+            </div>
+
+            <div class="results-section" id="upload-parser-container">
+                <h3 class="info">Upload a PDF resume to view the extracted structured data.</h3>
+            </div>
+        </div>
+
+        <div class="panel" style="flex: 2;">
+            <h2>2. Candidate Ranking System</h2>
+            <p class="info">Input required skills below to run the Cosine Similarity model against the entire candidate pool (JSON data source).</p>
+            
+            <div class="input-group">
+                <input type="text" id="skills-rank" 
+                       placeholder="e.g., Python, Docker, AWS, PyTorch, DevOps"
+                       value="Docker, Python, AWS">
+                <button class="btn-submit" onclick="getRankedCandidates()">Run ML Matcher</button>
+            </div>
+
+            <div class="results-section" id="ranking-container">
+                <h3 class="info">Results will appear here after running the matcher.</h3>
+            </div>
+        </div>
+
+        <div class="panel" style="flex: 1;">
+            <h2>3. Dataset Profile Lookup</h2>
+            <p class="info">Enter a candidate name to see their original parsed profile from the JSON dataset.</p>
+            
+            <div class="input-group">
+                <input type="text" id="name-lookup" 
+                       placeholder="e.g., Dinesh Reddy"
+                       value="Dinesh Reddy">
+                <button class="btn-submit" onclick="lookupCandidate()">View Parsed Data</button>
+            </div>
+
+            <div class="results-section" id="parser-container">
+                <h3 class="info">Use this to validate the data that feeds the ML model.</h3>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- UTILITY ---
+        function setLoading(containerId, message) {
+            document.getElementById(containerId).innerHTML = `<div style="display: flex; align-items: center;"><div class="spinner"></div><h3>${message}</h3></div>`;
+        }
+        function showError(containerId, message) {
+            document.getElementById(containerId).innerHTML = `<h3>❌ ${message}</h3>`;
+        }
+
+        // --- 1. PDF UPLOAD PARSER LOGIC ---
+        async function uploadAndParse() {
+            const fileInput = document.getElementById('resume-upload');
+            const containerId = 'upload-parser-container';
+            
+            if (fileInput.files.length === 0) {
+                showError(containerId, "Please select a PDF file first.");
+                return;
+            }
+
+            setLoading(containerId, "Uploading and running NER on PDF...");
+
+            const formData = new FormData();
+            formData.append('resume_file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/api/upload_parse', {
+                    method: 'POST',
+                    body: formData // Note: No 'Content-Type' header needed for FormData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    displayUploadedParsedData(data.profile, containerId);
+                } else {
+                    const errorMsg = data.message || data.error || 'File parsing failed.';
+                    showError(containerId, `PDF Parsing Failed: ${errorMsg}`);
+                }
+            } catch (error) {
+                showError(containerId, `Network Error: Could not connect to Flask server (${error.message}).`);
+            }
+        }
+
+        function displayUploadedParsedData(profile, containerId) {
+            const container = document.getElementById(containerId);
+            const skillsBadges = profile.Extracted_Skills.filter(s => s).map(
+                skill => `<span class="badge badge-skills">${skill}</span>`
+            ).join('');
+
+            const html = `
+                <h4>Extracted Profile for: <span class="parsed-name">${profile.Name}</span></h4>
+                <div id="parser-output">
+                    <p><strong>Designation/Role:</strong> <span class="badge badge-tag">${profile.Designation}</span></p>
+                    <p><strong>Source Document:</strong> Uploaded PDF</p>
+                    <p><strong>Total Extracted Skills:</strong> ${profile.Extracted_Skills.length}</p>
+                    <p><strong>Extracted Data (Simulated NER Output):</strong></p>
+                    <p>${skillsBadges}</p>
+                </div>
+                <p class="info">This demonstrates the live PDF -> Text Extraction -> NER pipeline.</p>
+            `;
+            container.innerHTML = html;
+        }
+
+
+        // --- 2. RANKING SYSTEM LOGIC (URL: /api/rank) ---
+        async function getRankedCandidates() {
+            const skills = document.getElementById('skills-rank').value;
+            const containerId = 'ranking-container';
+            setLoading(containerId, `Processing ${skills.split(',').length} requirements...`);
+
+            if (!skills.trim()) {
+                showError(containerId, 'Please enter skills to run the matching algorithm.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/rank', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ skills: skills })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    displayRankingResults(data.results, data.requirements);
+                } else {
+                    const errorMsg = data.error || 'Unknown server error.';
+                    showError(containerId, `Error during ML Scoring: ${errorMsg}`);
+                }
+            } catch (error) {
+                showError(containerId, `Network Error: Could not connect to the Flask server.`);
+            }
+        }
+
+        function displayRankingResults(results, requirements) {
+            const container = document.getElementById('ranking-container');
+            if (results.length === 0) {
+                container.innerHTML = `<h3>No highly relevant candidates found for: ${requirements}</h3>`;
+                return;
+            }
+
+            let html = `
+                <h4>Top 20 Candidates Ranked by Score (Primary) & Skill Count (Secondary)</h4>
+                <table class="result-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Score (%)</th>
+                            <th>Matched Skills</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            results.forEach((r, index) => {
+                const rowClass = index === 0 ? 'top-match' : '';
+                html += `
+                    <tr class="${rowClass}">
+                        <td>#${index + 1}</td>
+                        <td>${r.Name}</td>
+                        <td><span class="badge badge-score">${r.Match_Score.toFixed(2)}</span></td>
+                        <td>${r.Top_Matched_Skills.split(', ').filter(s => s).map(skill => `<span class="badge badge-skills">${skill}</span>`).join('')}</td>
+                        <td>${r.Count_Matched_Skills}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        // --- 3. DATASET LOOKUP LOGIC (URL: /api/profile_lookup) ---
+
+        async function lookupCandidate() {
+            const name = document.getElementById('name-lookup').value;
+            const containerId = 'parser-container';
+            setLoading(containerId, "Initiating Fine-Tuned NER Lookup on Dataset...");
+            
+            if (!name.trim()) {
+                showError(containerId, 'Please enter a name to proceed.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile_lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    displayDatasetParsedData(data.profile, containerId);
+                } else {
+                    const errorMsg = data.message || data.error || 'Candidate not found.';
+                    showError(containerId, `Dataset Lookup Failed: ${errorMsg}`);
+                }
+            } catch (error) {
+                showError(containerId, `Network Error: Could not connect to the Flask server.`);
+            }
+        }
+
+        function displayDatasetParsedData(profile, containerId) {
+            const container = document.getElementById(containerId);
+            
+            const skillsBadges = profile.Extracted_Skills.filter(s => s).map(
+                skill => `<span class="badge badge-skills">${skill}</span>`
+            ).join('');
+
+            const html = `
+                <h4>Parsed Profile: <span class="parsed-name">${profile.Name}</span></h4>
+                <div id="parser-output">
+                    <p><strong>Designation/Role:</strong> <span class="badge badge-tag">${profile.Designation}</span></p>
+                    <p><strong>Source Document:</strong> Original JSON Dataset</p>
+                    <p><strong>Total Extracted Skills:</strong> ${profile.Extracted_Skills.length}</p>
+                    <p><strong>Extracted Data (Simulated NER Output):</strong></p>
+                    <p>${skillsBadges}</p>
+                </div>
+                <p class="info">This visualizes the structured input data that feeds the ML ranking model.</p>
+            `;
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

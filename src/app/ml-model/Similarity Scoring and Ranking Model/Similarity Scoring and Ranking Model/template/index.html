@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hackathon Team Matcher</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #007bff; text-align: center; }
+        .input-group { margin-bottom: 20px; display: flex; }
+        #skills { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        button { padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-left: 10px; }
+        button:hover { background-color: #218838; }
+        #results-container { margin-top: 20px; }
+        .result-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .result-table th, .result-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .result-table th { background-color: #e9ecef; }
+        .top-match { background-color: #d4edda; font-weight: bold; }
+        .info { font-style: italic; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 ML Candidate Recommender</h1>
+        <p class="info">Simulated Fine-Tuned Model Pipeline for Hackathon Teammate Selection.</p>
+        
+        <div class="input-group">
+            <input type="text" id="skills" placeholder="Enter required skills (e.g., Python, Docker, AWS, PyTorch)">
+            <button onclick="getRankedCandidates()">Find Teammates</button>
+        </div>
+
+        <div id="results-container">
+            </div>
+    </div>
+
+    <script>
+        async function getRankedCandidates() {
+            const skills = document.getElementById('skills').value;
+            const resultsContainer = document.getElementById('results-container');
+            resultsContainer.innerHTML = '<h2>Loading...</h2>';
+
+            if (!skills.trim()) {
+                resultsContainer.innerHTML = '<h2>Please enter skills.</h2>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/rank', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ skills: skills })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayResults(data.results, data.requirements);
+                } else {
+                    resultsContainer.innerHTML = `<h2>Error: ${data.error}</h2>`;
+                }
+            } catch (error) {
+                resultsContainer.innerHTML = `<h2>An API error occurred: ${error.message}</h2>`;
+            }
+        }
+
+        function displayResults(results, requirements) {
+            const resultsContainer = document.getElementById('results-container');
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `<h2>No candidates matched your requirements: ${requirements}</h2>`;
+                return;
+            }
+
+            let html = `
+                <h2>Results for: <span style="color: #007bff;">${requirements}</span></h2>
+                <p class="info">Ranked by Match Score (Cosine Similarity) and Match Count.</p>
+                <table class="result-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Score (%)</th>
+                            <th>Matched Skills</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            results.forEach((r, index) => {
+                const rowClass = index === 0 ? 'top-match' : '';
+                html += `
+                    <tr class="${rowClass}">
+                        <td>${index + 1}</td>
+                        <td>${r.Name}</td>
+                        <td>${r.Match_Score.toFixed(2)}</td>
+                        <td>${r.Top_Matched_Skills}</td>
+                        <td>${r.Count_Matched_Skills}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+            resultsContainer.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
