@@ -228,7 +228,7 @@ export default function HomePage() {
       </section>
 
       {/* Social proof */}
-      <section className="px-5 py-20 sm:px-8 sm:py-24">
+      {/* <section className="px-5 py-20 sm:px-8 sm:py-24">
         <div className="mx-auto max-w-[1100px]">
           <div className="grid gap-8 sm:grid-cols-3 sm:gap-12">
             {[
@@ -247,7 +247,7 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA */}
       <section className="relative overflow-hidden border-t border-[var(--border-default)] px-5 py-20 sm:px-8 sm:py-24">
