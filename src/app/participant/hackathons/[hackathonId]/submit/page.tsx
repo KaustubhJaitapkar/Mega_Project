@@ -137,8 +137,11 @@ export default function HackathonSubmitPage() {
       try {
         setIsLoading(true);
         
-        // Fetch hackathon details
-        const hRes = await fetch(`/api/hackathons/${hackathonId}`);
+        // Fetch hackathon details and user's team in parallel
+        const [hRes, tRes] = await Promise.all([
+          fetch(`/api/hackathons/${hackathonId}`),
+          fetch('/api/users/my-team'),
+        ]);
         const hData = await hRes.json();
         const h = hData.data;
         
@@ -150,8 +153,6 @@ export default function HackathonSubmitPage() {
         setHackathon(h);
         setDeadlinePassed(new Date() > new Date(h.submissionDeadline));
 
-        // Fetch user's team for this hackathon
-        const tRes = await fetch('/api/users/my-team');
         const tData = await tRes.json();
         const teams = tData.data || [];
         

@@ -4,6 +4,7 @@ import ExploreHackathonsClient from './ExploreHackathonsClient';
 export default async function ExploreHackathonsPage() {
   const hackathons = await prisma.hackathon.findMany({
     take: 100,
+    where: { status: { notIn: ['DRAFT', 'CANCELLED'] } },
     orderBy: { startDate: 'desc' },
     select: {
       id: true,

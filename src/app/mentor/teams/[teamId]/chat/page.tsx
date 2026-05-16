@@ -79,7 +79,7 @@ export default function MentorTeamChatPage() {
 
   useEffect(() => {
     loadChat();
-    const interval = setInterval(() => loadChat(), 4000);
+    const interval = setInterval(() => loadChat(), 10000);
     return () => clearInterval(interval);
   }, [teamId]);
 

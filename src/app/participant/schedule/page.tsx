@@ -90,7 +90,7 @@ export default function ParticipantSchedulePage() {
     refreshData(hackathonId);
     const interval = setInterval(() => {
       refreshData(hackathonId);
-    }, 10000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [hackathonId, refreshData]);
 

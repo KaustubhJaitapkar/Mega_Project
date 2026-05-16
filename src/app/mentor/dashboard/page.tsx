@@ -147,7 +147,7 @@ export default function MentorDashboardPage() {
     if (!selectedHackathon) return;
     loadTickets();
     loadAssignedTeams();
-    const timer = setInterval(loadTickets, 5000);
+    const timer = setInterval(loadTickets, 15000);
     return () => clearInterval(timer);
   }, [selectedHackathon, loadTickets, loadAssignedTeams]);
 
@@ -223,7 +223,7 @@ export default function MentorDashboardPage() {
   useEffect(() => {
     if (!selectedTeamId) return;
     loadChat();
-    const timer = setInterval(() => loadChat(), 4000);
+    const timer = setInterval(() => loadChat(), 10000);
     return () => clearInterval(timer);
   }, [selectedTeamId, loadChat]);
 

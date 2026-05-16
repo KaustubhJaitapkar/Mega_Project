@@ -16,30 +16,38 @@ export default async function ParticipantDashboardPage() {
 
   const firstName = user.name?.split(/\s+/)[0] ?? 'there';
 
-  const [hackathons, registrations] = await Promise.all([
-    prisma.hackathon.findMany({
-      take: 50,
-      orderBy: { startDate: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        shortDescription: true,
-        status: true,
-        startDate: true,
-        endDate: true,
-        location: true,
-        isVirtual: true,
-        submissionDeadline: true,
-        registrationDeadline: true,
-      },
-    }),
-    prisma.hackathonRegistration.findMany({
-      where: { userId: user.id },
-      select: { hackathonId: true },
-    }),
-  ]);
+  const registrations = await prisma.hackathonRegistration.findMany({
+    where: { userId: user.id },
+    select: { hackathonId: true },
+  });
 
   const registeredIds = registrations.map((r) => r.hackathonId);
+
+  if (registeredIds.length === 0) {
+    return (
+      <ParticipantDashboardClient
+        firstName={firstName}
+        hackathons={[]}
+        registeredIds={[]}
+      />
+    );
+  }
+
+  const hackathons = await prisma.hackathon.findMany({
+    where: { id: { in: registeredIds } },
+    select: {
+      id: true,
+      title: true,
+      shortDescription: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      location: true,
+      isVirtual: true,
+      submissionDeadline: true,
+      registrationDeadline: true,
+    },
+  });
 
   return (
     <ParticipantDashboardClient

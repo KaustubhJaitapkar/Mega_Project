@@ -21,6 +21,7 @@ async function getInitialData(hackathonId?: string) {
 
   const memberships = await prisma.teamMember.findMany({
     where: { userId: user.id },
+    take: 20,
     select: {
       team: {
         select: {
@@ -57,6 +58,7 @@ async function getInitialData(hackathonId?: string) {
       }),
       prisma.team.findMany({
         where: { hackathonId },
+        take: 50,
         select: {
           id: true,
           name: true,

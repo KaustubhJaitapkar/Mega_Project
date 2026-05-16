@@ -45,7 +45,7 @@ export default function ParticipantSubmitPage() {
     const timer = setInterval(async () => {
       const res = await fetch(`/api/teams/${teamId}/submission`);
       setSubmission((await res.json()).data);
-    }, 5000);
+    }, 30000);
     return () => clearInterval(timer);
   }, [teamId]);
 
